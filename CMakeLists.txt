@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.24 FATAL_ERROR)
 
 project(
-    ccglib
-    DESCRIPTION "Complex CUDA GEMM"
-    VERSION 0.1
-    LANGUAGES CXX CUDA)
+  ccglib
+  DESCRIPTION "Complex CUDA GEMM"
+  VERSION 0.1
+  LANGUAGES CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_BUILD_TYPE Release)
@@ -15,14 +15,15 @@ find_package(OpenMP REQUIRED)
 # fetch cudawrappers
 include(FetchContent)
 FetchContent_Declare(
-    cudawrappers
-    GIT_REPOSITORY https://github.com/nlesc-recruit/cudawrappers
-    GIT_TAG 0.6.0)
+  cudawrappers
+  GIT_REPOSITORY https://github.com/nlesc-recruit/cudawrappers
+  GIT_TAG 0.6.0)
 FetchContent_MakeAvailable(cudawrappers)
 
 # build beamformer
 add_executable(bf bf.cu)
-target_link_libraries(bf PRIVATE cudawrappers::cu cudawrappers::nvrtc OpenMP::OpenMP_CXX)
+target_link_libraries(bf PRIVATE cudawrappers::cu cudawrappers::nvrtc
+                                 OpenMP::OpenMP_CXX)
 target_embed_source(bf gemm_kernel.cu)
 set_target_properties(bf PROPERTIES CUDA_ARCHITECTURES "native")
 
