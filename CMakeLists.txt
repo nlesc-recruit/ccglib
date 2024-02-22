@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 3.17 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.24 FATAL_ERROR)
 
 project(
-    complex_wmma_gemmm
-    DESCRIPTION "COMPLEX WMMA GEMM"
+    ccglib
+    DESCRIPTION "Complex CUDA GEMM"
     VERSION 0.1
     LANGUAGES CXX CUDA)
 
@@ -24,8 +24,7 @@ FetchContent_MakeAvailable(cudawrappers)
 add_executable(bf bf.cu)
 target_link_libraries(bf PRIVATE cudawrappers::cu cudawrappers::nvrtc OpenMP::OpenMP_CXX)
 target_embed_source(bf gemm_kernel.cu)
-# cmake doesn't want to add -fopenmp for some reason, so do it manually
-target_compile_options(bf PRIVATE -Wall -fopenmp)
+set_target_properties(bf PROPERTIES CUDA_ARCHITECTURES "native")
 
 install(TARGETS bf)
 install(FILES wmma_extension.h async_copies.h DESTINATION include)
