@@ -20,8 +20,12 @@ FetchContent_Declare(
   GIT_TAG 0.6.0)
 FetchContent_MakeAvailable(cudawrappers)
 
+set(INSTALL_INCLUDE_DIR "${CMAKE_INSTALL_PREFIX}/include")
+configure_file(cmake/config.h.in config.h)
+
 # build beamformer
 add_executable(bf bf.cu)
+target_include_directories(bf PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(bf PRIVATE cudawrappers::cu cudawrappers::nvrtc
                                  OpenMP::OpenMP_CXX)
 target_embed_source(bf gemm_kernel.cu)

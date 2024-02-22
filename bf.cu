@@ -9,37 +9,13 @@
 
 #include "transpose_kernel.cuh"
 
+#include "config.h"
+
 #define CEILDIV(A, B) ((A) / (B) + ((A) % (B) != 0))
 
 #ifndef COMPLEX
 #define COMPLEX 2
 #endif
-
-std::string get_cxx_includes() {
-  std::string sys_includes = std::string(getenv("CXX_INCLUDE_PATH"));
-  if (sys_includes.length() > 0) {
-    // replace : by -I
-    std::string from = ":";
-    std::string to = " -I";
-
-    // if the last char is :, remove it
-    if (sys_includes.find(from) == sys_includes.length() - 1) {
-      sys_includes.pop_back();
-    }
-    // do the string replacement
-    // based on
-    // https://stackoverflow.com/questions/2896600/how-to-replace-all-occurrences-of-a-character-in-string
-    size_t start_pos = 0;
-    while ((start_pos = sys_includes.find(from, start_pos)) !=
-           std::string::npos) {
-      sys_includes.replace(start_pos, from.length(), to);
-      start_pos += to.length();
-    }
-    // don't forget to add the first -I
-    sys_includes = "-I" + sys_includes;
-  }
-  return sys_includes;
-}
 
 template <typename Tin, typename Tout, unsigned M, unsigned N, unsigned K>
 void verify(const Tin a[COMPLEX][M][K], const Tin b[COMPLEX][N][K],
@@ -199,8 +175,8 @@ int main() {
   d_c.zero(bytes_c);
 
   // compile GEMM kernel
-  std::string include_path = std::string(getenv("CUDA_HOME")) + "/include";
-  std::string sys_includes = get_cxx_includes();
+  std::string cuda_include_path = std::string(getenv("CUDA_HOME")) + "/include";
+  std::string lib_include_path = std::string(INSTALL_INCLUDE_DIR);
 
   dim3 threads(warp_size, frames_per_block / frames_per_warp,
                beams_per_block / beams_per_warp);
@@ -222,8 +198,8 @@ int main() {
   std::vector<std::string> options = {
       "-std=c++17",
       "-arch=sm_" + std::to_string(capability),
-      "-I" + include_path,
-      sys_includes,
+      "-I" + cuda_include_path,
+      "-I" + lib_include_path,
       "-Dblock_size_x=" + std::to_string(threads.x),
       "-Dblock_size_y=" + std::to_string(threads.y),
       "-Dblock_size_z=" + std::to_string(threads.z),
