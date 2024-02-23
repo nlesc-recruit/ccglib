@@ -1,9 +1,10 @@
-macro(create_symlinks TARGET_DIR HEADER_FILES)
-    foreach(HEADER ${HEADER_FILES})
-        get_filename_component(HEADER_NAME ${HEADER} NAME)
-        set(SYMLINK_PATH ${TARGET_DIR}/${HEADER_NAME})
-        execute_process(
-            COMMAND ${CMAKE_COMMAND} -E create_symlink ${HEADER} ${SYMLINK_PATH}
-        )
-    endforeach()
+# * Macro to create symbolic links
+#
+# This macro creates a symbolic link in target_dir for every file in files.
+macro(CREATE_SYMLINKS target_dir files)
+  foreach(file ${files})
+    get_filename_component(file_name ${file} NAME)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${file}
+                            ${target_dir}/${file_name})
+  endforeach()
 endmacro()
