@@ -20,6 +20,8 @@ FetchContent_Declare(
   GIT_TAG 0.6.0)
 FetchContent_MakeAvailable(cudawrappers)
 
+include(cmake/xtensor.cmake)
+
 include(cmake/helper.cmake)
 
 set(INSTALL_INCLUDE_DIR "${CMAKE_INSTALL_PREFIX}/include")
@@ -34,7 +36,7 @@ create_symlinks(${CMAKE_CURRENT_BINARY_DIR} "${RUNTIME_INCLUDE_FILES}")
 add_executable(bf bf.cu)
 target_include_directories(bf PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(bf PRIVATE cudawrappers::cu cudawrappers::nvrtc
-                                 OpenMP::OpenMP_CXX)
+                                 OpenMP::OpenMP_CXX xtensor)
 target_embed_source(bf gemm_kernel.cu)
 set_target_properties(bf PROPERTIES CUDA_ARCHITECTURES "native")
 
