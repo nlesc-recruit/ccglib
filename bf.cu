@@ -98,6 +98,26 @@ void verify(const Tin *a, const Tin *b, const Tout *c) {
   }
 }
 
+template <typename T, typename TransT>
+void transpose(cu::HostMemory &input, cu::DeviceMemory &output, size_t rows,
+               size_t cols, cu::Stream &stream) {
+  // Allocate device memory for non-transposed data
+  cu::DeviceMemory d_input(sizeof(T));
+  stream.memcpyHtoDAsync(d_input, input, sizeof(T));
+  // cu::DeviceMemory d_input = stream.memAllocAsync(sizeof(T));
+
+  dim3 threads(32, 32);
+  dim3 grid(CEILDIV(rows, threads.x), CEILDIV(cols, threads.y));
+
+  T *d_input_arg = reinterpret_cast<T *>(static_cast<CUdeviceptr>(d_input));
+  TransT *d_output_arg =
+      reinterpret_cast<TransT *>(static_cast<CUdeviceptr>(output));
+
+  transpose<<<grid, threads, 0, stream>>>(*d_output_arg, *d_input_arg);
+  // Ensure input is not freed before transpose finishes
+  stream.synchronize();
+}
+
 int main() {
   std::cout << "Beamform main" << std::endl;
 
@@ -176,42 +196,10 @@ int main() {
   cu::DeviceMemory d_b_trans(bytes_b);
 
   // Transpose A
-  {
-    // Allocate device memory for non-transposed data
-    cu::DeviceMemory d_a(bytes_a);
-    stream.memcpyHtoDAsync(d_a, h_a, bytes_a);
-
-    dim3 threads(32, 32);
-    // grid shape has the fastest changing axis first
-    dim3 grid(CEILDIV(samples, threads.x), CEILDIV(beams, threads.y));
-
-    A_t *d_a_arg = reinterpret_cast<A_t *>(static_cast<CUdeviceptr>(d_a));
-    A_trans_t *d_a_trans_arg =
-        reinterpret_cast<A_trans_t *>(static_cast<CUdeviceptr>(d_a_trans));
-
-    transpose<<<grid, threads, 0, stream>>>(*d_a_trans_arg, *d_a_arg);
-    stream.synchronize(); // to ensure d_a is not freed before transpose has
-                          // finished
-  }
+  transpose<A_t, A_trans_t>(h_a, d_a_trans, samples, beams, stream);
 
   // Transpose B
-  {
-    // Allocate device memory for non-transposed data
-    cu::DeviceMemory d_b(bytes_b);
-    stream.memcpyHtoDAsync(d_b, h_b, bytes_b);
-
-    dim3 threads(32, 32);
-    // grid shape has the fastest changing axis first
-    dim3 grid(CEILDIV(samples, threads.x), CEILDIV(frames, threads.y));
-
-    B_t *d_b_arg = reinterpret_cast<B_t *>(static_cast<CUdeviceptr>(d_b));
-    B_trans_t *d_b_trans_arg =
-        reinterpret_cast<B_trans_t *>(static_cast<CUdeviceptr>(d_b_trans));
-
-    transpose<<<grid, threads, 0, stream>>>(*d_b_trans_arg, *d_b_arg);
-    stream.synchronize(); // to ensure d_b is not freed before transpose has
-                          // finished
-  }
+  transpose<B_t, B_trans_t>(h_b, d_b_trans, samples, frames, stream);
 
   // allocate device memory for output data and initialize to zero
   cu::DeviceMemory d_c(bytes_c);
