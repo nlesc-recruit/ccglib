@@ -12,6 +12,8 @@ set(CMAKE_BUILD_TYPE Release)
 find_package(CUDAToolkit REQUIRED)
 find_package(OpenMP REQUIRED)
 
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler=${OpenMP_CXX_FLAGS}")
+
 # fetch cudawrappers
 include(FetchContent)
 FetchContent_Declare(
