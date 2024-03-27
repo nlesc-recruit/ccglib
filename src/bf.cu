@@ -254,9 +254,10 @@ int main() {
   // but this requires the source file to be in a known location and
   // allows the user to (accidentally) replace it by different code,
   // crashing this programme. Hence we opt for the embedded version
-  extern const char _binary_gemm_kernel_cu_start, _binary_gemm_kernel_cu_end;
-  const std::string kernel(&_binary_gemm_kernel_cu_start,
-                           &_binary_gemm_kernel_cu_end);
+  extern const char _binary_kernels_gemm_kernel_cu_start,
+      _binary_kernels_gemm_kernel_cu_end;
+  const std::string kernel(&_binary_kernels_gemm_kernel_cu_start,
+                           &_binary_kernels_gemm_kernel_cu_end);
 
   nvrtc::Program program(kernel, "gemm_kernel.cu");
 
