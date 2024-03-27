@@ -61,11 +61,17 @@ inline __device__ void load_matrix_sync(
 inline __device__ void
 store_matrix_sync(int *p, const fragment<accumulator, 16, 8, 256, int> &d,
                   unsigned ldm, layout_t layout) {
-  // FIXME: only row-major supported
-  ((int2 *)p)[ldm / 2 * (laneid() / 4) + laneid() % 4] =
-      make_int2(d.x[0], d.x[1]);
-  ((int2 *)p)[ldm / 2 * (laneid() / 4 + 8) + laneid() % 4] =
-      make_int2(d.x[2], d.x[3]);
+  if (layout == mem_row_major) {
+    ((int2 *)p)[ldm / 2 * (laneid() / 4) + laneid() % 4] =
+        make_int2(d.x[0], d.x[1]);
+    ((int2 *)p)[ldm / 2 * (laneid() / 4 + 8) + laneid() % 4] =
+        make_int2(d.x[2], d.x[3]);
+  } else {
+    p[(laneid() % 4) * 4 * ldm + (laneid() / 4)] = d.x[0];
+    p[(laneid() % 4) * 4 * ldm + (laneid() / 4) + 2 * ldm] = d.x[1];
+    p[(laneid() % 4) * 4 * ldm + (laneid() / 4 + 8)] = d.x[2];
+    p[(laneid() % 4) * 4 * ldm + (laneid() / 4 + 8) + 2 * ldm] = d.x[3];
+  }
 }
 #endif
 } // namespace wmma
