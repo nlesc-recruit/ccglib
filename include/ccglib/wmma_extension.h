@@ -67,10 +67,10 @@ store_matrix_sync(int *p, const fragment<accumulator, 16, 8, 256, int> &d,
     ((int2 *)p)[ldm / 2 * (laneid() / 4 + 8) + laneid() % 4] =
         make_int2(d.x[2], d.x[3]);
   } else {
-    p[(laneid() % 4) * 4 * ldm + (laneid() / 4)] = d.x[0];
-    p[(laneid() % 4) * 4 * ldm + (laneid() / 4) + 2 * ldm] = d.x[1];
-    p[(laneid() % 4) * 4 * ldm + (laneid() / 4 + 8)] = d.x[2];
-    p[(laneid() % 4) * 4 * ldm + (laneid() / 4 + 8) + 2 * ldm] = d.x[3];
+    p[(laneid() % 4) * 2 * ldm + (laneid() / 4)] = d.x[0];
+    p[(laneid() % 4) * 2 * ldm + (laneid() / 4) + ldm] = d.x[1];
+    p[(laneid() % 4) * 2 * ldm + (laneid() / 4 + 8)] = d.x[2];
+    p[(laneid() % 4) * 2 * ldm + (laneid() / 4 + 8) + ldm] = d.x[3];
   }
 }
 #endif
