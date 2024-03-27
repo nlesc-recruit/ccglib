@@ -29,6 +29,8 @@ include(cmake/helper.cmake)
 set(INSTALL_INCLUDE_DIR "${CMAKE_INSTALL_PREFIX}/include")
 configure_file(cmake/config.h.in config.h)
 
+add_subdirectory(src/reference)
+
 # these files are needed during runtime compilation
 set(RUNTIME_INCLUDE_FILES ${CMAKE_SOURCE_DIR}/include/ccglib/wmma_extension.h
                           ${CMAKE_SOURCE_DIR}/include/ccglib/async_copies.h)
@@ -38,8 +40,9 @@ create_symlinks(${CMAKE_CURRENT_BINARY_DIR} "${RUNTIME_INCLUDE_FILES}")
 add_executable(bf src/bf.cu)
 target_include_directories(bf PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
                                       ${CMAKE_SOURCE_DIR}/kernels)
-target_link_libraries(bf PRIVATE cudawrappers::cu cudawrappers::nvrtc
-                                 OpenMP::OpenMP_CXX xtensor)
+target_link_libraries(
+  bf PRIVATE cudawrappers::cu cudawrappers::nvrtc OpenMP::OpenMP_CXX xtensor
+             $<TARGET_OBJECTS:gemm-reference>)
 target_embed_source(bf kernels/gemm_kernel.cu)
 set_target_properties(bf PROPERTIES CUDA_ARCHITECTURES "native")
 
