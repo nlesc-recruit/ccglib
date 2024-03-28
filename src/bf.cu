@@ -10,6 +10,7 @@
 #include <cudawrappers/cu.hpp>
 #include <cudawrappers/nvrtc.hpp>
 
+#include "mma/GEMM.h"
 #include "reference/GEMM.h"
 #include "transpose/Transpose.h"
 
@@ -65,26 +66,6 @@ void verify(const Tin *a, const Tin *b, const Tout *c) {
   }
 }
 
-template <typename T, typename TransT>
-void transpose(cu::HostMemory &input, cu::DeviceMemory &output, size_t rows,
-               size_t cols, cu::Stream &stream) {
-  // Allocate device memory for non-transposed data
-  cu::DeviceMemory d_input(sizeof(T));
-  stream.memcpyHtoDAsync(d_input, input, sizeof(T));
-  // cu::DeviceMemory d_input = stream.memAllocAsync(sizeof(T));
-
-  dim3 threads(32, 32);
-  dim3 grid(CEILDIV(rows, threads.x), CEILDIV(cols, threads.y));
-
-  T *d_input_arg = reinterpret_cast<T *>(static_cast<CUdeviceptr>(d_input));
-  TransT *d_output_arg =
-      reinterpret_cast<TransT *>(static_cast<CUdeviceptr>(output));
-
-  transpose<<<grid, threads, 0, stream>>>(*d_output_arg, *d_input_arg);
-  // Ensure input is not freed before transpose finishes
-  stream.synchronize();
-}
-
 int main() {
   std::cout << "Beamform main" << std::endl;
 
@@ -94,27 +75,20 @@ int main() {
   cu::Stream stream;
 
   // kernel settings
-  const int beams_per_block = 128;
-  const int beams_per_warp = 32;
-  const int beams_per_wmma = 16;
-
-  const int frames_per_block = 64;
-  const int frames_per_warp = 32;
-  const int frames_per_wmma = 16;
-
-  const int samples_per_wmma = 16;
-  const int warp_size = 32;
-  const int nbuffer = 4;
+  const int beams_per_block = ccglib::mma::GEMM::beams_per_block;
+  const int frames_per_block = ccglib::mma::GEMM::frames_per_block;
+  const int samples_per_wmma = ccglib::mma::GEMM::samples_per_wmma;
 
   // data size and type, sizes match CUBE test data
-  const int complex = 2;
   const int beams = 10240;  // must be multiple of beams_per_block
   const int frames = 1024;  // must be multiple of frames_per_block
   const int samples = 7808; // must be multiple of samples_per_wmma
 
-  const int nbit = 16;
   using Tin = half;
   using Tout = float;
+
+  const unsigned int nr_input_bits = sizeof(Tin) * 8;
+  const unsigned int nr_output_bits = sizeof(Tout) * 8;
 
   // data types for matrices
   // A and B are transposed to an optimal format for the GEMM
@@ -143,11 +117,11 @@ int main() {
   // Note: only works for Tin=half, should use e.g. KernelFloat library to
   // more easily support other types
   srand(42);
-  for (int idx = 0; idx < complex * beams * samples; idx++) {
+  for (int idx = 0; idx < bytes_a / sizeof(Tin); idx++) {
     static_cast<Tin *>(h_a)[idx] =
         __float2half(16 * ((float)rand() / RAND_MAX) - 8);
   }
-  for (int idx = 0; idx < complex * frames * samples; idx++) {
+  for (int idx = 0; idx < bytes_b / sizeof(Tin); idx++) {
     static_cast<Tin *>(h_b)[idx] =
         __float2half(16 * ((float)rand() / RAND_MAX) - 8);
   }
@@ -163,95 +137,28 @@ int main() {
   cu::DeviceMemory d_b_trans(bytes_b);
 
   // Transpose A
-  ccglib::transpose::Transpose transpose_a(
-      beams, samples, beams_per_block, samples_per_wmma, nbit, device, stream);
+  ccglib::transpose::Transpose transpose_a(beams, samples, beams_per_block,
+                                           samples_per_wmma, nr_input_bits,
+                                           device, stream);
   transpose_a.run(h_a, d_a_trans);
 
   // Transpose B
   ccglib::transpose::Transpose transpose_b(frames, samples, frames_per_block,
-                                           samples_per_wmma, nbit, device,
-                                           stream);
+                                           samples_per_wmma, nr_input_bits,
+                                           device, stream);
   transpose_b.run(h_b, d_b_trans);
 
   // allocate device memory for output data and initialize to zero
   cu::DeviceMemory d_c(bytes_c);
   d_c.zero(bytes_c);
 
-  // compile GEMM kernel
-  std::string cuda_include_path = std::string(getenv("CUDA_HOME")) + "/include";
-  std::string lib_include_path = std::string(INSTALL_INCLUDE_DIR);
-
-  dim3 threads(warp_size, frames_per_block / frames_per_warp,
-               beams_per_block / beams_per_warp);
-  dim3 grid(CEILDIV(frames, frames_per_block), CEILDIV(beams, beams_per_block));
-
-  std::cout << "Problem size (M, N, K): (" << beams << ", " << frames << ", "
-            << samples << ")" << std::endl;
-  std::cout << "Thread block size: (" << threads.x << ", " << threads.y << ", "
-            << threads.z << ")" << std::endl;
-  std::cout << "Threads per block: " << threads.x * threads.y * threads.z
-            << std::endl;
-  std::cout << "Grid size: (" << grid.x << ", " << grid.y << ", " << grid.z
-            << ")" << std::endl;
-
-  int capability =
-      10 * device.getAttribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR>() +
-      device.getAttribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR>();
-
-  std::vector<std::string> options = {
-      "-std=c++17",
-      "-arch=sm_" + std::to_string(capability),
-      "-I" + cuda_include_path,
-      "-I" + lib_include_path,
-      "-Dblock_size_x=" + std::to_string(threads.x),
-      "-Dblock_size_y=" + std::to_string(threads.y),
-      "-Dblock_size_z=" + std::to_string(threads.z),
-      "-DM=" + std::to_string(beams),
-      "-D_N=" + std::to_string(frames),
-      "-DK=" + std::to_string(samples),
-      "-DNBIT=" + std::to_string(nbit),
-      "-DM_PER_BLOCK=" + std::to_string(beams_per_block),
-      "-DM_PER_WARP=" + std::to_string(beams_per_warp),
-      "-DM_PER_WMMA=" + std::to_string(beams_per_wmma),
-      "-DN_PER_BLOCK=" + std::to_string(frames_per_block),
-      "-DN_PER_WARP=" + std::to_string(frames_per_warp),
-      "-DN_PER_WMMA=" + std::to_string(frames_per_wmma),
-      "-DK_PER_WMMA=" + std::to_string(samples_per_wmma),
-      "-DWARP_SIZE=" + std::to_string(warp_size),
-      "-DNBUFFER=" + std::to_string(nbuffer)};
-
-  // the kernel source is embedded into the object file by the linker
-  // the name of these extern variables depends on the source path!
-  // it is also possible to just load the kernel source file at runtime,
-  // but this requires the source file to be in a known location and
-  // allows the user to (accidentally) replace it by different code,
-  // crashing this programme. Hence we opt for the embedded version
-  extern const char _binary_kernels_gemm_kernel_cu_start,
-      _binary_kernels_gemm_kernel_cu_end;
-  const std::string kernel(&_binary_kernels_gemm_kernel_cu_start,
-                           &_binary_kernels_gemm_kernel_cu_end);
-
-  nvrtc::Program program(kernel, "gemm_kernel.cu");
-
-  try {
-    program.compile(options);
-  } catch (nvrtc::Error &error) {
-    std::cerr << program.getLog();
-    throw;
-  }
-  std::cout << "Kernel compilation succeeded" << std::endl;
-
-  cu::Module module(static_cast<const void *>(program.getPTX().data()));
-  cu::Function function(module, "wmma_complex_gemm_opt");
+  ccglib::mma::GEMM gemm_mma(beams, samples, frames, nr_input_bits,
+                             nr_output_bits, device, stream);
 
   // run and time the GEMM kernel
-  std::vector<const void *> parameters = {
-      d_c.parameter(), d_a_trans.parameter(), d_b_trans.parameter()};
-
   cu::Event start, end;
   start.record(stream);
-  stream.launchKernel(function, grid.x, grid.y, grid.z, threads.x, threads.y,
-                      threads.z, 0, parameters);
+  gemm_mma.run(d_a_trans, d_b_trans, d_c);
   end.record(stream);
   end.synchronize();
 
@@ -261,7 +168,7 @@ int main() {
   std::cout << "TFLOPS: " << tflops << std::endl;
 
   // copy C to host
-  stream.memcpyDtoHAsync(c, d_c, bytes_c);
+  stream.memcpyDtoHAsync(h_c, d_c, bytes_c);
   stream.synchronize();
 
   // verify output
