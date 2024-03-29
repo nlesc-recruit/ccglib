@@ -10,8 +10,6 @@
 #include <cudawrappers/cu.hpp>
 #include <cudawrappers/nvrtc.hpp>
 
-#include "transpose_kernel.cuh"
-
 #include "reference/GEMM.h"
 #include "transpose/Transpose.h"
 
@@ -165,22 +163,14 @@ int main() {
   cu::DeviceMemory d_b_trans(bytes_b);
 
 // Transpose A
-#if 0
-  transpose<A_t, A_trans_t>(h_a, d_a_trans, samples, beams, stream);
-#else
   ccglib::transpose::Transpose transpose_a(
       beams, samples, beams_per_block, samples_per_wmma, nbit, device, stream);
   transpose_a.run(h_a, d_a_trans);
-#endif
 
   // Transpose B
-#if 0
-  transpose<B_t, B_trans_t>(h_b, d_b_trans, samples, frames, stream);
-#else
   ccglib::transpose::Transpose transpose_b(
       frames, samples, frames_per_block, samples_per_wmma, nbit, device, stream);
   transpose_b.run(h_b, d_b_trans);
-#endif
 
   // allocate device memory for output data and initialize to zero
   cu::DeviceMemory d_c(bytes_c);
