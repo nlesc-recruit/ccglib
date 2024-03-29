@@ -43,8 +43,9 @@ target_include_directories(bf PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
                                       ${CMAKE_SOURCE_DIR}/kernels)
 target_link_libraries(
   bf PRIVATE cudawrappers::cu cudawrappers::nvrtc OpenMP::OpenMP_CXX xtensor
-             $<TARGET_OBJECTS:gemm-reference>)
+             $<TARGET_OBJECTS:gemm-reference> $<TARGET_OBJECTS:helper>)
 target_embed_source(bf kernels/gemm_kernel.cu)
+target_embed_source(bf kernels/transpose_kernel.cu)
 set_target_properties(bf PROPERTIES CUDA_ARCHITECTURES "native")
 
 install(TARGETS bf)

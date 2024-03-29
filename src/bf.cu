@@ -13,6 +13,7 @@
 #include "transpose_kernel.cuh"
 
 #include "reference/GEMM.h"
+#include "transpose/Transpose.h"
 
 #include "config.h"
 
@@ -21,6 +22,9 @@
 #ifndef COMPLEX
 #define COMPLEX 2
 #endif
+
+extern const char _binary_kernels_transpose_kernel_cu_start,
+    _binary_kernels_transpose_kernel_cu_end;
 
 template <typename Tin, typename Tout, unsigned M, unsigned N, unsigned K>
 void verify(const Tin *a, const Tin *b, const Tout *c) {
@@ -160,8 +164,17 @@ int main() {
   cu::DeviceMemory d_a_trans(bytes_a);
   cu::DeviceMemory d_b_trans(bytes_b);
 
-  // Transpose A
+// Transpose A
+#if 0
   transpose<A_t, A_trans_t>(h_a, d_a_trans, samples, beams, stream);
+#else
+  ccglib::transpose::Transpose transpose_a(
+      samples, beams, samples_per_wmma, beams_per_block, nbit, device, stream);
+  cu::DeviceMemory d_a = stream.memAllocAsync(bytes_a);
+  stream.memcpyHtoDAsync(d_a, h_a, bytes_a);
+  transpose_a.run(d_a, d_a_trans);
+  stream.memFreeAsync(d_a);
+#endif
 
   // Transpose B
   transpose<B_t, B_trans_t>(h_b, d_b_trans, samples, frames, stream);
