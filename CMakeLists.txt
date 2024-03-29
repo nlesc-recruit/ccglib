@@ -30,6 +30,7 @@ set(INSTALL_INCLUDE_DIR "${CMAKE_INSTALL_PREFIX}/include")
 configure_file(cmake/config.h.in config.h)
 
 add_subdirectory(src/reference)
+add_subdirectory(src/transpose)
 
 # these files are needed during runtime compilation
 set(RUNTIME_INCLUDE_FILES ${CMAKE_SOURCE_DIR}/include/ccglib/wmma_extension.h
