@@ -18,6 +18,13 @@ Transpose::Transpose(size_t M, size_t N, size_t M_chunk, size_t N_chunk,
   compile_kernel();
 }
 
+void Transpose::run(cu::HostMemory &h_input, cu::DeviceMemory &d_output) {
+  cu::DeviceMemory d_input = stream.memAllocAsync(h_input.size());
+  stream.memcpyHtoDAsync(d_input, h_input, h_input.size());
+  run(d_input, d_output);
+  stream.memFreeAsync(d_input);
+}
+
 void Transpose::run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output) {
   dim3 threads(32, 32);
   dim3 grid(helper::ceildiv(N, threads.x), helper::ceildiv(M, threads.y));

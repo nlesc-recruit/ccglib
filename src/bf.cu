@@ -170,10 +170,7 @@ int main() {
 #else
   ccglib::transpose::Transpose transpose_a(
       samples, beams, samples_per_wmma, beams_per_block, nbit, device, stream);
-  cu::DeviceMemory d_a = stream.memAllocAsync(bytes_a);
-  stream.memcpyHtoDAsync(d_a, h_a, bytes_a);
-  transpose_a.run(d_a, d_a_trans);
-  stream.memFreeAsync(d_a);
+  transpose_a.run(h_a, d_a_trans);
 #endif
 
   // Transpose B
