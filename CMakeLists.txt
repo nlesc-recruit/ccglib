@@ -19,7 +19,7 @@ include(FetchContent)
 FetchContent_Declare(
   cudawrappers
   GIT_REPOSITORY https://github.com/nlesc-recruit/cudawrappers
-  GIT_TAG 0.6.0)
+  GIT_TAG 0.7.0)
 FetchContent_MakeAvailable(cudawrappers)
 
 include(cmake/xtensor.cmake)
