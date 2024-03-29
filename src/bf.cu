@@ -162,14 +162,15 @@ int main() {
   cu::DeviceMemory d_a_trans(bytes_a);
   cu::DeviceMemory d_b_trans(bytes_b);
 
-// Transpose A
+  // Transpose A
   ccglib::transpose::Transpose transpose_a(
       beams, samples, beams_per_block, samples_per_wmma, nbit, device, stream);
   transpose_a.run(h_a, d_a_trans);
 
   // Transpose B
-  ccglib::transpose::Transpose transpose_b(
-      frames, samples, frames_per_block, samples_per_wmma, nbit, device, stream);
+  ccglib::transpose::Transpose transpose_b(frames, samples, frames_per_block,
+                                           samples_per_wmma, nbit, device,
+                                           stream);
   transpose_b.run(h_b, d_b_trans);
 
   // allocate device memory for output data and initialize to zero
