@@ -169,7 +169,7 @@ int main() {
   transpose<A_t, A_trans_t>(h_a, d_a_trans, samples, beams, stream);
 #else
   ccglib::transpose::Transpose transpose_a(
-      samples, beams, samples_per_wmma, beams_per_block, nbit, device, stream);
+      beams, samples, beams_per_block, samples_per_wmma, nbit, device, stream);
   transpose_a.run(h_a, d_a_trans);
 #endif
 
