@@ -174,7 +174,13 @@ int main() {
 #endif
 
   // Transpose B
+#if 0
   transpose<B_t, B_trans_t>(h_b, d_b_trans, samples, frames, stream);
+#else
+  ccglib::transpose::Transpose transpose_b(
+      frames, samples, frames_per_block, samples_per_wmma, nbit, device, stream);
+  transpose_b.run(h_b, d_b_trans);
+#endif
 
   // allocate device memory for output data and initialize to zero
   cu::DeviceMemory d_c(bytes_c);
