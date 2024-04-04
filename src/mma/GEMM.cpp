@@ -18,8 +18,8 @@ GEMM::GEMM(size_t beams_, size_t samples_, size_t frames_,
     : beams_(beams_), samples_(samples_), frames_(frames_),
       nr_input_bits_(nr_input_bits_), nr_output_bits(nr_output_bits),
       device_(device_), stream_(stream_) {
-  threads_ = dim3(warp_size, kFramesPerBlock / frames_per_warp,
-                  kBeamsPerBlock / beams_per_warp);
+  threads_ = dim3(kWarpSize, kFramesPerBlock / kFramesPerWarp,
+                  kBeamsPerBlock / kBeamsPerWarp);
   grid_ = dim3(helper::ceildiv(frames_, kFramesPerBlock),
                helper::ceildiv(beams_, kBeamsPerBlock));
 
@@ -57,14 +57,14 @@ void GEMM::compile_kernel() {
       "-DK=" + std::to_string(samples_),
       "-DNBIT=" + std::to_string(nr_input_bits_),
       "-DM_PER_BLOCK=" + std::to_string(kBeamsPerBlock),
-      "-DM_PER_WARP=" + std::to_string(beams_per_warp),
-      "-DM_PER_WMMA=" + std::to_string(beams_per_wmma),
+      "-DM_PER_WARP=" + std::to_string(kBeamsPerWarp),
+      "-DM_PER_WMMA=" + std::to_string(kBeamsPerWMMA),
       "-DN_PER_BLOCK=" + std::to_string(kFramesPerBlock),
-      "-DN_PER_WARP=" + std::to_string(frames_per_warp),
-      "-DN_PER_WMMA=" + std::to_string(frames_per_wmma),
+      "-DN_PER_WARP=" + std::to_string(kFramesPerWarp),
+      "-DN_PER_WMMA=" + std::to_string(kFramesPerWMMA),
       "-DK_PER_WMMA=" + std::to_string(kSamplesPerWMMA),
-      "-DWARP_SIZE=" + std::to_string(warp_size),
-      "-DNBUFFER=" + std::to_string(nbuffer)};
+      "-DWARP_SIZE=" + std::to_string(kWarpSize),
+      "-DNBUFFER=" + std::to_string(kNBuffer)};
 
   const std::string kernel(&_binary_kernels_gemm_kernel_cu_start,
                            &_binary_kernels_gemm_kernel_cu_end);

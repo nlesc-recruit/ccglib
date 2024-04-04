@@ -26,14 +26,14 @@ private:
   dim3 grid_;
 
   // kernel settings
-  const size_t beams_per_warp = 32;
-  const size_t beams_per_wmma = 16;
+  const size_t kBeamsPerWarp = 32;
+  const size_t kBeamsPerWMMA = 16;
 
-  const size_t frames_per_warp = 32;
-  const size_t frames_per_wmma = 16;
+  const size_t kFramesPerWarp = 32;
+  const size_t kFramesPerWMMA = 16;
 
-  const size_t warp_size = 32;
-  const size_t nbuffer = 4;
+  const size_t kWarpSize = 32;
+  const size_t kNBuffer = 4;
 
   cu::Device &device_;
   cu::Stream &stream_;
