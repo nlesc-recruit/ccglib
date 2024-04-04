@@ -75,9 +75,9 @@ int main() {
   cu::Stream stream;
 
   // kernel settings
-  const int beams_per_block = ccglib::mma::GEMM::beams_per_block;
-  const int frames_per_block = ccglib::mma::GEMM::frames_per_block;
-  const int samples_per_wmma = ccglib::mma::GEMM::samples_per_wmma;
+  const int beams_per_block = ccglib::mma::GEMM::kBeamsPerBlock;
+  const int frames_per_block = ccglib::mma::GEMM::kFramesPerBlock;
+  const int samples_per_wmma = ccglib::mma::GEMM::kSamplesPerWMMA;
 
   // data size and type, sizes match CUBE test data
   const int beams = 10240;  // must be multiple of beams_per_block

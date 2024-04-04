@@ -12,24 +12,25 @@ extern const char _binary_kernels_gemm_kernel_cu_start,
 
 namespace ccglib::mma {
 
-GEMM::GEMM(size_t beams, size_t samples, size_t frames, size_t nr_input_bits,
-           size_t nr_output_bits, cu::Device &device, cu::Stream &stream)
-    : beams(beams), samples(samples), frames(frames),
-      nr_input_bits(nr_input_bits), nr_output_bits(nr_output_bits),
-      device(device), stream(stream) {
-  threads = dim3(warp_size, kFramesPerBlock / frames_per_warp,
-                 kBeamsPerBlock / beams_per_warp);
-  grid = dim3(helper::ceildiv(frames, kFramesPerBlock),
-              helper::ceildiv(beams, kBeamsPerBlock));
+GEMM::GEMM(size_t beams_, size_t samples_, size_t frames_,
+           size_t nr_input_bits_, size_t nr_output_bits, cu::Device &device_,
+           cu::Stream &stream_)
+    : beams_(beams_), samples_(samples_), frames_(frames_),
+      nr_input_bits_(nr_input_bits_), nr_output_bits(nr_output_bits),
+      device_(device_), stream_(stream_) {
+  threads_ = dim3(warp_size, kFramesPerBlock / frames_per_warp,
+                  kBeamsPerBlock / beams_per_warp);
+  grid_ = dim3(helper::ceildiv(frames_, kFramesPerBlock),
+               helper::ceildiv(beams_, kBeamsPerBlock));
 
 #if defined(DEBUG)
-  std::cout << "Problem size (M, N, K): (" << beams << ", " << frames << ", "
-            << samples << ")" << std::endl;
-  std::cout << "Thread block size: (" << threads.x << ", " << threads.y << ", "
-            << threads.z << ")" << std::endl;
-  std::cout << "Threads per block: " << threads.x * threads.y * threads.z
+  std::cout << "Problem size (M, N, K): (" << beams_ << ", " << frames_ << ", "
+            << samples_ << ")" << std::endl;
+  std::cout << "Thread block size: (" << threads_.x << ", " << threads_.y
+            << ", " << threads_.z << ")" << std::endl;
+  std::cout << "Threads per block: " << threads_.x * threads_.y * threads_.z
             << std::endl;
-  std::cout << "Grid size: (" << grid.x << ", " << grid.y << ", " << grid.z
+  std::cout << "Grid size: (" << grid_.x << ", " << grid_.y << ", " << grid_.z
             << ")" << std::endl;
 #endif
 
@@ -41,20 +42,20 @@ void GEMM::compile_kernel() {
       std::string(getenv("CUDA_HOME")) + "/include";
   const std::string lib_include_path = std::string(INSTALL_INCLUDE_DIR);
 
-  const int capability = helper::get_capability(device);
+  const int capability = helper::get_capability(device_);
 
   std::vector<std::string> options = {
       "-std=c++17",
       "-arch=sm_" + std::to_string(capability),
       "-I" + cuda_include_path,
       "-I" + lib_include_path,
-      "-Dblock_size_x=" + std::to_string(threads.x),
-      "-Dblock_size_y=" + std::to_string(threads.y),
-      "-Dblock_size_z=" + std::to_string(threads.z),
-      "-DM=" + std::to_string(beams),
-      "-D_N=" + std::to_string(frames),
-      "-DK=" + std::to_string(samples),
-      "-DNBIT=" + std::to_string(nr_input_bits),
+      "-Dblock_size_x=" + std::to_string(threads_.x),
+      "-Dblock_size_y=" + std::to_string(threads_.y),
+      "-Dblock_size_z=" + std::to_string(threads_.z),
+      "-DM=" + std::to_string(beams_),
+      "-D_N=" + std::to_string(frames_),
+      "-DK=" + std::to_string(samples_),
+      "-DNBIT=" + std::to_string(nr_input_bits_),
       "-DM_PER_BLOCK=" + std::to_string(kBeamsPerBlock),
       "-DM_PER_WARP=" + std::to_string(beams_per_warp),
       "-DM_PER_WMMA=" + std::to_string(beams_per_wmma),
@@ -77,9 +78,9 @@ void GEMM::compile_kernel() {
     throw;
   }
 
-  module = std::make_unique<cu::Module>(
+  module_ = std::make_unique<cu::Module>(
       static_cast<const void *>(program.getPTX().data()));
-  function = std::make_unique<cu::Function>(*module, "wmma_complex_gemm_opt");
+  function_ = std::make_unique<cu::Function>(*module_, "wmma_complex_gemm_opt");
 }
 
 void GEMM::run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b,
@@ -88,8 +89,8 @@ void GEMM::run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b,
   std::vector<const void *> parameters = {d_c.parameter(), d_a.parameter(),
                                           d_b.parameter()};
 
-  stream.launchKernel(*function, grid.x, grid.y, grid.z, threads.x, threads.y,
-                      threads.z, 0, parameters);
+  stream_.launchKernel(*function_, grid_.x, grid_.y, grid_.z, threads_.x,
+                       threads_.y, threads_.z, 0, parameters);
 }
 
 } // end namespace ccglib::mma
