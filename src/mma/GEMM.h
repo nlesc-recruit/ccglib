@@ -10,9 +10,9 @@ public:
   void run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b, cu::DeviceMemory &d_c);
 
   // public kernel settings
-  static const size_t beams_per_block = 128;
-  static const size_t frames_per_block = 64;
-  static const size_t samples_per_wmma = 16;
+  static const size_t kBeamsPerBlock = 128;
+  static const size_t kFramesPerBlock = 64;
+  static const size_t kSamplesPerWMMA = 16;
 
 private:
   size_t samples;

@@ -17,10 +17,10 @@ GEMM::GEMM(size_t beams, size_t samples, size_t frames, size_t nr_input_bits,
     : beams(beams), samples(samples), frames(frames),
       nr_input_bits(nr_input_bits), nr_output_bits(nr_output_bits),
       device(device), stream(stream) {
-  threads = dim3(warp_size, frames_per_block / frames_per_warp,
-                 beams_per_block / beams_per_warp);
-  grid = dim3(helper::ceildiv(frames, frames_per_block),
-              helper::ceildiv(beams, beams_per_block));
+  threads = dim3(warp_size, kFramesPerBlock / frames_per_warp,
+                 kBeamsPerBlock / beams_per_warp);
+  grid = dim3(helper::ceildiv(frames, kFramesPerBlock),
+              helper::ceildiv(beams, kBeamsPerBlock));
 
 #if defined(DEBUG)
   std::cout << "Problem size (M, N, K): (" << beams << ", " << frames << ", "
@@ -55,13 +55,13 @@ void GEMM::compile_kernel() {
       "-D_N=" + std::to_string(frames),
       "-DK=" + std::to_string(samples),
       "-DNBIT=" + std::to_string(nr_input_bits),
-      "-DM_PER_BLOCK=" + std::to_string(beams_per_block),
+      "-DM_PER_BLOCK=" + std::to_string(kBeamsPerBlock),
       "-DM_PER_WARP=" + std::to_string(beams_per_warp),
       "-DM_PER_WMMA=" + std::to_string(beams_per_wmma),
-      "-DN_PER_BLOCK=" + std::to_string(frames_per_block),
+      "-DN_PER_BLOCK=" + std::to_string(kFramesPerBlock),
       "-DN_PER_WARP=" + std::to_string(frames_per_warp),
       "-DN_PER_WMMA=" + std::to_string(frames_per_wmma),
-      "-DK_PER_WMMA=" + std::to_string(samples_per_wmma),
+      "-DK_PER_WMMA=" + std::to_string(kSamplesPerWMMA),
       "-DWARP_SIZE=" + std::to_string(warp_size),
       "-DNBUFFER=" + std::to_string(nbuffer)};
 
