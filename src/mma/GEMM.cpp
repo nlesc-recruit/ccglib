@@ -14,10 +14,10 @@ namespace ccglib::mma {
 
 GEMM::GEMM(size_t beams_, size_t samples_, size_t frames_,
            size_t nr_input_bits_, size_t nr_output_bits, cu::Device &device_,
-           cu::Stream &stream_)
+           cu::Stream &stream_, Variant variant)
     : beams_(beams_), samples_(samples_), frames_(frames_),
       nr_input_bits_(nr_input_bits_), nr_output_bits(nr_output_bits),
-      device_(device_), stream_(stream_) {
+      device_(device_), stream_(stream_), variant_(variant) {
   threads_ = dim3(kWarpSize, kFramesPerBlock / kFramesPerWarp,
                   kBeamsPerBlock / kBeamsPerWarp);
   grid_ = dim3(helper::ceildiv(frames_, kFramesPerBlock),
@@ -35,6 +35,17 @@ GEMM::GEMM(size_t beams_, size_t samples_, size_t frames_,
 #endif
 
   compile_kernel();
+}
+
+inline const char *to_string(ccglib::mma::GEMM::Variant v) {
+  switch (v) {
+  case ccglib::mma::GEMM::basic:
+    return "wmma_complex_gemm_basic";
+  case ccglib::mma::GEMM::opt:
+    return "wmma_complex_gemm_opt";
+  default:
+    return "";
+  }
 }
 
 void GEMM::compile_kernel() {
@@ -80,7 +91,7 @@ void GEMM::compile_kernel() {
 
   module_ = std::make_unique<cu::Module>(
       static_cast<const void *>(program.getPTX().data()));
-  function_ = std::make_unique<cu::Function>(*module_, "wmma_complex_gemm_opt");
+  function_ = std::make_unique<cu::Function>(*module_, to_string(variant_));
 }
 
 void GEMM::run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b,

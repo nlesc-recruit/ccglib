@@ -5,8 +5,11 @@
 namespace ccglib::mma {
 class GEMM {
 public:
+  enum Variant { basic, opt };
+
   GEMM(size_t beams_, size_t samples_, size_t frames_, size_t nr_input_bits_,
-       size_t nr_output_bits, cu::Device &device_, cu::Stream &stream_);
+       size_t nr_output_bits, cu::Device &device_, cu::Stream &stream_,
+       Variant Variant = Variant::opt);
   void run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b, cu::DeviceMemory &d_c);
 
   // public kernel settings
@@ -15,6 +18,8 @@ public:
   static const size_t kSamplesPerWMMA = 16;
 
 private:
+  Variant variant_;
+
   size_t samples_;
   size_t beams_;
   size_t frames_;
