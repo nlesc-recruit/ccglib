@@ -25,7 +25,7 @@ private:
   size_t frames_;
 
   size_t nr_input_bits_;
-  size_t nr_output_bits;
+  const size_t kNrOutputBits = sizeof(float) * 8;
 
   dim3 threads_;
   dim3 grid_;

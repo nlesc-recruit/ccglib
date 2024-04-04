@@ -1,3 +1,4 @@
+#include <cassert>
 #include <iostream>
 #include <numeric>
 
@@ -16,8 +17,9 @@ GEMM::GEMM(size_t beams_, size_t samples_, size_t frames_,
            size_t nr_input_bits_, size_t nr_output_bits, cu::Device &device_,
            cu::Stream &stream_, Variant variant)
     : beams_(beams_), samples_(samples_), frames_(frames_),
-      nr_input_bits_(nr_input_bits_), nr_output_bits(nr_output_bits),
-      device_(device_), stream_(stream_), variant_(variant) {
+      nr_input_bits_(nr_input_bits_), device_(device_), stream_(stream_),
+      variant_(variant) {
+  assert(kNrOutputBits == kNrOutputBits);
   threads_ = dim3(kWarpSize, kFramesPerBlock / kFramesPerWarp,
                   kBeamsPerBlock / kBeamsPerWarp);
   grid_ = dim3(helper::ceildiv(frames_, kFramesPerBlock),
