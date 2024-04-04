@@ -10,9 +10,8 @@
 #include <cudawrappers/cu.hpp>
 #include <cudawrappers/nvrtc.hpp>
 
-#include "transpose_kernel.cuh"
-
 #include "reference/GEMM.h"
+#include "transpose/Transpose.h"
 
 #include "config.h"
 
@@ -21,6 +20,9 @@
 #ifndef COMPLEX
 #define COMPLEX 2
 #endif
+
+extern const char _binary_kernels_transpose_kernel_cu_start,
+    _binary_kernels_transpose_kernel_cu_end;
 
 template <typename Tin, typename Tout, unsigned M, unsigned N, unsigned K>
 void verify(const Tin *a, const Tin *b, const Tout *c) {
@@ -161,10 +163,15 @@ int main() {
   cu::DeviceMemory d_b_trans(bytes_b);
 
   // Transpose A
-  transpose<A_t, A_trans_t>(h_a, d_a_trans, samples, beams, stream);
+  ccglib::transpose::Transpose transpose_a(
+      beams, samples, beams_per_block, samples_per_wmma, nbit, device, stream);
+  transpose_a.run(h_a, d_a_trans);
 
   // Transpose B
-  transpose<B_t, B_trans_t>(h_b, d_b_trans, samples, frames, stream);
+  ccglib::transpose::Transpose transpose_b(frames, samples, frames_per_block,
+                                           samples_per_wmma, nbit, device,
+                                           stream);
+  transpose_b.run(h_b, d_b_trans);
 
   // allocate device memory for output data and initialize to zero
   cu::DeviceMemory d_c(bytes_c);

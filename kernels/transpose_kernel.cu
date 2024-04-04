@@ -1,5 +1,4 @@
-#ifndef TRANSPOSER_KERNEL_CUH
-#define TRANSPOSER_KERNEL_CUH
+#include <cuda_fp16.h>
 
 #ifndef COMPLEX
 #define COMPLEX 2
@@ -11,11 +10,13 @@
 #define IMAG 1
 #endif
 
-/*
-Transpose data of shape [C][M][N] to [M/M_CHUNK][N/N_CHUNK][C][M_CUNK][N_CHUNK]
-*/
-template <typename T, unsigned M, unsigned M_CHUNK, unsigned N,
-          unsigned N_CHUNK>
+#if NBIT == 16
+using T = half;
+#else
+#error NBIT must be 16
+#endif
+
+extern "C" {
 __global__ void
 transpose(T out[M / M_CHUNK][N / N_CHUNK][COMPLEX][M_CHUNK][N_CHUNK],
           const T in[COMPLEX][M][N]) {
@@ -35,4 +36,4 @@ transpose(T out[M / M_CHUNK][N / N_CHUNK][COMPLEX][M_CHUNK][N_CHUNK],
     out[m][n][IMAG][m_c][n_c] = in[IMAG][idx_M][idx_N];
   }
 };
-#endif // TRANSPOSER_KERNEL_CUH
+}

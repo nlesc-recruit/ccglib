@@ -19,7 +19,7 @@ include(FetchContent)
 FetchContent_Declare(
   cudawrappers
   GIT_REPOSITORY https://github.com/nlesc-recruit/cudawrappers
-  GIT_TAG 0.6.0)
+  GIT_TAG 0.7.0)
 FetchContent_MakeAvailable(cudawrappers)
 
 include(cmake/xtensor.cmake)
@@ -30,6 +30,7 @@ set(INSTALL_INCLUDE_DIR "${CMAKE_INSTALL_PREFIX}/include")
 configure_file(cmake/config.h.in config.h)
 
 add_subdirectory(src/reference)
+add_subdirectory(src/transpose)
 
 # these files are needed during runtime compilation
 set(RUNTIME_INCLUDE_FILES ${CMAKE_SOURCE_DIR}/include/ccglib/wmma_extension.h
@@ -42,8 +43,9 @@ target_include_directories(bf PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
                                       ${CMAKE_SOURCE_DIR}/kernels)
 target_link_libraries(
   bf PRIVATE cudawrappers::cu cudawrappers::nvrtc OpenMP::OpenMP_CXX xtensor
-             $<TARGET_OBJECTS:gemm-reference>)
+             $<TARGET_OBJECTS:gemm-reference> $<TARGET_OBJECTS:helper>)
 target_embed_source(bf kernels/gemm_kernel.cu)
+target_embed_source(bf kernels/transpose_kernel.cu)
 set_target_properties(bf PROPERTIES CUDA_ARCHITECTURES "native")
 
 install(TARGETS bf)
