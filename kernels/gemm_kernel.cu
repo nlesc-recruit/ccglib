@@ -1,6 +1,6 @@
-#include <cooperative_groups/memcpy_async.h>
 #include <cuda_fp16.h>
 #include <mma.h>
+#include <cuda/pipeline>
 
 #include "async_copies.h"
 #include "wmma_extension.h"
@@ -169,18 +169,10 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
   __shared__ Tin A_s[NBUFFER][COMPLEX][M_PER_BLOCK][K_PER_WMMA];
   __shared__ Tin B_s[NBUFFER][COMPLEX][N_PER_BLOCK][K_PER_WMMA];
 
-  experimental::pipeline pipe;
+  cuda::pipeline<cuda::thread_scope_thread> pipe = cuda::make_pipeline();
 
-  // prefill all but one buffers
-  for (int k = 0; k < NBUFFER - 1; k++) {
-    copy_async<sizeof(A_s[0]), num_threads>(&A_s[k][0][0][0],
-                                            &A[blockM][k][0][0], pipe, tid);
-    copy_async<sizeof(B_s[0]), num_threads>(&B_s[k][0][0][0],
-                                            &B[blockN][k][0][0], pipe, tid);
-    pipe.commit();
-  }
+  for (unsigned k = 0, f = 0; k < K_TILES; ++k) {
 
-  for (unsigned k = 0; k < K_TILES; k++) {
     // declare input fragments for A and B matrices
     wmma::fragment<wmma::matrix_a, M_PER_WMMA, N_PER_WMMA, K_PER_WMMA, Ttc,
                    wmma::row_major>
@@ -190,23 +182,24 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
         b[COMPLEX][N_TILES];
 
     // copy next data to smem
-    if (k + NBUFFER - 1 < K_TILES) {
+    for (; f < K_TILES && f < (k + NBUFFER); ++f) {
+      pipe.producer_acquire();
       // trick: next buffer to load is always the one previous to current loop
       // the % operation only works if k is unsigned
-      copy_async<sizeof(A_s[0]), num_threads>(&A_s[(k - 1) % NBUFFER][0][0],
-                                              &A[blockM][k + NBUFFER - 1][0][0],
+      copy_async<sizeof(A_s[0]), num_threads>(&A_s[f % NBUFFER][0][0],
+                                              &A[blockM][f][0][0],
                                               pipe, tid);
-      copy_async<sizeof(B_s[0]), num_threads>(&B_s[(k - 1) % NBUFFER][0][0],
-                                              &B[blockN][k + NBUFFER - 1][0][0],
+      copy_async<sizeof(B_s[0]), num_threads>(&B_s[f % NBUFFER][0][0],
+                                              &B[blockN][f][0][0],
                                               pipe, tid);
-      pipe.commit();
+      pipe.producer_commit();
     }
 
     // NBUFFER copy operations have been started
     // the oldest one needs to be finished before we can start computation on
     // that data This corresponds to (NBUFFER - 1) copy operations ago so that
     // is the one we need to wait for
-    pipe.wait_prior<NBUFFER - 1>();
+    cuda::pipeline_consumer_wait_prior<NBUFFER - 1>(pipe);
     __syncthreads(); // not sure if this is needed, perhaps already handled by
                      // the pipe.wait_prior
 
@@ -270,6 +263,9 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
                        sum[IMAG][m][n]);
       }
     }
+
+    pipe.consumer_release();
+
     __syncthreads();
   }
 
