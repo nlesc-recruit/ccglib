@@ -16,8 +16,6 @@
 
 #include "config.h"
 
-#define CEILDIV(A, B) ((A) / (B) + ((A) % (B) != 0))
-
 #ifndef COMPLEX
 #define COMPLEX 2
 #endif
@@ -113,7 +111,7 @@ int main() {
   B_t *b = static_cast<B_t *>(h_b);
   C_t *c = static_cast<C_t *>(h_c);
 
-  // fill a and b with random values, initalize c to zero
+  // fill a and b with random values (fixed seed), initalize c to zero
   // Note: only works for Tin=half, should use e.g. KernelFloat library to
   // more easily support other types
   srand(42);

@@ -9,6 +9,7 @@ inline int get_capability(cu::Device &device) {
 }
 
 template <typename T> inline int ceildiv(T a, T b) {
+  // Only for positive a and b
   return ((a) / (b) + ((a) % (b) != 0));
 }
 

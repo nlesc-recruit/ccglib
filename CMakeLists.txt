@@ -26,6 +26,12 @@ include(cmake/xtensor.cmake)
 
 include(cmake/helper.cmake)
 
+option(BUILD_TESTING "Build the test suite" OFF)
+
+if(BUILD_TESTING)
+  enable_testing()
+endif()
+
 set(INSTALL_INCLUDE_DIR "${CMAKE_INSTALL_PREFIX}/include")
 configure_file(cmake/config.h.in config.h)
 
@@ -54,6 +60,8 @@ target_link_libraries(
 target_embed_source(bf kernels/gemm_kernel.cu)
 target_embed_source(bf kernels/transpose_kernel.cu)
 set_target_properties(bf PROPERTIES CUDA_ARCHITECTURES "native")
+
+add_subdirectory(test)
 
 install(TARGETS bf)
 install(FILES "${RUNTIME_INCLUDE_FILES}" DESTINATION include)
