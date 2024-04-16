@@ -1,6 +1,6 @@
+#include <cuda/pipeline>
 #include <cuda_fp16.h>
 #include <mma.h>
-#include <cuda/pipeline>
 
 #include "async_copies.h"
 #include "wmma_extension.h"
@@ -187,11 +187,9 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
       // trick: next buffer to load is always the one previous to current loop
       // the % operation only works if k is unsigned
       copy_async<sizeof(A_s[0]), num_threads>(&A_s[f % NBUFFER][0][0],
-                                              &A[blockM][f][0][0],
-                                              pipe, tid);
+                                              &A[blockM][f][0][0], pipe, tid);
       copy_async<sizeof(B_s[0]), num_threads>(&B_s[f % NBUFFER][0][0],
-                                              &B[blockN][f][0][0],
-                                              pipe, tid);
+                                              &B[blockN][f][0][0], pipe, tid);
       pipe.producer_commit();
     }
 

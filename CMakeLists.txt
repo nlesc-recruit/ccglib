@@ -26,9 +26,9 @@ include(cmake/xtensor.cmake)
 
 include(cmake/helper.cmake)
 
-option(BUILD_TESTING "Build the test suite" OFF)
+option(CCGLIB_BUILD_TESTING "Build the test suite" OFF)
 
-if(BUILD_TESTING)
+if(CCGLIB_BUILD_TESTING)
   enable_testing()
 endif()
 

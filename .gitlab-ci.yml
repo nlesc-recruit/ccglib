@@ -1,0 +1,26 @@
+variables:
+  DAS6_MODULES: "spack/12.2.0 cmake cuda"
+
+stages:
+  - linting
+  - build
+
+format:
+  stage: linting
+  image: ubuntu:22.04
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq git python3-pip
+    - pip3 install clang-format==14.0.0 cmake-format pre-commit
+  script:
+    - pre-commit run -a
+
+build-das6:
+  stage: build
+  tags:
+    - das6-gpu
+  before_script:
+    - module load ${DAS6_MODULES}
+  script:
+    - cmake -S . -B build -DCCGLIB_BUILD_TESTING=1
+    - make -C build
