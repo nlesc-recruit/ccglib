@@ -5,7 +5,6 @@
 #include <cudawrappers/nvrtc.hpp>
 
 #include "GEMM.h"
-#include "config.h"
 #include "helper/helper.h"
 
 extern const char _binary_kernels_gemm_kernel_cu_start,
@@ -53,7 +52,6 @@ inline const char *to_string(ccglib::mma::GEMM::Variant v) {
 void GEMM::compile_kernel() {
   const std::string cuda_include_path =
       std::string(getenv("CUDA_HOME")) + "/include";
-  const std::string lib_include_path = std::string(INSTALL_INCLUDE_DIR);
 
   const int capability = helper::get_capability(device_);
 

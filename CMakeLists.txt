@@ -19,7 +19,7 @@ include(FetchContent)
 FetchContent_Declare(
   cudawrappers
   GIT_REPOSITORY https://github.com/nlesc-recruit/cudawrappers
-  GIT_TAG 0.7.0)
+  GIT_TAG main)
 FetchContent_MakeAvailable(cudawrappers)
 
 include(cmake/xtensor.cmake)
@@ -32,17 +32,9 @@ if(BUILD_TESTING)
   enable_testing()
 endif()
 
-set(INSTALL_INCLUDE_DIR "${CMAKE_INSTALL_PREFIX}/include")
-configure_file(cmake/config.h.in config.h)
-
 add_subdirectory(src/reference)
 add_subdirectory(src/transpose)
 add_subdirectory(src/mma)
-
-# these files are needed during runtime compilation
-set(RUNTIME_INCLUDE_FILES ${CMAKE_SOURCE_DIR}/include/ccglib/wmma_extension.h
-                          ${CMAKE_SOURCE_DIR}/include/ccglib/async_copies.h)
-create_symlinks(${CMAKE_CURRENT_BINARY_DIR} "${RUNTIME_INCLUDE_FILES}")
 
 # build beamformer
 add_executable(bf src/bf.cu)
@@ -64,4 +56,3 @@ set_target_properties(bf PROPERTIES CUDA_ARCHITECTURES "native")
 add_subdirectory(test)
 
 install(TARGETS bf)
-install(FILES "${RUNTIME_INCLUDE_FILES}" DESTINATION include)

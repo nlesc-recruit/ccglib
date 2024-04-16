@@ -3,7 +3,6 @@
 #include <cudawrappers/nvrtc.hpp>
 
 #include "Transpose.h"
-#include "config.h"
 #include "helper/helper.h"
 
 extern const char _binary_kernels_transpose_kernel_cu_start,
@@ -39,7 +38,6 @@ void Transpose::run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output) {
 void Transpose::compile_kernel() {
   const std::string cuda_include_path =
       std::string(getenv("CUDA_HOME")) + "/include";
-  const std::string lib_include_path = std::string(INSTALL_INCLUDE_DIR);
 
   const int capability = helper::get_capability(device);
 
