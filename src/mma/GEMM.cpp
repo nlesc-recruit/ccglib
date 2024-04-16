@@ -59,7 +59,6 @@ void GEMM::compile_kernel() {
       "-std=c++17",
       "-arch=sm_" + std::to_string(capability),
       "-I" + cuda_include_path,
-      "-I" + lib_include_path,
       "-Dblock_size_x=" + std::to_string(threads_.x),
       "-Dblock_size_y=" + std::to_string(threads_.y),
       "-Dblock_size_z=" + std::to_string(threads_.z),

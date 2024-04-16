@@ -14,8 +14,6 @@
 #include "reference/GEMM.h"
 #include "transpose/Transpose.h"
 
-#include "config.h"
-
 #ifndef COMPLEX
 #define COMPLEX 2
 #endif
