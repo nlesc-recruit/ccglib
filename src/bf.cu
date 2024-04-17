@@ -71,14 +71,14 @@ int main() {
   cu::Stream stream;
 
   // kernel settings
-  const int beams_per_block = ccglib::mma::GEMM::kBeamsPerBlock;
-  const int frames_per_block = ccglib::mma::GEMM::kFramesPerBlock;
-  const int samples_per_wmma = ccglib::mma::GEMM::kSamplesPerWMMA;
+  const int m_per_block = ccglib::mma::GEMM::kMPerBlock;
+  const int n_per_block = ccglib::mma::GEMM::kNPerBlock;
+  const int k_per_wmma = ccglib::mma::GEMM::kKPerWMMA;
 
   // data size and type, sizes match CUBE test data
-  const int beams = 10240;  // must be multiple of beams_per_block
-  const int frames = 1024;  // must be multiple of frames_per_block
-  const int samples = 7808; // must be multiple of samples_per_wmma
+  const int M = 10240; // must be multiple of M_per_block
+  const int N = 1024;  // must be multiple of N_per_block
+  const int K = 7808;  // must be multiple of K_per_wmma
 
   using Tin = half;
   using Tout = float;
@@ -88,13 +88,13 @@ int main() {
 
   // data types for matrices
   // A and B are transposed to an optimal format for the GEMM
-  using A_t = Tin[COMPLEX][beams][samples];
-  using B_t = Tin[COMPLEX][frames][samples];
-  using A_trans_t = Tin[beams / beams_per_block][samples / samples_per_wmma]
-                       [COMPLEX][beams_per_block][samples_per_wmma];
-  using B_trans_t = Tin[frames / frames_per_block][samples / samples_per_wmma]
-                       [COMPLEX][frames_per_block][samples_per_wmma];
-  using C_t = Tout[COMPLEX][beams][frames];
+  using A_t = Tin[COMPLEX][M][K];
+  using B_t = Tin[COMPLEX][N][K];
+  using A_trans_t =
+      Tin[M / m_per_block][K / k_per_wmma][COMPLEX][n_per_block][k_per_wmma];
+  using B_trans_t =
+      Tin[N / n_per_block][K / k_per_wmma][COMPLEX][n_per_block][k_per_wmma];
+  using C_t = Tout[COMPLEX][M][N];
 
   const size_t bytes_a = sizeof(A_t);
   const size_t bytes_b = sizeof(B_t);
@@ -123,33 +123,28 @@ int main() {
   }
 
   // We start with a transpose kernel to get the data in the right shape for the
-  // GEMM. The original data is allocated on the GPU in a subscope because we do
-  // not need it anymore  after the transpose.
-  // When DeviceMemory goes out of scope, the destructor will free the GPU
-  // memory
+  // GEMM.
 
   // Allocate device memory for transposed input data
   cu::DeviceMemory d_a_trans(bytes_a);
   cu::DeviceMemory d_b_trans(bytes_b);
 
   // Transpose A
-  ccglib::transpose::Transpose transpose_a(beams, samples, beams_per_block,
-                                           samples_per_wmma, nr_input_bits,
-                                           device, stream);
+  ccglib::transpose::Transpose transpose_a(M, K, m_per_block, k_per_wmma,
+                                           nr_input_bits, device, stream);
   transpose_a.run(h_a, d_a_trans);
 
   // Transpose B
-  ccglib::transpose::Transpose transpose_b(frames, samples, frames_per_block,
-                                           samples_per_wmma, nr_input_bits,
-                                           device, stream);
+  ccglib::transpose::Transpose transpose_b(N, K, n_per_block, k_per_wmma,
+                                           nr_input_bits, device, stream);
   transpose_b.run(h_b, d_b_trans);
 
   // allocate device memory for output data and initialize to zero
   cu::DeviceMemory d_c(bytes_c);
   d_c.zero(bytes_c);
 
-  ccglib::mma::GEMM gemm_mma(beams, samples, frames, nr_input_bits,
-                             nr_output_bits, device, stream);
+  ccglib::mma::GEMM gemm_mma(M, K, N, nr_input_bits, nr_output_bits, device,
+                             stream);
 
   // run and time the GEMM kernel
   cu::Event start, end;
@@ -160,7 +155,7 @@ int main() {
 
   float time = end.elapsedTime(start);
   std::cout << "Kernel took " << time << " ms" << std::endl;
-  float tflops = 8ULL * 1e-9 * beams * frames * samples / time;
+  float tflops = 8ULL * 1e-9 * M * N * K / time;
   std::cout << "TFLOPS: " << tflops << std::endl;
 
   // copy C to host
@@ -168,8 +163,8 @@ int main() {
   stream.synchronize();
 
   // verify output
-  verify<Tin, Tout, beams, frames, samples>(reinterpret_cast<const Tin *>(a),
-                                            reinterpret_cast<const Tin *>(b),
-                                            reinterpret_cast<Tout *>(c));
+  verify<Tin, Tout, M, N, K>(reinterpret_cast<const Tin *>(a),
+                             reinterpret_cast<const Tin *>(b),
+                             reinterpret_cast<Tout *>(c));
   return 0;
 }

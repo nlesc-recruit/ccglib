@@ -18,9 +18,9 @@ using namespace nvcuda;
 #endif
 
 // All values related to data layout must be defined at compile time
-#if !defined M || !defined _N || !defined K
+#if !defined M_GLOBAL || !defined N_GLOBAL || !defined K_GLOBAL
 #error                                                                         \
-    "M, _N, K and values per block, warp, tensor core must be defined at compile time"
+    "M_GLOBAL, N_GLOBAL, K_GLOBAL and values per block, warp, tensor core must be defined at compile time"
 #endif
 
 #if NBIT == 16
@@ -32,14 +32,14 @@ using Tout = float;
 #endif
 
 // basic data layout
-using A_t = Tin[COMPLEX][M][K];
-using B_t = Tin[COMPLEX][_N][K];
+using A_t = Tin[COMPLEX][M_GLOBAL][K_GLOBAL];
+using B_t = Tin[COMPLEX][N_GLOBAL][K_GLOBAL];
 // data layout for optimal transfer to shared memory
-using A_opt_t =
-    Tin[M / M_PER_BLOCK][K / K_PER_WMMA][COMPLEX][M_PER_BLOCK][K_PER_WMMA];
-using B_opt_t =
-    Tin[_N / N_PER_BLOCK][K / K_PER_WMMA][COMPLEX][N_PER_BLOCK][K_PER_WMMA];
-using C_t = Tout[COMPLEX][M][_N];
+using A_opt_t = Tin[M_GLOBAL / M_PER_BLOCK][K_GLOBAL / K_PER_WMMA][COMPLEX]
+                   [M_PER_BLOCK][K_PER_WMMA];
+using B_opt_t = Tin[N_GLOBAL / N_PER_BLOCK][K_GLOBAL / K_PER_WMMA][COMPLEX]
+                   [N_PER_BLOCK][K_PER_WMMA];
+using C_t = Tout[COMPLEX][M_GLOBAL][N_GLOBAL];
 
 extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
                                                    const B_t B) {
@@ -51,7 +51,7 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
   // number of tiles processed by each warp
   constexpr unsigned M_TILES = M_PER_WARP / M_PER_WMMA;
   constexpr unsigned N_TILES = N_PER_WARP / N_PER_WMMA;
-  constexpr unsigned K_TILES = K / K_PER_WMMA;
+  constexpr unsigned K_TILES = K_GLOBAL / K_PER_WMMA;
 
   wmma::fragment<wmma::accumulator, M_PER_WMMA, N_PER_WMMA, K_PER_WMMA, Tout>
       sum[COMPLEX][M_TILES][N_TILES];
@@ -79,7 +79,7 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
         wmma::load_matrix_sync(a[c][m],
                                &A[c][blockM * M_PER_BLOCK + warpM * M_PER_WARP +
                                      m * M_PER_WMMA][k_index],
-                               K);
+                               K_GLOBAL);
       }
     }
 
@@ -89,7 +89,7 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
         wmma::load_matrix_sync(b[c][n],
                                &B[c][blockN * N_PER_BLOCK + warpN * N_PER_WARP +
                                      n * N_PER_WMMA][k_index],
-                               K);
+                               K_GLOBAL);
       }
     }
 
@@ -130,7 +130,8 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
         Tout *c_ptr =
             &C[c][blockM * M_PER_BLOCK + warpM * M_PER_WARP + m * M_PER_WMMA]
               [blockN * N_PER_BLOCK + warpN * N_PER_WARP + n * N_PER_WMMA];
-        wmma::store_matrix_sync(c_ptr, sum[c][m][n], _N, wmma::mem_row_major);
+        wmma::store_matrix_sync(c_ptr, sum[c][m][n], N_GLOBAL,
+                                wmma::mem_row_major);
       }
     }
   }
@@ -150,7 +151,7 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
   // number of tiles processed by each warp
   constexpr unsigned M_TILES = M_PER_WARP / M_PER_WMMA;
   constexpr unsigned N_TILES = N_PER_WARP / N_PER_WMMA;
-  constexpr unsigned K_TILES = K / K_PER_WMMA;
+  constexpr unsigned K_TILES = K_GLOBAL / K_PER_WMMA;
 
   // initialize accumulator fragments to zero
   wmma::fragment<wmma::accumulator, M_PER_WMMA, N_PER_WMMA, K_PER_WMMA, Tout>
@@ -171,7 +172,7 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
 
   cuda::pipeline<cuda::thread_scope_thread> pipe = cuda::make_pipeline();
 
-  for (unsigned k = 0, f = 0; k < K_TILES; ++k) {
+  for (unsigned k = 0, k_buf = 0; k < K_TILES; k++) {
 
     // declare input fragments for A and B matrices
     wmma::fragment<wmma::matrix_a, M_PER_WMMA, N_PER_WMMA, K_PER_WMMA, Ttc,
@@ -182,14 +183,12 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
         b[COMPLEX][N_TILES];
 
     // copy next data to smem
-    for (; f < K_TILES && f < (k + NBUFFER); ++f) {
+    for (; k_buf < K_TILES && k_buf < (k + NBUFFER); k_buf++) {
       pipe.producer_acquire();
-      // trick: next buffer to load is always the one previous to current loop
-      // the % operation only works if k is unsigned
-      copy_async<sizeof(A_s[0]), num_threads>(&A_s[f % NBUFFER][0][0],
-                                              &A[blockM][f][0][0], pipe, tid);
-      copy_async<sizeof(B_s[0]), num_threads>(&B_s[f % NBUFFER][0][0],
-                                              &B[blockN][f][0][0], pipe, tid);
+      copy_async<sizeof(A_s[0]), num_threads>(
+          &A_s[k_buf % NBUFFER][0][0], &A[blockM][k_buf][0][0], pipe, tid);
+      copy_async<sizeof(B_s[0]), num_threads>(
+          &B_s[k_buf % NBUFFER][0][0], &B[blockN][k_buf][0][0], pipe, tid);
       pipe.producer_commit();
     }
 
@@ -274,7 +273,8 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
         Tout *c_ptr =
             &C[c][blockM * M_PER_BLOCK + warpM * M_PER_WARP + m * M_PER_WMMA]
               [blockN * N_PER_BLOCK + warpN * N_PER_WARP + n * N_PER_WMMA];
-        wmma::store_matrix_sync(c_ptr, sum[c][m][n], _N, wmma::mem_row_major);
+        wmma::store_matrix_sync(c_ptr, sum[c][m][n], N_GLOBAL,
+                                wmma::mem_row_major);
       }
     }
   }

@@ -1,4 +1,3 @@
-#include <cooperative_groups/memcpy_async.h>
 #include <cuda/pipeline>
 
 // device function for async copy from gmem to smem
