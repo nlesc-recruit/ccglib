@@ -19,8 +19,25 @@ target_link_libraries(
   test-reference PRIVATE cudawrappers::cu xtensor OpenMP::OpenMP_CXX
                          $<TARGET_OBJECTS:gemm-reference> Catch2WithMain)
 
-set(TESTS test-helper test-reference)
+add_executable(test-gemm gemm.cpp)
+target_include_directories(
+  test-gemm PRIVATE ${CMAKE_BINARY_DIR} "${CMAKE_SOURCE_DIR}/src"
+                    "${CMAKE_SOURCE_DIR}/kernels")
+target_link_libraries(
+  test-gemm
+  PRIVATE cudawrappers::cu
+          cudawrappers::nvrtc
+          OpenMP::OpenMP_CXX
+          xtensor
+          $<TARGET_OBJECTS:gemm-reference>
+          $<TARGET_OBJECTS:helper>
+          $<TARGET_OBJECTS:gemm-mma>
+          Catch2WithMain)
+target_embed_source(test-gemm ../kernels/gemm_kernel.cu)
+target_embed_source(test-gemm ../kernels/transpose_kernel.cu)
+
+set(TESTS test-helper test-reference test-gemm)
 
 foreach(test IN ITEMS ${TESTS})
-  add_test(${test} ${test})
+  add_test(NAME ${test} COMMAND ${test})
 endforeach()

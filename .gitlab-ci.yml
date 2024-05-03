@@ -4,6 +4,7 @@ variables:
 stages:
   - linting
   - build
+  - test
 
 format:
   stage: linting
@@ -23,4 +24,15 @@ build-das6:
     - module load ${DAS6_MODULES}
   script:
     - cmake -S . -B build -DCCGLIB_BUILD_TESTING=1
-    - make -C build
+    - make -j -C build
+
+test-das6:
+  stage: test
+  tags:
+    - das6-gpu
+  before_script:
+    - module load ${DAS6_MODULES}
+  script:
+    - cmake -S . -B build -DCCGLIB_BUILD_TESTING=1
+    - make -j -C build
+    - make -C build test
