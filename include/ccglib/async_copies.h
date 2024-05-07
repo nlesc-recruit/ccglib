@@ -1,3 +1,6 @@
+#ifndef ASYNC_COPIES_H_
+#define ASYNC_COPIES_H_
+
 #include <cuda/pipeline>
 
 // device function for async copy from gmem to smem
@@ -53,3 +56,5 @@ __device__ void copy_async(void *dest, const void *src,
     dest = (void *)((char *)dest + NTHREADS);
   }
 }
+
+#endif // ASYNC_COPIES_H_

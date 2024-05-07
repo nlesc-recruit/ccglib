@@ -1,3 +1,6 @@
+#ifndef REFERENCE_GEMM_H_
+#define REFERENCE_GEMM_H_
+
 #include <cuda_fp16.h>
 
 namespace ccglib::reference {
@@ -10,3 +13,5 @@ public:
 };
 
 } // namespace ccglib::reference
+
+#endif // REFERENCE_GEMM_H_

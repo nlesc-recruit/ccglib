@@ -1,3 +1,6 @@
+#ifndef TRANSPOSE_H_
+#define TRANSPOSE_H_
+
 #include <cudawrappers/cu.hpp>
 
 namespace ccglib::transpose {
@@ -26,3 +29,5 @@ private:
 };
 
 } // namespace ccglib::transpose
+
+#endif // TRANSPOSE_H_

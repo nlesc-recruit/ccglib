@@ -1,3 +1,6 @@
+#ifndef MMA_GEMM_H_
+#define MMA_GEMM_H_
+
 #include <array>
 
 #include <cudawrappers/cu.hpp>
@@ -50,3 +53,5 @@ private:
 };
 
 } // namespace ccglib::mma
+
+#endif // MMA_GEMM_H_

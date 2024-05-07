@@ -1,3 +1,6 @@
+#ifndef WMMA_EXTENSION_H_
+#define WMMA_EXTENSION_H_
+
 /*
 There are PTX mma instructions for 16x8x256 mma in binary precision, but these
 are missing from the wmma interface
@@ -76,3 +79,5 @@ store_matrix_sync(int *p, const fragment<accumulator, 16, 8, 256, int> &d,
 #endif
 } // namespace wmma
 } // namespace nvcuda
+
+#endif WMMA_EXTENSION_H_

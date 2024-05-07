@@ -1,3 +1,6 @@
+#ifndef HELPER_H_
+#define HELPER_H_
+
 #include <cudawrappers/cu.hpp>
 
 namespace ccglib::helper {
@@ -14,3 +17,5 @@ template <typename T> inline int ceildiv(T a, T b) {
 }
 
 } // namespace ccglib::helper
+
+#endif // HELPER_H_
