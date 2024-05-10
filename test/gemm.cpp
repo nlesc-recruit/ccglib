@@ -27,9 +27,9 @@
 
 namespace ccglib::test {
 
-class BeamformerTestFixture {
+class ComplexGemmTestFixture {
 public:
-  BeamformerTestFixture() {}
+  ComplexGemmTestFixture() {}
 
 private:
   template <typename T>
@@ -54,22 +54,21 @@ private:
   }
 
 protected:
-  void bf_gemm_and_validate() {
+  void complex_gemm_basic() {
     cu::init();
     cu::Device device(0);
     cu::Context context(CU_CTX_SCHED_BLOCKING_SYNC, device);
     cu::Stream stream;
 
     // kernel settings
-    const int beams_per_block = ccglib::mma::GEMM::kMPerBlock;
-    const int frames_per_block = ccglib::mma::GEMM::kNPerBlock;
-    const int samples_per_wmma = ccglib::mma::GEMM::kKPerWMMA;
+    const int m_per_block = ccglib::mma::GEMM::kMPerBlock;
+    const int n_per_block = ccglib::mma::GEMM::kNPerBlock;
+    const int k_per_wmma = ccglib::mma::GEMM::kKPerWMMA;
 
     // data size and type, sizes match CUBE test data
-    const int beams = beams_per_block;   // must be multiple of beams_per_block
-    const int frames = frames_per_block; // must be multiple of frames_per_block
-    const int samples =
-        4 * samples_per_wmma; // must be multiple of samples_per_wmma
+    const int global_m = m_per_block;    // must be multiple of m_per_block
+    const int global_n = n_per_block;    // must be multiple of n_per_block
+    const int global_k = 4 * k_per_wmma; // must be multiple of k_per_wmma
 
     using Tin = half;
     using Tout = float;
@@ -77,9 +76,71 @@ protected:
     const unsigned int nr_input_bits = sizeof(Tin) * 8;
     const unsigned int nr_output_bits = sizeof(Tout) * 8;
 
-    const size_t bytes_a = sizeof(Tin) * COMPLEX * beams * samples;
-    const size_t bytes_b = sizeof(Tin) * COMPLEX * frames * samples;
-    const size_t bytes_c = sizeof(Tout) * COMPLEX * beams * frames;
+    const size_t bytes_a = sizeof(Tin) * COMPLEX * global_m * global_k;
+    const size_t bytes_b = sizeof(Tin) * COMPLEX * global_n * global_k;
+    const size_t bytes_c = sizeof(Tout) * COMPLEX * global_m * global_n;
+
+    // initalize host memory
+    cu::HostMemory h_a(bytes_a);
+    cu::HostMemory h_b(bytes_b);
+    cu::HostMemory h_c(bytes_c);
+    init_input_matrices(static_cast<Tin *>(h_a), static_cast<Tin *>(h_b),
+                        bytes_a, bytes_b);
+
+    // Allocate device memory for input data
+    cu::DeviceMemory d_a(bytes_a);
+    cu::DeviceMemory d_b(bytes_b);
+
+    // Transfer the input data
+    stream.memcpyHtoDAsync(d_a, h_a, bytes_a);
+    stream.memcpyHtoDAsync(d_b, h_b, bytes_b);
+
+    // allocate device memory for output data and initialize to zero
+    cu::DeviceMemory d_c(bytes_c);
+    d_c.zero(bytes_c);
+
+    ccglib::mma::GEMM gemm_mma(global_m, global_k, global_n, nr_input_bits,
+                               nr_output_bits, device, stream,
+                               ccglib::mma::GEMM::basic);
+
+    // run the GEMM kernel
+    gemm_mma.run(d_a, d_b, d_c);
+
+    // copy C to host
+    stream.memcpyDtoHAsync(h_c, d_c, bytes_c);
+    stream.synchronize();
+
+    // verify output
+    verify<Tin, Tout, global_m, global_n, global_k>(
+        static_cast<const Tin *>(h_a), static_cast<const Tin *>(h_b),
+        static_cast<Tout *>(h_c));
+  }
+
+  void complex_gemm_opt() {
+    cu::init();
+    cu::Device device(0);
+    cu::Context context(CU_CTX_SCHED_BLOCKING_SYNC, device);
+    cu::Stream stream;
+
+    // kernel settings
+    const int m_per_block = ccglib::mma::GEMM::kMPerBlock;
+    const int n_per_block = ccglib::mma::GEMM::kNPerBlock;
+    const int k_per_wmma = ccglib::mma::GEMM::kKPerWMMA;
+
+    // data size and type, sizes match CUBE test data
+    const int global_m = m_per_block;    // must be multiple of m_per_block
+    const int global_n = n_per_block;    // must be multiple of n_per_block
+    const int global_k = 4 * k_per_wmma; // must be multiple of k_per_wmma
+
+    using Tin = half;
+    using Tout = float;
+
+    const unsigned int nr_input_bits = sizeof(Tin) * 8;
+    const unsigned int nr_output_bits = sizeof(Tout) * 8;
+
+    const size_t bytes_a = sizeof(Tin) * COMPLEX * global_m * global_k;
+    const size_t bytes_b = sizeof(Tin) * COMPLEX * global_n * global_k;
+    const size_t bytes_c = sizeof(Tout) * COMPLEX * global_m * global_n;
 
     // initalize host memory
     cu::HostMemory h_a(bytes_a);
@@ -93,23 +154,24 @@ protected:
     cu::DeviceMemory d_b_trans(bytes_b);
 
     // Transpose A
-    ccglib::transpose::Transpose transpose_a(beams, samples, beams_per_block,
-                                             samples_per_wmma, nr_input_bits,
-                                             device, stream);
+    ccglib::transpose::Transpose transpose_a(global_m, global_k, m_per_block,
+                                             k_per_wmma, nr_input_bits, device,
+                                             stream);
     transpose_a.run(h_a, d_a_trans);
 
     // Transpose B
-    ccglib::transpose::Transpose transpose_b(frames, samples, frames_per_block,
-                                             samples_per_wmma, nr_input_bits,
-                                             device, stream);
+    ccglib::transpose::Transpose transpose_b(global_n, global_k, n_per_block,
+                                             k_per_wmma, nr_input_bits, device,
+                                             stream);
     transpose_b.run(h_b, d_b_trans);
 
     // allocate device memory for output data and initialize to zero
     cu::DeviceMemory d_c(bytes_c);
     d_c.zero(bytes_c);
 
-    ccglib::mma::GEMM gemm_mma(beams, samples, frames, nr_input_bits,
-                               nr_output_bits, device, stream);
+    ccglib::mma::GEMM gemm_mma(global_m, global_k, global_n, nr_input_bits,
+                               nr_output_bits, device, stream,
+                               ccglib::mma::GEMM::opt);
 
     // run the GEMM kernel
     gemm_mma.run(d_a_trans, d_b_trans, d_c);
@@ -119,15 +181,20 @@ protected:
     stream.synchronize();
 
     // verify output
-    verify<Tin, Tout, beams, frames, samples>(static_cast<const Tin *>(h_a),
-                                              static_cast<const Tin *>(h_b),
-                                              static_cast<Tout *>(h_c));
+    verify<Tin, Tout, global_m, global_n, global_k>(
+        static_cast<const Tin *>(h_a), static_cast<const Tin *>(h_b),
+        static_cast<Tout *>(h_c));
   }
 };
 
-TEST_CASE_METHOD(BeamformerTestFixture, "Validate Beamformer Test",
-                 "[beamform-test]") {
-  BeamformerTestFixture::bf_gemm_and_validate();
+TEST_CASE_METHOD(ComplexGemmTestFixture, "Complex GEMM Test",
+                 "[complex-gemm-test-basic]") {
+  ComplexGemmTestFixture::complex_gemm_basic();
+}
+
+TEST_CASE_METHOD(ComplexGemmTestFixture, "Complex GEMM Test",
+                 "[complex-gemm-test-opt]") {
+  ComplexGemmTestFixture::complex_gemm_opt();
 }
 
 } // namespace ccglib::test

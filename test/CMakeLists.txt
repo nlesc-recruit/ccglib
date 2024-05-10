@@ -32,7 +32,7 @@ target_link_libraries(
           $<TARGET_OBJECTS:gemm-reference>
           $<TARGET_OBJECTS:helper>
           $<TARGET_OBJECTS:gemm-mma>
-          Catch2WithMain)
+          Catch2::Catch2WithMain)
 target_embed_source(test-gemm ../kernels/gemm_kernel.cu)
 target_embed_source(test-gemm ../kernels/transpose_kernel.cu)
 
