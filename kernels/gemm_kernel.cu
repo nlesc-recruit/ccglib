@@ -18,9 +18,10 @@ using namespace nvcuda;
 #endif
 
 // All values related to data layout must be defined at compile time
-#if !defined M_GLOBAL || !defined N_GLOBAL || !defined K_GLOBAL
+#if !defined BATCH_SIZE || !defined M_GLOBAL || !defined N_GLOBAL ||           \
+    !defined K_GLOBAL
 #error                                                                         \
-    "M_GLOBAL, N_GLOBAL, K_GLOBAL and values per block, warp, tensor core must be defined at compile time"
+    "BATCH_SIZE, M_GLOBAL, N_GLOBAL, and K_GLOBAL values per block, warp, tensor core must be defined at compile time"
 #endif
 
 #if NBIT == 16
@@ -32,17 +33,18 @@ using Tout = float;
 #endif
 
 // basic data layout
-using A_t = Tin[COMPLEX][M_GLOBAL][K_GLOBAL];
-using B_t = Tin[COMPLEX][N_GLOBAL][K_GLOBAL];
+using A_t = Tin[BATCH_SIZE][COMPLEX][M_GLOBAL][K_GLOBAL];
+using B_t = Tin[BATCH_SIZE][COMPLEX][N_GLOBAL][K_GLOBAL];
 // data layout for optimal transfer to shared memory
-using A_opt_t = Tin[M_GLOBAL / M_PER_BLOCK][K_GLOBAL / K_PER_WMMA][COMPLEX]
-                   [M_PER_BLOCK][K_PER_WMMA];
-using B_opt_t = Tin[N_GLOBAL / N_PER_BLOCK][K_GLOBAL / K_PER_WMMA][COMPLEX]
-                   [N_PER_BLOCK][K_PER_WMMA];
-using C_t = Tout[COMPLEX][M_GLOBAL][N_GLOBAL];
+using A_opt_t = Tin[BATCH_SIZE][M_GLOBAL / M_PER_BLOCK][K_GLOBAL / K_PER_WMMA]
+                   [COMPLEX][M_PER_BLOCK][K_PER_WMMA];
+using B_opt_t = Tin[BATCH_SIZE][N_GLOBAL / N_PER_BLOCK][K_GLOBAL / K_PER_WMMA]
+                   [COMPLEX][N_PER_BLOCK][K_PER_WMMA];
+using C_t = Tout[BATCH_SIZE][COMPLEX][M_GLOBAL][N_GLOBAL];
 
 extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
                                                    const B_t B) {
+  const unsigned batch = blockIdx.z;
   const unsigned blockN = blockIdx.x;
   const unsigned blockM = blockIdx.y;
   const unsigned warpN = threadIdx.y;
@@ -76,20 +78,22 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
     for (int c = 0; c < COMPLEX; c++) {
       for (int m = 0; m < M_TILES; m++) {
         int k_index = k * K_PER_WMMA;
-        wmma::load_matrix_sync(a[c][m],
-                               &A[c][blockM * M_PER_BLOCK + warpM * M_PER_WARP +
-                                     m * M_PER_WMMA][k_index],
-                               K_GLOBAL);
+        wmma::load_matrix_sync(
+            a[c][m],
+            &A[batch][c][blockM * M_PER_BLOCK + warpM * M_PER_WARP +
+                         m * M_PER_WMMA][k_index],
+            K_GLOBAL);
       }
     }
 
     for (int c = 0; c < COMPLEX; c++) {
       for (int n = 0; n < N_TILES; n++) {
         int k_index = k * K_PER_WMMA;
-        wmma::load_matrix_sync(b[c][n],
-                               &B[c][blockN * N_PER_BLOCK + warpN * N_PER_WARP +
-                                     n * N_PER_WMMA][k_index],
-                               K_GLOBAL);
+        wmma::load_matrix_sync(
+            b[c][n],
+            &B[batch][c][blockN * N_PER_BLOCK + warpN * N_PER_WARP +
+                         n * N_PER_WMMA][k_index],
+            K_GLOBAL);
       }
     }
 
@@ -128,7 +132,8 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
     for (int m = 0; m < M_TILES; m++) {
       for (int n = 0; n < N_TILES; n++) {
         Tout *c_ptr =
-            &C[c][blockM * M_PER_BLOCK + warpM * M_PER_WARP + m * M_PER_WMMA]
+            &C[batch][c]
+              [blockM * M_PER_BLOCK + warpM * M_PER_WARP + m * M_PER_WMMA]
               [blockN * N_PER_BLOCK + warpN * N_PER_WARP + n * N_PER_WMMA];
         wmma::store_matrix_sync(c_ptr, sum[c][m][n], N_GLOBAL,
                                 wmma::mem_row_major);
@@ -139,6 +144,7 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
 
 extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
                                                  const B_opt_t B) {
+  const unsigned batch = blockIdx.z;
   const unsigned blockN = blockIdx.x;
   const unsigned blockM = blockIdx.y;
   const unsigned warpN = threadIdx.y;
@@ -185,10 +191,12 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
     // copy next data to smem
     for (; k_buf < K_TILES && k_buf < (k + NBUFFER); k_buf++) {
       pipe.producer_acquire();
-      copy_async<sizeof(A_s[0]), num_threads>(
-          &A_s[k_buf % NBUFFER][0][0], &A[blockM][k_buf][0][0], pipe, tid);
-      copy_async<sizeof(B_s[0]), num_threads>(
-          &B_s[k_buf % NBUFFER][0][0], &B[blockN][k_buf][0][0], pipe, tid);
+      copy_async<sizeof(A_s[0]), num_threads>(&A_s[k_buf % NBUFFER][0][0],
+                                              &A[batch][blockM][k_buf][0][0],
+                                              pipe, tid);
+      copy_async<sizeof(B_s[0]), num_threads>(&B_s[k_buf % NBUFFER][0][0],
+                                              &B[batch][blockN][k_buf][0][0],
+                                              pipe, tid);
       pipe.producer_commit();
     }
 
@@ -271,7 +279,8 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
     for (int m = 0; m < M_TILES; m++) {
       for (int n = 0; n < N_TILES; n++) {
         Tout *c_ptr =
-            &C[c][blockM * M_PER_BLOCK + warpM * M_PER_WARP + m * M_PER_WMMA]
+            &C[batch][c]
+              [blockM * M_PER_BLOCK + warpM * M_PER_WARP + m * M_PER_WMMA]
               [blockN * N_PER_BLOCK + warpN * N_PER_WARP + n * N_PER_WMMA];
         wmma::store_matrix_sync(c_ptr, sum[c][m][n], N_GLOBAL,
                                 wmma::mem_row_major);

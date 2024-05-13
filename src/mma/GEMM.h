@@ -10,7 +10,7 @@ class GEMM {
 public:
   enum Variant { basic, opt };
 
-  GEMM(size_t M_, size_t K_, size_t N_, size_t nr_input_bits_,
+  GEMM(size_t B_, size_t M_, size_t K_, size_t N_, size_t nr_input_bits_,
        size_t nr_output_bits, cu::Device &device_, cu::Stream &stream_,
        Variant Variant = Variant::opt);
   void run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b, cu::DeviceMemory &d_c);
@@ -23,6 +23,7 @@ public:
 private:
   Variant variant_;
 
+  size_t B_;
   size_t K_;
   size_t M_;
   size_t N_;

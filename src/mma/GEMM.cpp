@@ -12,18 +12,18 @@ extern const char _binary_kernels_gemm_kernel_cu_start,
 
 namespace ccglib::mma {
 
-GEMM::GEMM(size_t M_, size_t K_, size_t N_, size_t nr_input_bits_,
+GEMM::GEMM(size_t B_, size_t M_, size_t K_, size_t N_, size_t nr_input_bits_,
            size_t nr_output_bits, cu::Device &device_, cu::Stream &stream_,
            Variant variant)
-    : M_(M_), K_(K_), N_(N_), nr_input_bits_(nr_input_bits_), device_(device_),
-      stream_(stream_), variant_(variant) {
+    : B_(B_), M_(M_), K_(K_), N_(N_), nr_input_bits_(nr_input_bits_),
+      device_(device_), stream_(stream_), variant_(variant) {
   threads_ = dim3(kWarpSize, kNPerBlock / kNPerWarp, kMPerBlock / kMPerWarp);
-  grid_ =
-      dim3(helper::ceildiv(N_, kNPerBlock), helper::ceildiv(M_, kMPerBlock));
+  grid_ = dim3(helper::ceildiv(N_, kNPerBlock), helper::ceildiv(M_, kMPerBlock),
+               B_);
 
 #if defined(DEBUG)
-  std::cout << "Problem size (M, N, K): (" << M_ << ", " << N_ << ", " << K_
-            << ")" << std::endl;
+  std::cout << "Problem size (B, M, N, K): (" << B_ << ", " << M_ << ", " << N_
+            << ", " << K_ << ")" << std::endl;
   std::cout << "Thread block size: (" << threads_.x << ", " << threads_.y
             << ", " << threads_.z << ")" << std::endl;
   std::cout << "Threads per block: " << threads_.x * threads_.y * threads_.z
@@ -59,6 +59,7 @@ void GEMM::compile_kernel() {
       "-Dblock_size_x=" + std::to_string(threads_.x),
       "-Dblock_size_y=" + std::to_string(threads_.y),
       "-Dblock_size_z=" + std::to_string(threads_.z),
+      "-DBATCH_SIZE=" + std::to_string(B_),
       "-DM_GLOBAL=" + std::to_string(M_),
       "-DN_GLOBAL=" + std::to_string(N_),
       "-DK_GLOBAL=" + std::to_string(K_),

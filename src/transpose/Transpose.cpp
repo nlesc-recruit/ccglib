@@ -10,9 +10,10 @@ extern const char _binary_kernels_transpose_kernel_cu_start,
 
 namespace ccglib::transpose {
 
-Transpose::Transpose(size_t M, size_t N, size_t M_chunk, size_t N_chunk,
-                     size_t nr_bits, cu::Device &device, cu::Stream &stream)
-    : M(M), N(N), M_chunk(M_chunk), N_chunk(N_chunk), nr_bits(nr_bits),
+Transpose::Transpose(size_t B, size_t M, size_t N, size_t M_chunk,
+                     size_t N_chunk, size_t nr_bits, cu::Device &device,
+                     cu::Stream &stream)
+    : B(B), M(M), N(N), M_chunk(M_chunk), N_chunk(N_chunk), nr_bits(nr_bits),
       device(device), stream(stream) {
   compile_kernel();
 }
@@ -26,7 +27,7 @@ void Transpose::run(cu::HostMemory &h_input, cu::DeviceMemory &d_output) {
 
 void Transpose::run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output) {
   dim3 threads(32, 32);
-  dim3 grid(helper::ceildiv(N, threads.x), helper::ceildiv(M, threads.y));
+  dim3 grid(helper::ceildiv(N, threads.x), helper::ceildiv(M, threads.y), B);
 
   std::vector<const void *> parameters = {d_output.parameter(),
                                           d_input.parameter()};
@@ -44,6 +45,7 @@ void Transpose::compile_kernel() {
   std::vector<std::string> options = {"-std=c++17",
                                       "-arch=sm_" + std::to_string(capability),
                                       "-I" + cuda_include_path,
+                                      "-DB=" + std::to_string(B),
                                       "-DM=" + std::to_string(M),
                                       "-DN=" + std::to_string(N),
                                       "-DNBIT=" + std::to_string(nr_bits),
