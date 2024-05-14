@@ -65,10 +65,11 @@ protected:
     const int n_per_block = ccglib::mma::GEMM::kNPerBlock;
     const int k_per_wmma = ccglib::mma::GEMM::kKPerWMMA;
 
-    // data size and type, sizes match CUBE test data
+    // data size and type
     const int global_m = m_per_block;    // must be multiple of m_per_block
     const int global_n = n_per_block;    // must be multiple of n_per_block
     const int global_k = 4 * k_per_wmma; // must be multiple of k_per_wmma
+    const int batch_size = 16;
 
     using Tin = half;
     using Tout = float;
@@ -76,9 +77,12 @@ protected:
     const size_t nr_input_bits = sizeof(Tin) * 8;
     const size_t nr_output_bits = sizeof(Tout) * 8;
 
-    const size_t bytes_a = sizeof(Tin) * COMPLEX * global_m * global_k;
-    const size_t bytes_b = sizeof(Tin) * COMPLEX * global_n * global_k;
-    const size_t bytes_c = sizeof(Tout) * COMPLEX * global_m * global_n;
+    const size_t bytes_a =
+        sizeof(Tin) * batch_size * COMPLEX * global_m * global_k;
+    const size_t bytes_b =
+        sizeof(Tin) * batch_size * COMPLEX * global_n * global_k;
+    const size_t bytes_c =
+        sizeof(Tout) * batch_size * COMPLEX * global_m * global_n;
 
     // initalize host memory
     cu::HostMemory h_a(bytes_a);
@@ -99,8 +103,8 @@ protected:
     cu::DeviceMemory d_c(bytes_c);
     d_c.zero(bytes_c);
 
-    ccglib::mma::GEMM gemm_mma(1, global_m, global_k, global_n, nr_input_bits,
-                               nr_output_bits, device, stream,
+    ccglib::mma::GEMM gemm_mma(batch_size, global_m, global_k, global_n,
+                               nr_input_bits, nr_output_bits, device, stream,
                                ccglib::mma::GEMM::basic);
 
     // run the GEMM kernel
@@ -111,7 +115,7 @@ protected:
     stream.synchronize();
 
     // verify output
-    verify<Tin, Tout, 1, global_m, global_n, global_k>(
+    verify<Tin, Tout, batch_size, global_m, global_n, global_k>(
         static_cast<const Tin *>(h_a), static_cast<const Tin *>(h_b),
         static_cast<Tout *>(h_c));
   }
@@ -127,10 +131,11 @@ protected:
     const int n_per_block = ccglib::mma::GEMM::kNPerBlock;
     const int k_per_wmma = ccglib::mma::GEMM::kKPerWMMA;
 
-    // data size and type, sizes match CUBE test data
+    // data size and type
     const int global_m = m_per_block;    // must be multiple of m_per_block
     const int global_n = n_per_block;    // must be multiple of n_per_block
     const int global_k = 4 * k_per_wmma; // must be multiple of k_per_wmma
+    const int batch_size = 16;
 
     using Tin = half;
     using Tout = float;
@@ -138,9 +143,12 @@ protected:
     const unsigned int nr_input_bits = sizeof(Tin) * 8;
     const unsigned int nr_output_bits = sizeof(Tout) * 8;
 
-    const size_t bytes_a = sizeof(Tin) * COMPLEX * global_m * global_k;
-    const size_t bytes_b = sizeof(Tin) * COMPLEX * global_n * global_k;
-    const size_t bytes_c = sizeof(Tout) * COMPLEX * global_m * global_n;
+    const size_t bytes_a =
+        sizeof(Tin) * batch_size * COMPLEX * global_m * global_k;
+    const size_t bytes_b =
+        sizeof(Tin) * batch_size * COMPLEX * global_n * global_k;
+    const size_t bytes_c =
+        sizeof(Tout) * batch_size * COMPLEX * global_m * global_n;
 
     // initalize host memory
     cu::HostMemory h_a(bytes_a);
@@ -154,23 +162,23 @@ protected:
     cu::DeviceMemory d_b_trans(bytes_b);
 
     // Transpose A
-    ccglib::transpose::Transpose transpose_a(1, global_m, global_k, m_per_block,
-                                             k_per_wmma, nr_input_bits, device,
-                                             stream);
+    ccglib::transpose::Transpose transpose_a(batch_size, global_m, global_k,
+                                             m_per_block, k_per_wmma,
+                                             nr_input_bits, device, stream);
     transpose_a.run(h_a, d_a_trans);
 
     // Transpose B
-    ccglib::transpose::Transpose transpose_b(1, global_n, global_k, n_per_block,
-                                             k_per_wmma, nr_input_bits, device,
-                                             stream);
+    ccglib::transpose::Transpose transpose_b(batch_size, global_n, global_k,
+                                             n_per_block, k_per_wmma,
+                                             nr_input_bits, device, stream);
     transpose_b.run(h_b, d_b_trans);
 
     // allocate device memory for output data and initialize to zero
     cu::DeviceMemory d_c(bytes_c);
     d_c.zero(bytes_c);
 
-    ccglib::mma::GEMM gemm_mma(1, global_m, global_k, global_n, nr_input_bits,
-                               nr_output_bits, device, stream,
+    ccglib::mma::GEMM gemm_mma(batch_size, global_m, global_k, global_n,
+                               nr_input_bits, nr_output_bits, device, stream,
                                ccglib::mma::GEMM::opt);
 
     // run the GEMM kernel
@@ -181,7 +189,7 @@ protected:
     stream.synchronize();
 
     // verify output
-    verify<Tin, Tout, 1, global_m, global_n, global_k>(
+    verify<Tin, Tout, batch_size, global_m, global_n, global_k>(
         static_cast<const Tin *>(h_a), static_cast<const Tin *>(h_b),
         static_cast<Tout *>(h_c));
   }
