@@ -37,8 +37,7 @@ void Transpose::run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output) {
 }
 
 void Transpose::compile_kernel() {
-  const std::string cuda_include_path =
-      std::string(getenv("CUDA_HOME")) + "/include";
+  const std::string cuda_include_path = nvrtc::findIncludePath();
 
   const int capability = helper::get_capability(device);
 

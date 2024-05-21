@@ -47,8 +47,7 @@ inline const char *to_string(ccglib::mma::GEMM::Variant v) {
 }
 
 void GEMM::compile_kernel() {
-  const std::string cuda_include_path =
-      std::string(getenv("CUDA_HOME")) + "/include";
+  const std::string cuda_include_path = nvrtc::findIncludePath();
 
   const int capability = helper::get_capability(device_);
 
