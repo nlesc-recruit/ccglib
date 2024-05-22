@@ -80,4 +80,4 @@ store_matrix_sync(int *p, const fragment<accumulator, 16, 8, 256, int> &d,
 } // namespace wmma
 } // namespace nvcuda
 
-#endif WMMA_EXTENSION_H_
+#endif // WMMA_EXTENSION_H_
