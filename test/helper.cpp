@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "helper/helper.h"
+#include <ccglib/helper.h>
 
 namespace ccglib::test {
 

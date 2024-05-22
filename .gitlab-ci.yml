@@ -36,4 +36,14 @@ test-das6:
     - cmake -S . -B build -DCCGLIB_BUILD_TESTING=1
     - make -j -C build
     - make -C build
-    - cd build && ctest --output-on-failure
+
+test-das6-integration:
+  stage: test
+  tags:
+    - das6-gpu
+  before_script:
+    - module load ${DAS6_MODULES}
+  script:
+    - cmake -S example -B build -DCCGLIB_GIT_REVISION=${CI_COMMIT_SHA}
+    - make -C build
+    - $(pwd)/build/example

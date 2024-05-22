@@ -6,15 +6,12 @@
 #include <math.h>
 #include <omp.h>
 
-#include <xtensor/xadapt.hpp>
-#include <xtensor/xtensor.hpp>
-
 #include <cudawrappers/cu.hpp>
 #include <cudawrappers/nvrtc.hpp>
 
-#include "mma/GEMM.h"
-#include "reference/GEMM.h"
-#include "transpose/Transpose.h"
+#include <ccglib/gemm/mma.h>
+#include <ccglib/gemm/reference.h>
+#include <ccglib/transpose/transpose.h>
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>

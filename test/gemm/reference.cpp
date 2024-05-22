@@ -5,8 +5,8 @@
 #include <xtensor/xtensor.hpp>
 #include <xtensor/xview.hpp>
 
-#include "helper/helper.h"
-#include "reference/GEMM.h"
+#include <ccglib/gemm/reference.h>
+#include <ccglib/helper.h>
 
 namespace ccglib::test {
 

@@ -4,8 +4,8 @@
 #include <xtensor/xtensor.hpp>
 #include <xtensor/xview.hpp>
 
-#include "GEMM.h"
-#include "helper/helper.h"
+#include <ccglib/gemm/reference.h>
+#include <ccglib/helper.h>
 
 namespace {
 template <typename Tin, typename Tout>

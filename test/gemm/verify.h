@@ -1,6 +1,9 @@
 #ifndef VERIFY_H_
 #define VERIFY_H_
 
+#include <xtensor/xadapt.hpp>
+#include <xtensor/xtensor.hpp>
+
 #include "fpequals.h"
 
 template <typename Tin, typename Tout, unsigned B, unsigned M, unsigned N,

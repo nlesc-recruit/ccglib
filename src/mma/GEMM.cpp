@@ -4,8 +4,8 @@
 
 #include <cudawrappers/nvrtc.hpp>
 
-#include "GEMM.h"
-#include "helper/helper.h"
+#include <ccglib/gemm/mma.h>
+#include <ccglib/helper.h>
 
 extern const char _binary_kernels_gemm_kernel_cu_start,
     _binary_kernels_gemm_kernel_cu_end;

@@ -2,8 +2,8 @@
 
 #include <cudawrappers/nvrtc.hpp>
 
-#include "Transpose.h"
-#include "helper/helper.h"
+#include <ccglib/helper.h>
+#include <ccglib/transpose/transpose.h>
 
 extern const char _binary_kernels_transpose_kernel_cu_start,
     _binary_kernels_transpose_kernel_cu_end;
