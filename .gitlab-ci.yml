@@ -23,7 +23,7 @@ build-das6:
   before_script:
     - module load ${DAS6_MODULES}
   script:
-    - cmake -S . -B build -DCCGLIB_BUILD_TESTING=1
+    - cmake -S . -B build
     - make -j -C build
 
 test-das6:
@@ -35,4 +35,5 @@ test-das6:
   script:
     - cmake -S . -B build -DCCGLIB_BUILD_TESTING=1
     - make -j -C build
-    - make -C build test
+    - make -C build
+    - cd build && ctest --output-on-failure
