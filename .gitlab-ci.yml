@@ -35,7 +35,7 @@ test-das6:
   script:
     - cmake -S . -B build -DCCGLIB_BUILD_TESTING=1
     - make -j -C build
-    - make -C build
+    - cd build && compute-sanitizer --tool=racecheck --error-exitcode 1 --target-processes all ctest --output-on-failure
 
 test-das6-integration:
   stage: test

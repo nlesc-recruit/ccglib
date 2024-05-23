@@ -204,9 +204,10 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
     // the oldest one needs to be finished before we can start computation on
     // that data This corresponds to (NBUFFER - 1) copy operations ago so that
     // is the one we need to wait for
-    cuda::pipeline_consumer_wait_prior<NBUFFER - 1>(pipe);
-    __syncthreads(); // not sure if this is needed, perhaps already handled by
-                     // the pipe.wait_prior
+    pipe.consumer_wait();
+
+    // Synchronize threads before loading the fragments from shared memory
+    __syncthreads();
 
     // load A matrix from shared memory
     for (int c = 0; c < COMPLEX; c++) {
