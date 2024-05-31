@@ -6,9 +6,9 @@
 
 #include "fpequals.h"
 
-template <typename Tin, typename Tout, unsigned B, unsigned M, unsigned N,
-          unsigned K>
-void verify(const Tin *a, const Tin *b, const Tout *c) {
+template <typename Tin, typename Tout>
+void verify(const Tin *a, const Tin *b, const Tout *c, unsigned B, unsigned M,
+            unsigned N, unsigned K) {
   const std::array<size_t, 4> a_shape = {B, 2, M, K};
   const std::array<size_t, 4> b_shape = {B, 2, N, K};
   const std::array<size_t, 4> c_shape = {B, 2, M, N};

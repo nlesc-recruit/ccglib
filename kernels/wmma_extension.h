@@ -32,12 +32,15 @@ class fragment<matrix_b, 16, 8, 256, experimental::precision::b1, col_major>
 template <>
 class fragment<accumulator, 16, 8, 256, int> : public __frag_base<int, 4> {};
 
-inline __device__ void bmma_sync(fragment<accumulator, 16, 8, 256, int>& d,
-		     const fragment<matrix_a, 16, 8, 256, experimental::precision::b1, row_major>& a,
-		     const fragment<matrix_b, 16, 8, 256, experimental::precision::b1, col_major>& b,
-		     const fragment<accumulator, 16, 8, 256, int>& c /*,
-		     experimental::bmmaBitOp = experimental::bmmaBitOpXOR,
-		     experimental::bmmaAccumulateOp = experimental::bmmaAccumulateOpPOPC */) {
+inline __device__ void bmma_sync(
+    fragment<accumulator, 16, 8, 256, int> &d,
+    const fragment<matrix_a, 16, 8, 256, experimental::precision::b1, row_major>
+        &a,
+    const fragment<matrix_b, 16, 8, 256, experimental::precision::b1, col_major>
+        &b,
+    const fragment<accumulator, 16, 8, 256, int> &c,
+    experimental::bmmaBitOp = experimental::bmmaBitOpXOR,
+    experimental::bmmaAccumulateOp = experimental::bmmaAccumulateOpPOPC) {
   asm("mma.sync.aligned.m16n8k256.row.col.s32.b1.b1.s32.xor.popc {%0, %1, %2, "
       "%3}, {%4, %5, %6, %7}, {%8, %9}, {%10, %11, %12, %13};"
       : "=r"(d.x[0]), "=r"(d.x[1]), "=r"(d.x[2]), "=r"(d.x[3])

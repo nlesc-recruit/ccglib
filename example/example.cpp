@@ -10,9 +10,9 @@ int main(int argc, char *argv[]) {
   cu::Stream stream;
 
   // data size and type
-  const int global_m = ccglib::mma::GEMM::kMPerBlock;
-  const int global_n = ccglib::mma::GEMM::kNPerBlock;
-  const int global_k = ccglib::mma::GEMM::kKPerWMMA;
+  const int global_m = 256;
+  const int global_n = 256;
+  const int global_k = 256;
   const int batch_size = 1;
   const int COMPLEX = 2;
 
@@ -20,7 +20,6 @@ int main(int argc, char *argv[]) {
   using Tout = float;
 
   const size_t nr_input_bits = sizeof(Tin) * 8;
-  const size_t nr_output_bits = sizeof(Tout) * 8;
 
   const size_t bytes_a =
       sizeof(Tin) * batch_size * COMPLEX * global_m * global_k;
@@ -47,8 +46,8 @@ int main(int argc, char *argv[]) {
   d_c.zero(bytes_c);
 
   ccglib::mma::GEMM gemm_mma(batch_size, global_m, global_k, global_n,
-                             nr_input_bits, nr_output_bits, device, stream,
-                             ccglib::mma::GEMM::basic);
+                             nr_input_bits, device, stream,
+                             ccglib::mma::float16, ccglib::mma::basic);
 
   // run the GEMM kernel
   cu::Event start, end;

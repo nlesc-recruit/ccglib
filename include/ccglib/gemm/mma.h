@@ -6,22 +6,60 @@
 #include <cudawrappers/cu.hpp>
 
 namespace ccglib::mma {
+enum Precision { float16, int1 };
+enum Variant { basic, opt };
+
+class Kernel {
+public:
+  struct Parameters {
+    size_t m_per_block;
+    size_t m_per_warp;
+    size_t m_per_wmma;
+
+    size_t n_per_block;
+    size_t n_per_warp;
+    size_t n_per_wmma;
+
+    size_t k_per_wmma;
+
+    size_t warp_size;
+    size_t nbuffer;
+  };
+
+  Kernel(Precision precision, Variant variant);
+
+  dim3 GetThreads() const;
+  std::string GetSource() const;
+  Parameters GetParameters() const { return parameters_; };
+  std::string GetName() const;
+
+private:
+  Precision precision_;
+  Variant variant_;
+  Parameters parameters_;
+
+  template <Precision P> Parameters GetParameters() const;
+
+  void SetParameters(Precision precision);
+
+  template <Precision P> std::string GetSource() const;
+};
+
 class GEMM {
 public:
-  enum Variant { basic, opt };
-
   GEMM(size_t B_, size_t M_, size_t K_, size_t N_, size_t nr_input_bits_,
-       size_t nr_output_bits, cu::Device &device_, cu::Stream &stream_,
+       cu::Device &device_, cu::Stream &stream_, Precision precision,
        Variant Variant = Variant::opt);
   void run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b, cu::DeviceMemory &d_c);
 
   // public kernel settings
-  static const size_t kMPerBlock = 128;
-  static const size_t kNPerBlock = 64;
-  static const size_t kKPerWMMA = 16;
+  size_t kMPerBlock;
+  size_t kNPerBlock;
+  size_t kKPerWMMA;
 
 private:
   Variant variant_;
+  const Kernel &kernel_;
 
   size_t B_;
   size_t K_;
@@ -29,20 +67,9 @@ private:
   size_t N_;
 
   size_t nr_input_bits_;
-  const size_t kNrOutputBits = sizeof(float) * 8;
 
   dim3 threads_;
   dim3 grid_;
-
-  // kernel settings
-  const size_t kMPerWarp = 32;
-  const size_t kMPerWMMA = 16;
-
-  const size_t kNPerWarp = 32;
-  const size_t kNPerWMMA = 16;
-
-  const size_t kWarpSize = 32;
-  const size_t kNBuffer = 4;
 
   cu::Device &device_;
   cu::Stream &stream_;
