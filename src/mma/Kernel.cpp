@@ -1,8 +1,11 @@
 #include <stdexcept>
 
-#include <ccglib/gemm/mma.h>
+#include <cuda_runtime.h>
+
+#include "Kernel.h"
 
 namespace ccglib::mma {
+
 Kernel::Kernel(Precision precision, Variant variant)
     : precision_(precision), variant_(variant) {
   SetParameters(precision);

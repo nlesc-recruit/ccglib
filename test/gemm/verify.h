@@ -28,7 +28,7 @@ void verify(const Tin *a, const Tin *b, const Tout *c, unsigned B, unsigned M,
     size_t aoffset = batch * 2 * M * K;
     size_t boffset = batch * 2 * N * K;
     size_t coffset = batch * 2 * M * N;
-    gemm.run(a + aoffset, b + boffset, c_ref.data() + coffset, M, N, K);
+    gemm.Run(a + aoffset, b + boffset, c_ref.data() + coffset, M, N, K);
   }
 
   for (unsigned b = 0; b < B; b++) {

@@ -1,6 +1,6 @@
 #include <string>
 
-#include <ccglib/gemm/mma.h>
+#include "Kernel.h"
 
 extern const char _binary_kernels_gemm_kernel_int1_cu_start,
     _binary_kernels_gemm_kernel_int1_cu_end;

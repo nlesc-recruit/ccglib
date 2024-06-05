@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
   // run the GEMM kernel
   cu::Event start, end;
   stream.record(start);
-  gemm_mma.run(d_a, d_b, d_c);
+  gemm_mma.Run(d_a, d_b, d_c);
   stream.record(end);
 
   // copy C to host

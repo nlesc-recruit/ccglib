@@ -26,7 +26,7 @@ TEST_CASE("Reference complex float16") {
   std::array<float, COMPLEX * M * N> c_test;
 
   ccglib::reference::GEMM gemm;
-  gemm.run(a, b, &c_test[0], M, N, K);
+  gemm.Run(a, b, &c_test[0], M, N, K);
 
   REQUIRE(c_ref == c_test);
 }
@@ -50,7 +50,7 @@ TEST_CASE("Reference complex binary") {
   std::array<int, COMPLEX * M * N> c_test;
 
   ccglib::reference::GEMM gemm;
-  gemm.run(a, b, &c_test[0], M, N, K);
+  gemm.Run(a, b, &c_test[0], M, N, K);
 
   REQUIRE(c_ref == c_test);
 }

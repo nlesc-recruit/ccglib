@@ -9,7 +9,7 @@
 
 namespace {
 template <typename Tin, typename Tout>
-void run(const Tin *a, const Tin *b, Tout *c, unsigned M, unsigned N,
+void Run(const Tin *a, const Tin *b, Tout *c, unsigned M, unsigned N,
          unsigned K) {
   const std::array<size_t, 3> a_shape = {2, M, K};
   const std::array<size_t, 3> b_shape = {2, N, K};
@@ -153,12 +153,12 @@ void run_binary(const unsigned *a, const unsigned *b, int *c, unsigned M,
 } // namespace
 
 namespace ccglib::reference {
-void GEMM::run(const half *a, const half *b, float *c, unsigned M, unsigned N,
+void GEMM::Run(const half *a, const half *b, float *c, unsigned M, unsigned N,
                unsigned K) {
-  ::run<half, float>(a, b, c, M, N, K);
+  ::Run<half, float>(a, b, c, M, N, K);
 }
 
-void GEMM::run(const unsigned *a, const unsigned *b, int *c, unsigned M,
+void GEMM::Run(const unsigned *a, const unsigned *b, int *c, unsigned M,
                unsigned N, unsigned K) {
   ::run_binary(a, b, c, M, N, K);
 }

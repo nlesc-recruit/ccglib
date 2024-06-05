@@ -35,14 +35,16 @@ public:
     context_ =
         std::make_unique<cu::Context>(CU_CTX_SCHED_BLOCKING_SYNC, *device_);
     stream_ = std::make_unique<cu::Stream>();
-    kernel_ = std::make_unique<ccglib::mma::Kernel>(ccglib::mma::float16,
-                                                    ccglib::mma::opt);
 
-    const ccglib::mma::Kernel::Parameters parameters = kernel_->GetParameters();
+    const dim3 dimensions = ccglib::mma::GEMM::GetDimensions(
+        ccglib::mma::float16, ccglib::mma::opt);
+    m_per_block_ = dimensions.x;
+    n_per_block_ = dimensions.y;
+    k_per_wmma_ = dimensions.z;
 
-    global_m_ = parameters.m_per_block;    // must be multiple of m_per_block
-    global_n_ = parameters.n_per_block;    // must be multiple of n_per_block
-    global_k_ = 4 * parameters.k_per_wmma; // must be multiple of k_per_wmma
+    global_m_ = m_per_block_;
+    global_n_ = n_per_block_;
+    global_k_ = 4 * k_per_wmma_;
 
     bytes_a_ = sizeof(Tin) * kBatchSize * COMPLEX * global_m_ * global_k_;
     bytes_b_ = sizeof(Tin) * kBatchSize * COMPLEX * global_n_ * global_k_;
@@ -53,7 +55,6 @@ private:
   std::unique_ptr<cu::Device> device_;
   std::unique_ptr<cu::Context> context_;
   std::unique_ptr<cu::Stream> stream_;
-  std::unique_ptr<ccglib::mma::Kernel> kernel_;
 
   std::unique_ptr<cu::HostMemory> h_a_;
   std::unique_ptr<cu::HostMemory> h_b_;
@@ -64,6 +65,10 @@ private:
   std::unique_ptr<cu::DeviceMemory> d_c_;
 
   // data size and type
+  size_t m_per_block_;
+  size_t n_per_block_;
+  size_t k_per_wmma_;
+
   size_t global_m_;
   size_t global_n_;
   size_t global_k_;
@@ -134,7 +139,7 @@ protected:
                                kNrInputBits, *device_, *stream_,
                                ccglib::mma::float16, ccglib::mma::basic);
 
-    gemm_mma.run(*d_a_, *d_b_, *d_c_);
+    gemm_mma.Run(*d_a_, *d_b_, *d_c_);
 
     verify_output();
   }
@@ -146,25 +151,23 @@ protected:
     cu::DeviceMemory d_a_trans(bytes_a_);
     cu::DeviceMemory d_b_trans(bytes_b_);
 
-    const ccglib::mma::Kernel::Parameters parameters = kernel_->GetParameters();
-
     // Transpose A
-    ccglib::transpose::Transpose transpose_a(
-        kBatchSize, global_m_, global_k_, parameters.m_per_block,
-        parameters.k_per_wmma, kNrInputBits, *device_, *stream_);
-    transpose_a.run(*h_a_, d_a_trans);
+    ccglib::transpose::Transpose transpose_a(kBatchSize, global_m_, global_k_,
+                                             m_per_block_, k_per_wmma_,
+                                             kNrInputBits, *device_, *stream_);
+    transpose_a.Run(*h_a_, d_a_trans);
 
     // Transpose B
-    ccglib::transpose::Transpose transpose_b(
-        kBatchSize, global_n_, global_k_, parameters.n_per_block,
-        parameters.k_per_wmma, kNrInputBits, *device_, *stream_);
-    transpose_b.run(*h_b_, d_b_trans);
+    ccglib::transpose::Transpose transpose_b(kBatchSize, global_n_, global_k_,
+                                             n_per_block_, k_per_wmma_,
+                                             kNrInputBits, *device_, *stream_);
+    transpose_b.Run(*h_b_, d_b_trans);
 
     ccglib::mma::GEMM gemm_mma(kBatchSize, global_m_, global_k_, global_n_,
                                kNrInputBits, *device_, *stream_,
                                ccglib::mma::float16, ccglib::mma::opt);
 
-    gemm_mma.run(d_a_trans, d_b_trans, *d_c_);
+    gemm_mma.Run(d_a_trans, d_b_trans, *d_c_);
 
     verify_output();
   }
