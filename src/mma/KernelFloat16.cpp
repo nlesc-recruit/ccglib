@@ -12,11 +12,11 @@ namespace ccglib::mma {
 template <>
 Kernel::Parameters Kernel::GetParameters<Precision::float16>() const {
   Kernel::Parameters kernel_parameters = {.m_per_block = 128,
-                                          .m_per_warp = 32,
+                                          .m_per_warp = 128,
                                           .m_per_wmma = 16,
 
                                           .n_per_block = 64,
-                                          .n_per_warp = 32,
+                                          .n_per_warp = 16,
                                           .n_per_wmma = 16,
 
                                           .k_per_wmma = 16,

@@ -61,5 +61,5 @@ int main(int argc, char *argv[]) {
 
   // print runtime
   const float runtime = end.elapsedTime(start);
-  std::cout << "runtime: " << runtime << " s" << std::endl;
+  std::cout << "runtime: " << runtime << " ms" << std::endl;
 }
