@@ -12,6 +12,10 @@ FetchContent_Declare(
   GIT_TAG main)
 FetchContent_MakeAvailable(cudawrappers)
 
+if(NOT DEFINED CCGLIB_GIT_REVISION)
+  set(CCGLIB_GIT_REVISION "origin/main")
+endif()
+
 FetchContent_Declare(
   ccglib
   GIT_REPOSITORY https://git.astron.nl/RD/recruit/ccglib
