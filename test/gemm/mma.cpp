@@ -22,11 +22,10 @@
 #define COMPLEX 2
 #endif
 
-using Tin = half;
-using Tout = float;
-
 namespace ccglib::test {
 
+template <typename Tin, typename Tout, unsigned NrInputBits,
+          ccglib::mma::Precision Precision>
 class ComplexGemmTestFixture {
 public:
   ComplexGemmTestFixture() {
@@ -36,8 +35,8 @@ public:
         std::make_unique<cu::Context>(CU_CTX_SCHED_BLOCKING_SYNC, *device_);
     stream_ = std::make_unique<cu::Stream>();
 
-    const dim3 dimensions = ccglib::mma::GEMM::GetDimensions(
-        ccglib::mma::float16, ccglib::mma::opt);
+    const dim3 dimensions =
+        ccglib::mma::GEMM::GetDimensions(Precision, ccglib::mma::opt);
     m_per_block_ = dimensions.x;
     n_per_block_ = dimensions.y;
     k_per_wmma_ = dimensions.z;
@@ -46,8 +45,11 @@ public:
     global_n_ = n_per_block_;
     global_k_ = 4 * k_per_wmma_;
 
-    bytes_a_ = sizeof(Tin) * kBatchSize * COMPLEX * global_m_ * global_k_;
-    bytes_b_ = sizeof(Tin) * kBatchSize * COMPLEX * global_n_ * global_k_;
+    const unsigned kPackingFactor = sizeof(Tin) * CHAR_BIT / NrInputBits;
+    bytes_a_ = sizeof(Tin) * kBatchSize * COMPLEX * global_m_ * global_k_ /
+               kPackingFactor;
+    bytes_b_ = sizeof(Tin) * kBatchSize * COMPLEX * global_n_ * global_k_ /
+               kPackingFactor;
     bytes_c_ = sizeof(Tout) * kBatchSize * COMPLEX * global_m_ * global_n_;
   }
 
@@ -74,28 +76,33 @@ private:
   size_t global_k_;
   const size_t kBatchSize = 16;
 
-  const size_t kNrInputBits = sizeof(Tin) * 8;
-
   size_t bytes_a_;
   size_t bytes_b_;
   size_t bytes_c_;
 
   template <typename T> void init_input_matrices(T *a, T *b) {
     // fill a and b with random values (fixed seed), initalize c to zero
-    // Note: only works for T=half, should use e.g. KernelFloat library to
-    // more easily support other types
-    static_assert(std::is_same_v<T, __half>, "Input data type must be half");
-    unsigned int seed = 0;
-    const float scale = 1.0f;
-    for (int idx = 0; idx < bytes_a_ / sizeof(T); idx++) {
-      a[idx] = __float2half(2.0f * scale *
-                                (static_cast<float>(rand_r(&seed)) / RAND_MAX) -
-                            scale);
-    }
-    for (int idx = 0; idx < bytes_b_ / sizeof(T); idx++) {
-      b[idx] = __float2half(2.0f * scale *
-                                (static_cast<float>(rand_r(&seed)) / RAND_MAX) -
-                            scale);
+    if constexpr (std::is_same_v<T, __half>) {
+      unsigned int seed = 0;
+      const float scale = 1.0f;
+      for (int idx = 0; idx < bytes_a_ / sizeof(T); idx++) {
+        a[idx] = __float2half(
+            2.0f * scale * (static_cast<float>(rand_r(&seed)) / RAND_MAX) -
+            scale);
+      }
+      for (int idx = 0; idx < bytes_b_ / sizeof(T); idx++) {
+        b[idx] = __float2half(
+            2.0f * scale * (static_cast<float>(rand_r(&seed)) / RAND_MAX) -
+            scale);
+      }
+    } else if constexpr (std::is_same_v<T, unsigned int>) {
+      unsigned int seed = 0;
+      for (int idx = 0; idx < bytes_a_ / sizeof(T); idx++) {
+        a[idx] = static_cast<unsigned int>(rand_r(&seed));
+      }
+      for (int idx = 0; idx < bytes_b_ / sizeof(T); idx++) {
+        b[idx] = static_cast<unsigned int>(rand_r(&seed));
+      }
     }
   }
 
@@ -125,20 +132,19 @@ private:
     stream_->synchronize();
 
     // verify output
-    verify<Tin, Tout>(static_cast<const Tin *>(*h_a_),
-                      static_cast<const Tin *>(*h_b_),
-                      static_cast<Tout *>(*h_c_), kBatchSize, global_m_,
-                      global_n_, global_k_);
+    verify<Tin, Tout, NrInputBits>(static_cast<const Tin *>(*h_a_),
+                                   static_cast<const Tin *>(*h_b_),
+                                   static_cast<Tout *>(*h_c_), kBatchSize,
+                                   global_m_, global_n_, global_k_);
   }
 
 protected:
   void complex_gemm_basic() {
     initialize_memory();
 
-    ccglib::mma::GEMM gemm_mma(kBatchSize, global_m_, global_n_, global_k_,
-                               kNrInputBits, *device_, *stream_,
-                               ccglib::mma::float16, ccglib::mma::basic);
-
+    ccglib::mma::GEMM gemm_mma(kBatchSize, global_m_, global_k_, global_n_,
+                               NrInputBits, *device_, *stream_, Precision,
+                               ccglib::mma::basic);
     gemm_mma.Run(*d_a_, *d_b_, *d_c_);
 
     verify_output();
@@ -154,18 +160,18 @@ protected:
     // Transpose A
     ccglib::transpose::Transpose transpose_a(kBatchSize, global_m_, global_k_,
                                              m_per_block_, k_per_wmma_,
-                                             kNrInputBits, *device_, *stream_);
+                                             NrInputBits, *device_, *stream_);
     transpose_a.Run(*h_a_, d_a_trans);
 
     // Transpose B
     ccglib::transpose::Transpose transpose_b(kBatchSize, global_n_, global_k_,
                                              n_per_block_, k_per_wmma_,
-                                             kNrInputBits, *device_, *stream_);
+                                             NrInputBits, *device_, *stream_);
     transpose_b.Run(*h_b_, d_b_trans);
 
     ccglib::mma::GEMM gemm_mma(kBatchSize, global_m_, global_k_, global_n_,
-                               kNrInputBits, *device_, *stream_,
-                               ccglib::mma::float16, ccglib::mma::opt);
+                               NrInputBits, *device_, *stream_, Precision,
+                               ccglib::mma::opt);
 
     gemm_mma.Run(d_a_trans, d_b_trans, *d_c_);
 
@@ -173,14 +179,34 @@ protected:
   }
 };
 
-TEST_CASE_METHOD(ComplexGemmTestFixture, "Complex GEMM Test",
-                 "[complex-gemm-test-basic]") {
-  ComplexGemmTestFixture::complex_gemm_basic();
+using ComplexGemmTestFixtureFloat16 =
+    ComplexGemmTestFixture<half, float, 16, ccglib::mma::float16>;
+using ComplexGemmTestFixtureInt1 =
+    ComplexGemmTestFixture<unsigned int, int32_t, 1, ccglib::mma::int1>;
+
+TEST_CASE_METHOD(ComplexGemmTestFixtureFloat16,
+                 "Complex GEMM Test - float16 basic",
+                 "[complex-gemm-test-float16-basic]") {
+  ComplexGemmTestFixtureFloat16::complex_gemm_basic();
 }
 
-TEST_CASE_METHOD(ComplexGemmTestFixture, "Complex GEMM Test",
-                 "[complex-gemm-test-opt]") {
-  ComplexGemmTestFixture::complex_gemm_opt();
+TEST_CASE_METHOD(ComplexGemmTestFixtureFloat16,
+                 "Complex GEMM Test - float16 opt",
+                 "[complex-gemm-test-float16-opt]") {
+  ComplexGemmTestFixtureFloat16::complex_gemm_opt();
 }
+
+TEST_CASE_METHOD(ComplexGemmTestFixtureInt1, "Complex GEMM Test - int1 basic",
+                 "[complex-gemm-test-int1-basic]") {
+  ComplexGemmTestFixtureInt1::complex_gemm_basic();
+}
+
+/* Uncomment when 1-bit transpose is implemented
+TEST_CASE_METHOD(ComplexGemmTestFixtureFloat16,
+                 "Complex GEMM Test - float16 opt",
+                 "[complex-gemm-test-float16-opt]") {
+  ComplexGemmTestFixtureFloat16::complex_gemm_opt();
+}
+*/
 
 } // namespace ccglib::test

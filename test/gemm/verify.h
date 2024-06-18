@@ -6,15 +6,17 @@
 
 #include "fpequals.h"
 
-template <typename Tin, typename Tout>
+template <typename Tin, typename Tout, unsigned NrInputBits>
 void verify(const Tin *a, const Tin *b, const Tout *c, unsigned B, unsigned M,
             unsigned N, unsigned K) {
-  const std::array<size_t, 4> a_shape = {B, 2, M, K};
-  const std::array<size_t, 4> b_shape = {B, 2, N, K};
+  const unsigned kPackingFactor = sizeof(Tin) * CHAR_BIT / NrInputBits;
+
+  const std::array<size_t, 4> a_shape = {B, 2, M, K / kPackingFactor};
+  const std::array<size_t, 4> b_shape = {B, 2, N, K / kPackingFactor};
   const std::array<size_t, 4> c_shape = {B, 2, M, N};
 
-  const size_t a_size = B * 2 * M * K;
-  const size_t b_size = B * 2 * N * K;
+  const size_t a_size = B * 2 * M * K / kPackingFactor;
+  const size_t b_size = B * 2 * N * K / kPackingFactor;
   const size_t c_size = B * 2 * M * N;
 
   auto a_view = xt::adapt(a, a_size, xt::no_ownership(), a_shape);
@@ -25,8 +27,8 @@ void verify(const Tin *a, const Tin *b, const Tout *c, unsigned B, unsigned M,
 
   ccglib::reference::GEMM gemm;
   for (size_t batch = 0; batch < B; ++batch) {
-    size_t aoffset = batch * 2 * M * K;
-    size_t boffset = batch * 2 * N * K;
+    size_t aoffset = batch * 2 * M * K / kPackingFactor;
+    size_t boffset = batch * 2 * N * K / kPackingFactor;
     size_t coffset = batch * 2 * M * N;
     gemm.Run(a + aoffset, b + boffset, c_ref.data() + coffset, M, N, K);
   }
