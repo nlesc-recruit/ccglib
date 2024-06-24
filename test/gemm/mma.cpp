@@ -3,6 +3,7 @@
 #include <type_traits>
 
 #include <cuda_fp16.h>
+#include <limits.h>
 #include <math.h>
 #include <omp.h>
 
@@ -201,12 +202,9 @@ TEST_CASE_METHOD(ComplexGemmTestFixtureInt1, "Complex GEMM Test - int1 basic",
   ComplexGemmTestFixtureInt1::complex_gemm_basic();
 }
 
-/* Uncomment when 1-bit transpose is implemented
-TEST_CASE_METHOD(ComplexGemmTestFixtureFloat16,
-                 "Complex GEMM Test - float16 opt",
-                 "[complex-gemm-test-float16-opt]") {
-  ComplexGemmTestFixtureFloat16::complex_gemm_opt();
+TEST_CASE_METHOD(ComplexGemmTestFixtureInt1, "Complex GEMM Test - int1 opt",
+                 "[complex-gemm-test-int1-opt]") {
+  ComplexGemmTestFixtureInt1::complex_gemm_opt();
 }
-*/
 
 } // namespace ccglib::test

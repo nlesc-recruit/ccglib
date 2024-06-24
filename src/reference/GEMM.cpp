@@ -1,3 +1,4 @@
+#include <limits.h>
 #include <omp.h>
 #include <xtensor/xadapt.hpp>
 #include <xtensor/xcomplex.hpp>

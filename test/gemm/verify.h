@@ -1,6 +1,7 @@
 #ifndef VERIFY_H_
 #define VERIFY_H_
 
+#include <limits.h>
 #include <xtensor/xadapt.hpp>
 #include <xtensor/xtensor.hpp>
 

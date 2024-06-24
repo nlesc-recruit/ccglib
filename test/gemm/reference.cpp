@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <cuda_fp16.h>
+#include <limits.h>
 #include <xtensor/xadapt.hpp>
 #include <xtensor/xcomplex.hpp>
 #include <xtensor/xtensor.hpp>
