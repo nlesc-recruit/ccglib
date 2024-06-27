@@ -25,13 +25,19 @@ target_include_directories(test-mma PRIVATE ${CMAKE_BINARY_DIR}
 target_link_libraries(test-mma PRIVATE ccglib cudawrappers::cu
                                        Catch2::Catch2WithMain xtensor)
 
+add_executable(test-packing packing/packing.cpp)
+target_include_directories(test-packing PRIVATE ${CMAKE_BINARY_DIR}
+                                                "${PROJECT_SOURCE_DIR}/include")
+target_link_libraries(test-packing PRIVATE ccglib cudawrappers::cu
+                                           Catch2::Catch2WithMain)
+
 add_executable(test-transpose transpose/transpose.cpp)
 target_include_directories(
   test-transpose PRIVATE ${CMAKE_BINARY_DIR} "${PROJECT_SOURCE_DIR}/include")
 target_link_libraries(test-transpose PRIVATE ccglib cudawrappers::cu
                                              Catch2::Catch2WithMain)
 
-set(TESTS test-helper test-reference test-mma test-transpose)
+set(TESTS test-helper test-reference test-mma test-packing test-transpose)
 
 foreach(test IN ITEMS ${TESTS})
   add_test(NAME ${test} COMMAND ${test})
