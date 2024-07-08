@@ -9,7 +9,7 @@ namespace ccglib::mma {
 
 class GEMM {
 public:
-  GEMM(size_t B_, size_t M_, size_t K_, size_t N_, size_t nr_input_bits_,
+  GEMM(size_t B_, size_t M_, size_t N_, size_t K_, size_t nr_input_bits_,
        cu::Device &device_, cu::Stream &stream_, Precision precision,
        Variant Variant = Variant::opt);
   ~GEMM();
