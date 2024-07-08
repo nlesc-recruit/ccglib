@@ -7,10 +7,10 @@
 
 #include "fpequals.h"
 
-template <typename Tin, typename Tout, unsigned NrInputBits>
-void verify(const Tin *a, const Tin *b, const Tout *c, unsigned B, unsigned M,
-            unsigned N, unsigned K) {
-  const unsigned kPackingFactor = sizeof(Tin) * CHAR_BIT / NrInputBits;
+template <typename Tin, typename Tout, size_t NrInputBits>
+void verify(const Tin *a, const Tin *b, const Tout *c, size_t B, size_t M,
+            size_t N, size_t K) {
+  const size_t kPackingFactor = sizeof(Tin) * CHAR_BIT / NrInputBits;
 
   const std::array<size_t, 4> a_shape = {B, 2, M, K / kPackingFactor};
   const std::array<size_t, 4> b_shape = {B, 2, N, K / kPackingFactor};
@@ -34,9 +34,9 @@ void verify(const Tin *a, const Tin *b, const Tout *c, unsigned B, unsigned M,
     gemm.Run(a + aoffset, b + boffset, c_ref.data() + coffset, M, N, K);
   }
 
-  for (unsigned b = 0; b < B; b++) {
-    for (unsigned m = 0; m < M; m++) {
-      for (unsigned n = 0; n < N; n++) {
+  for (size_t b = 0; b < B; b++) {
+    for (size_t m = 0; m < M; m++) {
+      for (size_t n = 0; n < N; n++) {
         std::complex<Tout> ref(c_ref(b, 0, m, n), c_ref(b, 1, m, n));
         std::complex<Tout> tst(c_view(b, 0, m, n), c_view(b, 1, m, n));
         ccglib::test::fpEquals(ref, tst, ccglib::test::getEpsilon<Tin>());

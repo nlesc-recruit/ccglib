@@ -8,7 +8,7 @@
 
 namespace ccglib::test {
 
-template <typename T, unsigned NrInputBits> class TransposeTestFixture {
+template <typename T, size_t NrInputBits> class TransposeTestFixture {
 public:
   TransposeTestFixture() {
     cu::init();
@@ -35,7 +35,7 @@ private:
   const size_t kMPerChunk = 64;
   const size_t kNPerChunk = 64; // must be a multiple of kPackingFactor
 
-  const unsigned kPackingFactor = sizeof(T) * CHAR_BIT / NrInputBits;
+  const size_t kPackingFactor = sizeof(T) * CHAR_BIT / NrInputBits;
   const size_t kBytesA =
       sizeof(T) * kBatchSize * kComplex * kGlobalM * kGlobalN / kPackingFactor;
 

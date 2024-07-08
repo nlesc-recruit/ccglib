@@ -108,7 +108,7 @@ TEST_CASE("Pack - unpack") {
 
   auto generator = std::bind(std::uniform_int_distribution<>(0, 1),
                              std::default_random_engine());
-  for (int i = 0; i < N; i++) {
+  for (size_t i = 0; i < N; i++) {
     static_cast<unsigned char *>(h_in)[i] = generator();
   }
 

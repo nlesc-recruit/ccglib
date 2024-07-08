@@ -25,7 +25,7 @@
 
 namespace ccglib::test {
 
-template <typename Tin, typename Tout, unsigned NrInputBits,
+template <typename Tin, typename Tout, size_t NrInputBits,
           ccglib::mma::Precision Precision>
 class ComplexGemmTestFixture {
 public:
@@ -46,7 +46,7 @@ public:
     global_n_ = n_per_block_;
     global_k_ = 4 * k_per_wmma_;
 
-    const unsigned kPackingFactor = sizeof(Tin) * CHAR_BIT / NrInputBits;
+    const size_t kPackingFactor = sizeof(Tin) * CHAR_BIT / NrInputBits;
     bytes_a_ = sizeof(Tin) * kBatchSize * COMPLEX * global_m_ * global_k_ /
                kPackingFactor;
     bytes_b_ = sizeof(Tin) * kBatchSize * COMPLEX * global_n_ * global_k_ /

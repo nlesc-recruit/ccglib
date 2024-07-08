@@ -6,10 +6,10 @@
 namespace ccglib::reference {
 class GEMM {
 public:
-  virtual void Run(const half *a, const half *b, float *c, unsigned M,
-                   unsigned N, unsigned K);
-  virtual void Run(const unsigned *a, const unsigned *b, int *c, unsigned M,
-                   unsigned N, unsigned K);
+  virtual void Run(const half *a, const half *b, float *c, size_t M, size_t N,
+                   size_t K);
+  virtual void Run(const unsigned *a, const unsigned *b, int *c, size_t M,
+                   size_t N, size_t K);
 };
 
 } // namespace ccglib::reference

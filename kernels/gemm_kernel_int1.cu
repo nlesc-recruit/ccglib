@@ -75,7 +75,7 @@ static inline __device__ void bmma_sync_and(
 
 extern "C" __global__ void wmma_complex_gemm_basic(C_t &C, const A_t &A,
                                                    const B_t &B) {
-  const unsigned batch = blockIdx.z;
+  const size_t batch = blockIdx.z;
   const size_t blockN = blockIdx.x;
   const size_t blockM = blockIdx.y;
   const size_t warpN = threadIdx.y;
@@ -189,7 +189,7 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t &C, const A_t &A,
   // a dot b (imag part) = 2 * (K - K_PADDING - popc(a xor b))
   __syncwarp();
   for (size_t c = 0; c < COMPLEX; c++) {
-    unsigned offset = c == REAL ? 0 : K_PADDING;
+    size_t offset = c == REAL ? 0 : K_PADDING;
 
     for (size_t m = 0; m < M_TILES; m++) {
       for (size_t n = 0; n < N_TILES; n++) {
@@ -226,7 +226,7 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t &C, const A_t &A,
 
 extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
                                                  const B_opt_t B) {
-  const unsigned batch = blockIdx.z;
+  const size_t batch = blockIdx.z;
   const size_t blockN = blockIdx.x;
   const size_t blockM = blockIdx.y;
   const size_t warpN = threadIdx.y;
@@ -346,7 +346,7 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
   // fix output values
   __syncwarp();
   for (size_t c = 0; c < COMPLEX; c++) {
-    unsigned offset = c == REAL ? 0 : K_PADDING;
+    size_t offset = c == REAL ? 0 : K_PADDING;
 
     for (size_t m = 0; m < M_TILES; m++) {
       for (size_t n = 0; n < N_TILES; n++) {

@@ -44,28 +44,28 @@ using C_t = Tout[BATCH_SIZE][COMPLEX][M_GLOBAL][N_GLOBAL];
 
 extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
                                                    const B_t B) {
-  const unsigned batch = blockIdx.z;
-  const unsigned blockN = blockIdx.x;
-  const unsigned blockM = blockIdx.y;
-  const unsigned warpN = threadIdx.y;
-  const unsigned warpM = threadIdx.z;
+  const size_t batch = blockIdx.z;
+  const size_t blockN = blockIdx.x;
+  const size_t blockM = blockIdx.y;
+  const size_t warpN = threadIdx.y;
+  const size_t warpM = threadIdx.z;
 
   // number of tiles processed by each warp
-  constexpr unsigned M_TILES = M_PER_WARP / M_PER_WMMA;
-  constexpr unsigned N_TILES = N_PER_WARP / N_PER_WMMA;
-  constexpr unsigned K_TILES = K_GLOBAL / K_PER_WMMA;
+  constexpr size_t M_TILES = M_PER_WARP / M_PER_WMMA;
+  constexpr size_t N_TILES = N_PER_WARP / N_PER_WMMA;
+  constexpr size_t K_TILES = K_GLOBAL / K_PER_WMMA;
 
   wmma::fragment<wmma::accumulator, M_PER_WMMA, N_PER_WMMA, K_PER_WMMA, Tout>
       sum[COMPLEX][M_TILES][N_TILES];
-  for (int c = 0; c < COMPLEX; c++) {
-    for (int m = 0; m < M_TILES; m++) {
-      for (int n = 0; n < N_TILES; n++) {
+  for (size_t c = 0; c < COMPLEX; c++) {
+    for (size_t m = 0; m < M_TILES; m++) {
+      for (size_t n = 0; n < N_TILES; n++) {
         wmma::fill_fragment(sum[c][m][n], 0);
       }
     }
   }
 
-  for (int k = 0; k < K_TILES; k++) {
+  for (size_t k = 0; k < K_TILES; k++) {
     // declare input fragments
     wmma::fragment<wmma::matrix_a, M_PER_WMMA, N_PER_WMMA, K_PER_WMMA, Ttc,
                    wmma::row_major>
@@ -75,9 +75,9 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
         b[COMPLEX][N_TILES];
 
     // load matrices from global memory
-    for (int c = 0; c < COMPLEX; c++) {
-      for (int m = 0; m < M_TILES; m++) {
-        int k_index = k * K_PER_WMMA;
+    for (size_t c = 0; c < COMPLEX; c++) {
+      for (size_t m = 0; m < M_TILES; m++) {
+        size_t k_index = k * K_PER_WMMA;
         wmma::load_matrix_sync(
             a[c][m],
             &A[batch][c][blockM * M_PER_BLOCK + warpM * M_PER_WARP +
@@ -86,9 +86,9 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
       }
     }
 
-    for (int c = 0; c < COMPLEX; c++) {
-      for (int n = 0; n < N_TILES; n++) {
-        int k_index = k * K_PER_WMMA;
+    for (size_t c = 0; c < COMPLEX; c++) {
+      for (size_t n = 0; n < N_TILES; n++) {
+        size_t k_index = k * K_PER_WMMA;
         wmma::load_matrix_sync(
             b[c][n],
             &B[batch][c][blockN * N_PER_BLOCK + warpN * N_PER_WARP +
@@ -98,8 +98,8 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
     }
 
     // step 1 and 2
-    for (int m = 0; m < M_TILES; m++) {
-      for (int n = 0; n < N_TILES; n++) {
+    for (size_t m = 0; m < M_TILES; m++) {
+      for (size_t n = 0; n < N_TILES; n++) {
         wmma::mma_sync(sum[REAL][m][n], a[REAL][m], b[REAL][n],
                        sum[REAL][m][n]);
         wmma::mma_sync(sum[IMAG][m][n], a[REAL][m], b[IMAG][n],
@@ -109,7 +109,7 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
 
     // step 3
     __syncwarp();
-    for (int n = 0; n < N_TILES; n++) {
+    for (size_t n = 0; n < N_TILES; n++) {
       for (auto &element : b[IMAG][n].x) {
         element = -element;
       }
@@ -117,8 +117,8 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
     __syncwarp();
 
     // step 4 and 5
-    for (int m = 0; m < M_TILES; m++) {
-      for (int n = 0; n < N_TILES; n++) {
+    for (size_t m = 0; m < M_TILES; m++) {
+      for (size_t n = 0; n < N_TILES; n++) {
         wmma::mma_sync(sum[REAL][m][n], a[IMAG][m], b[IMAG][n],
                        sum[REAL][m][n]);
         wmma::mma_sync(sum[IMAG][m][n], a[IMAG][m], b[REAL][n],
@@ -128,9 +128,9 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
   }
 
   // store the result to global memory
-  for (int c = 0; c < COMPLEX; c++) {
-    for (int m = 0; m < M_TILES; m++) {
-      for (int n = 0; n < N_TILES; n++) {
+  for (size_t c = 0; c < COMPLEX; c++) {
+    for (size_t m = 0; m < M_TILES; m++) {
+      for (size_t n = 0; n < N_TILES; n++) {
         Tout *c_ptr =
             &C[batch][c]
               [blockM * M_PER_BLOCK + warpM * M_PER_WARP + m * M_PER_WMMA]
@@ -144,27 +144,27 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
 
 extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
                                                  const B_opt_t B) {
-  const unsigned batch = blockIdx.z;
-  const unsigned blockN = blockIdx.x;
-  const unsigned blockM = blockIdx.y;
-  const unsigned warpN = threadIdx.y;
-  const unsigned warpM = threadIdx.z;
+  const size_t batch = blockIdx.z;
+  const size_t blockN = blockIdx.x;
+  const size_t blockM = blockIdx.y;
+  const size_t warpN = threadIdx.y;
+  const size_t warpM = threadIdx.z;
 
-  constexpr unsigned num_threads = block_size_x * block_size_y * block_size_z;
-  const unsigned tid = threadIdx.x + threadIdx.y * block_size_x +
-                       threadIdx.z * block_size_x * block_size_y;
+  constexpr size_t num_threads = block_size_x * block_size_y * block_size_z;
+  const size_t tid = threadIdx.x + threadIdx.y * block_size_x +
+                     threadIdx.z * block_size_x * block_size_y;
 
   // number of tiles processed by each warp
-  constexpr unsigned M_TILES = M_PER_WARP / M_PER_WMMA;
-  constexpr unsigned N_TILES = N_PER_WARP / N_PER_WMMA;
-  constexpr unsigned K_TILES = K_GLOBAL / K_PER_WMMA;
+  constexpr size_t M_TILES = M_PER_WARP / M_PER_WMMA;
+  constexpr size_t N_TILES = N_PER_WARP / N_PER_WMMA;
+  constexpr size_t K_TILES = K_GLOBAL / K_PER_WMMA;
 
   // initialize accumulator fragments to zero
   wmma::fragment<wmma::accumulator, M_PER_WMMA, N_PER_WMMA, K_PER_WMMA, Tout>
       sum[COMPLEX][M_TILES][N_TILES];
-  for (int c = 0; c < COMPLEX; c++) {
-    for (int m = 0; m < M_TILES; m++) {
-      for (int n = 0; n < N_TILES; n++) {
+  for (size_t c = 0; c < COMPLEX; c++) {
+    for (size_t m = 0; m < M_TILES; m++) {
+      for (size_t n = 0; n < N_TILES; n++) {
         wmma::fill_fragment(sum[c][m][n], 0);
       }
     }
@@ -178,7 +178,7 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
 
   cuda::pipeline<cuda::thread_scope_thread> pipe = cuda::make_pipeline();
 
-  for (unsigned k = 0, k_buf = 0; k < K_TILES; k++) {
+  for (size_t k = 0, k_buf = 0; k < K_TILES; k++) {
 
     // declare input fragments for A and B matrices
     wmma::fragment<wmma::matrix_a, M_PER_WMMA, N_PER_WMMA, K_PER_WMMA, Ttc,
@@ -210,8 +210,8 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
     __syncthreads();
 
     // load A matrix from shared memory
-    for (int c = 0; c < COMPLEX; c++) {
-      for (int m = 0; m < M_TILES; m++) {
+    for (size_t c = 0; c < COMPLEX; c++) {
+      for (size_t m = 0; m < M_TILES; m++) {
         wmma::load_matrix_sync(
             a[c][m],
             &A_s[k % NBUFFER][c][warpM * M_PER_WARP + m * M_PER_WMMA][0],
@@ -220,8 +220,8 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
     }
 
     // load B matrix from shared memory
-    for (int c = 0; c < COMPLEX; c++) {
-      for (int n = 0; n < N_TILES; n++) {
+    for (size_t c = 0; c < COMPLEX; c++) {
+      for (size_t n = 0; n < N_TILES; n++) {
         wmma::load_matrix_sync(
             b[c][n],
             &B_s[k % NBUFFER][c][warpN * N_PER_WARP + n * N_PER_WMMA][0],
@@ -242,8 +242,8 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
     // 5. sum[imag] += a_i * b_r
 
     // steps 1 and 2
-    for (int m = 0; m < M_TILES; m++) {
-      for (int n = 0; n < N_TILES; n++) {
+    for (size_t m = 0; m < M_TILES; m++) {
+      for (size_t n = 0; n < N_TILES; n++) {
         wmma::mma_sync(sum[REAL][m][n], a[REAL][m], b[REAL][n],
                        sum[REAL][m][n]);
         wmma::mma_sync(sum[IMAG][m][n], a[REAL][m], b[IMAG][n],
@@ -253,7 +253,7 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
 
     // step 3
     __syncwarp();
-    for (int n = 0; n < N_TILES; n++) {
+    for (size_t n = 0; n < N_TILES; n++) {
       for (auto &element : b[IMAG][n].x) {
         element = -element;
       }
@@ -261,8 +261,8 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
     __syncwarp();
 
     // step 4 and 5
-    for (int m = 0; m < M_TILES; m++) {
-      for (int n = 0; n < N_TILES; n++) {
+    for (size_t m = 0; m < M_TILES; m++) {
+      for (size_t n = 0; n < N_TILES; n++) {
         wmma::mma_sync(sum[REAL][m][n], a[IMAG][m], b[IMAG][n],
                        sum[REAL][m][n]);
         wmma::mma_sync(sum[IMAG][m][n], a[IMAG][m], b[REAL][n],
@@ -276,9 +276,9 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
   }
 
   // store the result to global memory
-  for (int c = 0; c < COMPLEX; c++) {
-    for (int m = 0; m < M_TILES; m++) {
-      for (int n = 0; n < N_TILES; n++) {
+  for (size_t c = 0; c < COMPLEX; c++) {
+    for (size_t m = 0; m < M_TILES; m++) {
+      for (size_t n = 0; n < N_TILES; n++) {
         Tout *c_ptr =
             &C[batch][c]
               [blockM * M_PER_BLOCK + warpM * M_PER_WARP + m * M_PER_WMMA]

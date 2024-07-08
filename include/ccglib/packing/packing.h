@@ -15,7 +15,7 @@ public:
            Direction direction);
 
 private:
-  unsigned int N_;
+  size_t N_;
   cu::Device &device_;
   cu::Stream &stream_;
 

@@ -12,10 +12,10 @@
 namespace ccglib::test {
 
 TEST_CASE("Reference complex float16") {
-  const unsigned M = 3;
-  const unsigned N = 3;
-  const unsigned K = 2;
-  const unsigned COMPLEX = 2;
+  const size_t M = 3;
+  const size_t N = 3;
+  const size_t K = 2;
+  const size_t COMPLEX = 2;
   // Matrix a row-major a(2,M,K)
   const half a[COMPLEX * M * K] = {1, 2, 3, 4, 5, 6, 6, 5, 4, 3, 2, 1};
   // Matrix a column-major a(2,M,K)
@@ -33,13 +33,13 @@ TEST_CASE("Reference complex float16") {
 }
 
 TEST_CASE("Reference complex binary") {
-  const unsigned M = 2;
-  const unsigned N = 2;
-  const unsigned K = 32;
-  const unsigned COMPLEX = 2;
+  const size_t M = 2;
+  const size_t N = 2;
+  const size_t K = 32;
+  const size_t COMPLEX = 2;
   // Inputs are 1-bit values packed into unsigned ints in little-endian order
-  const unsigned bits_per_sample = sizeof(unsigned) * CHAR_BIT;
-  const unsigned K_PACKED = ccglib::helper::ceildiv(K, bits_per_sample);
+  const size_t bits_per_sample = sizeof(unsigned) * CHAR_BIT;
+  const size_t K_PACKED = ccglib::helper::ceildiv(K, bits_per_sample);
   // A must be row-major, B col-major. Here, C is row-major
   const unsigned a[COMPLEX * M * K_PACKED] = {4007499276, 2587246816,
                                               2368114480, 2180517764};

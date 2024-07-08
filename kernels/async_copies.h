@@ -10,7 +10,7 @@
 template <typename T, size_t NBYTES, size_t NTHREADS>
 inline __device__ void
 copy_async(void *dest, const void *src, size_t *offset,
-           cuda::pipeline<cuda::thread_scope_thread> &pipe, unsigned tid) {
+           cuda::pipeline<cuda::thread_scope_thread> &pipe, size_t tid) {
   const auto shape = cuda::aligned_size_t<alignof(T)>(sizeof(T));
 
   // Calculate the number of elements of type T to copy
@@ -36,7 +36,7 @@ copy_async(void *dest, const void *src, size_t *offset,
 template <size_t NBYTES, size_t NTHREADS>
 __device__ void copy_async(void *dest, const void *src,
                            cuda::pipeline<cuda::thread_scope_thread> &pipe,
-                           unsigned tid) {
+                           size_t tid) {
   size_t offset = 0;
 
   // Perform the copy operation for various data types

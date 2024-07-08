@@ -11,9 +11,13 @@ inline int get_capability(cu::Device &device) {
          device.getAttribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR>();
 }
 
-template <typename T> inline int ceildiv(T a, T b) {
+template <typename T> inline T ceildiv(T a, T b) {
   // Only for positive a and b
   return ((a) / (b) + ((a) % (b) != 0));
+}
+
+inline size_t ceildiv(size_t a, unsigned int b) {
+  return ceildiv(a, static_cast<size_t>(b));
 }
 
 } // namespace ccglib::helper

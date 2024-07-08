@@ -10,8 +10,7 @@
 
 namespace {
 template <typename Tin, typename Tout>
-void Run(const Tin *a, const Tin *b, Tout *c, unsigned M, unsigned N,
-         unsigned K) {
+void Run(const Tin *a, const Tin *b, Tout *c, size_t M, size_t N, size_t K) {
   const std::array<size_t, 3> a_shape = {2, M, K};
   const std::array<size_t, 3> b_shape = {2, N, K};
   const std::array<size_t, 3> c_shape = {2, M, N};
@@ -25,12 +24,12 @@ void Run(const Tin *a, const Tin *b, Tout *c, unsigned M, unsigned N,
   auto c_view = xt::adapt(c, c_size, xt::no_ownership(), c_shape);
 
 #pragma omp parallel for collapse(2)
-  for (unsigned m = 0; m < M; ++m) {
-    for (unsigned n = 0; n < N; ++n) {
+  for (size_t m = 0; m < M; ++m) {
+    for (size_t n = 0; n < N; ++n) {
       Tout sum_real = 0;
       Tout sum_imag = 0;
 
-      for (unsigned k = 0; k < K; ++k) {
+      for (size_t k = 0; k < K; ++k) {
         const Tout a_real = a_view(0, m, k);
         const Tout a_imag = a_view(1, m, k);
         const Tout b_real = b_view(0, n, k);
@@ -59,15 +58,15 @@ template <typename T> inline int popcount(T x) {
   return count;
 }
 
-void run_binary(const unsigned *a, const unsigned *b, int *c, unsigned M,
-                unsigned N, unsigned K) {
+void run_binary(const unsigned *a, const unsigned *b, int *c, size_t M,
+                size_t N, size_t K) {
   // M, N, K are the number of 1-bit samples
   // the actual shape of the input data is different along the fastest changing
   // axis (=K) because values are packed into unsigned ints
-  const unsigned samples_per_element = sizeof(unsigned) * CHAR_BIT;
-  const unsigned K_PACKED = ccglib::helper::ceildiv(K, samples_per_element);
-  const unsigned K_PADDED = K_PACKED * samples_per_element;
-  const unsigned K_PADDING = K_PADDED - K;
+  const size_t samples_per_element = sizeof(unsigned) * CHAR_BIT;
+  const size_t K_PACKED = ccglib::helper::ceildiv(K, samples_per_element);
+  const size_t K_PADDED = K_PACKED * samples_per_element;
+  const size_t K_PADDING = K_PADDED - K;
 
   const std::array<size_t, 3> a_shape = {2, M, K_PACKED};
   const std::array<size_t, 3> b_shape = {2, N, K_PACKED};
@@ -82,8 +81,8 @@ void run_binary(const unsigned *a, const unsigned *b, int *c, unsigned M,
   auto c_view = xt::adapt(c, c_size, xt::no_ownership(), c_shape);
 
 #pragma omp parallel for collapse(2)
-  for (unsigned m = 0; m < M; ++m) {
-    for (unsigned n = 0; n < N; ++n) {
+  for (size_t m = 0; m < M; ++m) {
+    for (size_t n = 0; n < N; ++n) {
       /*
       The dot product of two vectors of 1-bit values can be understood as
       follows: each value is 1 or -1:
@@ -134,7 +133,7 @@ void run_binary(const unsigned *a, const unsigned *b, int *c, unsigned M,
 
       int sum_real = 0;
       int sum_imag = 0;
-      for (unsigned k = 0; k < K_PACKED; ++k) {
+      for (size_t k = 0; k < K_PACKED; ++k) {
         const unsigned a_real = a_view(0, m, k);
         const unsigned a_imag = a_view(1, m, k);
         const unsigned b_real = b_view(0, n, k);
@@ -154,13 +153,13 @@ void run_binary(const unsigned *a, const unsigned *b, int *c, unsigned M,
 } // namespace
 
 namespace ccglib::reference {
-void GEMM::Run(const half *a, const half *b, float *c, unsigned M, unsigned N,
-               unsigned K) {
+void GEMM::Run(const half *a, const half *b, float *c, size_t M, size_t N,
+               size_t K) {
   ::Run<half, float>(a, b, c, M, N, K);
 }
 
-void GEMM::Run(const unsigned *a, const unsigned *b, int *c, unsigned M,
-               unsigned N, unsigned K) {
+void GEMM::Run(const unsigned *a, const unsigned *b, int *c, size_t M, size_t N,
+               size_t K) {
   ::run_binary(a, b, c, M, N, K);
 }
 

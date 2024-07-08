@@ -50,7 +50,7 @@ inline __device__ void bmma_sync(
 
 inline __device__ void load_matrix_sync(
     fragment<matrix_a, 16, 8, 256, experimental::precision::b1, row_major> &a,
-    const void *p, unsigned ldm) {
+    const void *p, size_t ldm) {
   a.x[0] = ((const int *)p)[ldm / 32 * (laneid() / 4) + laneid() % 4];
   a.x[1] = ((const int *)p)[ldm / 32 * (laneid() / 4 + 8) + laneid() % 4];
   a.x[2] = ((const int *)p)[ldm / 32 * (laneid() / 4) + laneid() % 4 + 4];
@@ -59,14 +59,14 @@ inline __device__ void load_matrix_sync(
 
 inline __device__ void load_matrix_sync(
     fragment<matrix_b, 16, 8, 256, experimental::precision::b1, col_major> &b,
-    const void *p, unsigned ldm) {
+    const void *p, size_t ldm) {
   b.x[0] = ((const int *)p)[ldm / 32 * (laneid() / 4) + laneid() % 4];
   b.x[1] = ((const int *)p)[ldm / 32 * (laneid() / 4) + laneid() % 4 + 4];
 }
 
 inline __device__ void
 store_matrix_sync(int *p, const fragment<accumulator, 16, 8, 256, int> &d,
-                  unsigned ldm, layout_t layout) {
+                  size_t ldm, layout_t layout) {
   if (layout == mem_row_major) {
     ((int2 *)p)[ldm / 2 * (laneid() / 4) + laneid() % 4] =
         make_int2(d.x[0], d.x[1]);
