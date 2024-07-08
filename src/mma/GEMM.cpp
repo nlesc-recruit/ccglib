@@ -40,10 +40,10 @@ private:
   std::unique_ptr<cu::Function> function_;
 };
 
-GEMM::Impl::Impl(size_t B_, size_t M_, size_t K_, size_t N_,
+GEMM::Impl::Impl(size_t B_, size_t M_, size_t N_, size_t K_,
                  size_t nr_input_bits_, cu::Device &device_,
                  cu::Stream &stream_, Precision precision, Variant variant)
-    : B_(B_), M_(M_), K_(K_), N_(N_), nr_input_bits_(nr_input_bits_),
+    : B_(B_), M_(M_), N_(N_), K_(K_), nr_input_bits_(nr_input_bits_),
       device_(device_), stream_(stream_), variant_(variant),
       kernel_(Kernel(precision, variant)) {
   const Kernel::Parameters parameters = kernel_.GetParameters();
@@ -121,10 +121,10 @@ void GEMM::Impl::compile_kernel() {
       std::make_unique<cu::Function>(*module_, kernel_.GetName().c_str());
 }
 
-GEMM::GEMM(size_t B_, size_t M_, size_t K_, size_t N_, size_t nr_input_bits_,
+GEMM::GEMM(size_t B_, size_t M_, size_t N_, size_t K_, size_t nr_input_bits_,
            cu::Device &device_, cu::Stream &stream_, Precision precision,
            Variant variant)
-    : impl_(std::make_unique<Impl>(B_, M_, K_, N_, nr_input_bits_, device_,
+    : impl_(std::make_unique<Impl>(B_, M_, N_, K_, nr_input_bits_, device_,
                                    stream_, precision, variant)){};
 
 GEMM::~GEMM() = default;

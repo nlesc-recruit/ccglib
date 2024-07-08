@@ -143,7 +143,7 @@ protected:
   void complex_gemm_basic() {
     initialize_memory();
 
-    ccglib::mma::GEMM gemm_mma(kBatchSize, global_m_, global_k_, global_n_,
+    ccglib::mma::GEMM gemm_mma(kBatchSize, global_m_, global_n_, global_k_,
                                NrInputBits, *device_, *stream_, Precision,
                                ccglib::mma::basic);
     gemm_mma.Run(*d_a_, *d_b_, *d_c_);
@@ -170,7 +170,7 @@ protected:
                                              NrInputBits, *device_, *stream_);
     transpose_b.Run(*h_b_, d_b_trans);
 
-    ccglib::mma::GEMM gemm_mma(kBatchSize, global_m_, global_k_, global_n_,
+    ccglib::mma::GEMM gemm_mma(kBatchSize, global_m_, global_n_, global_k_,
                                NrInputBits, *device_, *stream_, Precision,
                                ccglib::mma::opt);
 
