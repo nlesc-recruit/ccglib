@@ -55,7 +55,7 @@ void Packing::compile_kernel() {
 
   std::vector<std::string> options = {
       "-std=c++17", "-arch=sm_" + std::to_string(capability),
-      "-I" + cuda_include_path, "-DN=" + std::to_string(N_)};
+      "-I" + cuda_include_path, "-DN=" + std::to_string(N_) + "UL"};
 
   const std::string kernel(&_binary_kernels_packing_kernel_cu_start,
                            &_binary_kernels_packing_kernel_cu_end);

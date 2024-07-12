@@ -44,9 +44,10 @@ void Transpose::compile_kernel() {
   std::vector<std::string> options = {"-std=c++17",
                                       "-arch=sm_" + std::to_string(capability),
                                       "-I" + cuda_include_path,
-                                      "-DB=" + std::to_string(B),
-                                      "-DM=" + std::to_string(M),
-                                      "-DN=" + std::to_string(N),
+                                      "-DBATCH_SIZE=" + std::to_string(B) +
+                                          "UL",
+                                      "-DM_GLOBAL=" + std::to_string(M) + "UL",
+                                      "-DN_GLOBAL=" + std::to_string(N) + "UL",
                                       "-DNBIT=" + std::to_string(nr_bits),
                                       "-DM_CHUNK=" + std::to_string(M_chunk),
                                       "-DN_CHUNK=" + std::to_string(N_chunk)};

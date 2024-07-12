@@ -24,18 +24,22 @@ using T = unsigned int;
 #define PACKING_FACTOR (sizeof(T) * CHAR_BIT / NBIT)
 
 extern "C" {
-__global__ void transpose(T out[B][M / M_CHUNK][N / N_CHUNK][COMPLEX][M_CHUNK]
-                               [N_CHUNK / PACKING_FACTOR],
-                          const T in[B][COMPLEX][M][N / PACKING_FACTOR]) {
+__global__ void transpose(
+    T out[BATCH_SIZE][M_GLOBAL / M_CHUNK][N_GLOBAL / N_CHUNK][COMPLEX][M_CHUNK]
+         [N_CHUNK / PACKING_FACTOR],
+    const T in[BATCH_SIZE][COMPLEX][M_GLOBAL][N_GLOBAL / PACKING_FACTOR]) {
   const size_t idx_B = blockIdx.z;
-  const size_t idx_N = threadIdx.x + blockDim.x * blockIdx.x;
-  const size_t idx_M = threadIdx.y + blockDim.y * blockIdx.y;
+  const size_t idx_N =
+      threadIdx.x + blockIdx.x * static_cast<size_t>(blockDim.x);
+  const size_t idx_M =
+      threadIdx.y + blockIdx.y * static_cast<size_t>(blockDim.y);
 
-  static_assert(M % M_CHUNK == 0);
-  static_assert(N % N_CHUNK == 0);
+  static_assert(M_GLOBAL % M_CHUNK == 0);
+  static_assert(N_GLOBAL % N_CHUNK == 0);
   static_assert(N_CHUNK % PACKING_FACTOR == 0);
 
-  if (idx_B < B && idx_M < M && idx_N < N / PACKING_FACTOR) {
+  if (idx_B < BATCH_SIZE && idx_M < M_GLOBAL &&
+      idx_N < N_GLOBAL / PACKING_FACTOR) {
     size_t b = idx_B;
     size_t m = idx_M / M_CHUNK;
     size_t m_c = idx_M % M_CHUNK;

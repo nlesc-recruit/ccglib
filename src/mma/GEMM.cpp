@@ -88,13 +88,12 @@ void GEMM::Impl::compile_kernel() {
       "-Dblock_size_x=" + std::to_string(threads_.x),
       "-Dblock_size_y=" + std::to_string(threads_.y),
       "-Dblock_size_z=" + std::to_string(threads_.z),
-      "-DBATCH_SIZE=" + std::to_string(B_),
-      "-DM_GLOBAL=" + std::to_string(M_),
-      "-DN_GLOBAL=" + std::to_string(N_),
-      "-DK_GLOBAL=" + std::to_string(K_),
-      "-DK_PADDING=" +
-          std::to_string(
-              0), // will be required when K is not a multiple of K_PER_WMMA
+      "-DBATCH_SIZE=" + std::to_string(B_) + "UL",
+      "-DM_GLOBAL=" + std::to_string(M_) + "UL",
+      "-DN_GLOBAL=" + std::to_string(N_) + "UL",
+      "-DK_GLOBAL=" + std::to_string(K_) + "UL",
+      "-DK_PADDING=" + std::to_string(0) +
+          "UL", // will be required when K is not a multiple of K_PER_WMMA
       "-DNBIT=" + std::to_string(nr_input_bits_),
       "-DM_PER_BLOCK=" + std::to_string(parameters.m_per_block),
       "-DM_PER_WARP=" + std::to_string(parameters.m_per_warp),

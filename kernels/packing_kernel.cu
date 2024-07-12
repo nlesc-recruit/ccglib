@@ -1,6 +1,6 @@
 extern "C" __global__ void
 pack_bits(unsigned *output, const unsigned char *input, const size_t n) {
-  size_t tid = threadIdx.x + blockIdx.x * blockDim.x;
+  size_t tid = threadIdx.x + blockIdx.x * static_cast<size_t>(blockDim.x);
   if (tid >= n) {
     return;
   }
@@ -13,7 +13,7 @@ pack_bits(unsigned *output, const unsigned char *input, const size_t n) {
 
 extern "C" __global__ void unpack_bits(unsigned char *output,
                                        const unsigned *input, const size_t n) {
-  size_t tid = threadIdx.x + blockIdx.x * blockDim.x;
+  size_t tid = threadIdx.x + blockIdx.x * static_cast<size_t>(blockDim.x);
   if (tid >= n) {
     return;
   }
