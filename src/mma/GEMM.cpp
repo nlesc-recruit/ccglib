@@ -13,13 +13,17 @@ class GEMM::Impl {
 public:
   Impl(size_t B_, size_t M_, size_t N_, size_t K_, size_t nr_input_bits_,
        cu::Device &device_, cu::Stream &stream_, Precision precision,
-       Variant variant);
+       Variant variant, MemOrder c_mem_order, MemOrder a_mem_order,
+       MemOrder b_mem_order);
 
   void Run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b, cu::DeviceMemory &d_c);
 
 private:
   void compile_kernel();
 
+  MemOrder a_mem_order_;
+  MemOrder b_mem_order_;
+  MemOrder c_mem_order_;
   Variant variant_;
   const Kernel &kernel_;
 
@@ -42,10 +46,13 @@ private:
 
 GEMM::Impl::Impl(size_t B_, size_t M_, size_t N_, size_t K_,
                  size_t nr_input_bits_, cu::Device &device_,
-                 cu::Stream &stream_, Precision precision, Variant variant)
+                 cu::Stream &stream_, Precision precision, Variant variant,
+                 MemOrder a_mem_order, MemOrder b_mem_order,
+                 MemOrder c_mem_order)
     : B_(B_), M_(M_), N_(N_), K_(K_), nr_input_bits_(nr_input_bits_),
       device_(device_), stream_(stream_), variant_(variant),
-      kernel_(Kernel(precision, variant)) {
+      c_mem_order_(c_mem_order), a_mem_order_(a_mem_order),
+      b_mem_order_(b_mem_order), kernel_(Kernel(precision, variant)) {
   const Kernel::Parameters parameters = kernel_.GetParameters();
   threads_ = kernel_.GetThreads();
   grid_ = dim3(ccglib::helper::ceildiv(N_, parameters.n_per_block),
@@ -105,6 +112,24 @@ void GEMM::Impl::compile_kernel() {
       "-DWARP_SIZE=" + std::to_string(parameters.warp_size),
       "-DNBUFFER=" + std::to_string(parameters.nbuffer)};
 
+  if (a_mem_order_ == MemOrder::row_major) {
+    options.push_back("-DA_ROW_MAJOR");
+  } else {
+    options.push_back("-DA_COL_MAJOR");
+  }
+
+  if (b_mem_order_ == MemOrder::row_major) {
+    options.push_back("-DB_ROW_MAJOR");
+  } else {
+    options.push_back("-DB_COL_MAJOR");
+  }
+
+  if (c_mem_order_ == MemOrder::row_major) {
+    options.push_back("-DC_ROW_MAJOR");
+  } else {
+    options.push_back("-DC_COL_MAJOR");
+  }
+
   nvrtc::Program program(kernel_.GetSource(), "gemm_kernel.cu");
 
   try {
@@ -122,9 +147,11 @@ void GEMM::Impl::compile_kernel() {
 
 GEMM::GEMM(size_t B_, size_t M_, size_t N_, size_t K_, size_t nr_input_bits_,
            cu::Device &device_, cu::Stream &stream_, Precision precision,
-           Variant variant)
+           Variant variant, MemOrder c_mem_order, MemOrder a_mem_order,
+           MemOrder b_mem_order)
     : impl_(std::make_unique<Impl>(B_, M_, N_, K_, nr_input_bits_, device_,
-                                   stream_, precision, variant)){};
+                                   stream_, precision, variant, a_mem_order,
+                                   b_mem_order, c_mem_order)){};
 
 GEMM::~GEMM() = default;
 

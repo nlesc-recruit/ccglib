@@ -10,10 +10,16 @@
 
 namespace {
 template <typename Tin, typename Tout>
-void Run(const Tin *a, const Tin *b, Tout *c, size_t M, size_t N, size_t K) {
+void Run(const Tin *a, const Tin *b, Tout *c, size_t M, size_t N, size_t K,
+         ccglib::mma::MemOrder output_mem_order) {
   const std::array<size_t, 3> a_shape = {2, M, K};
   const std::array<size_t, 3> b_shape = {2, N, K};
-  const std::array<size_t, 3> c_shape = {2, M, N};
+  std::array<size_t, 3> c_shape;
+  if (output_mem_order == ccglib::mma::row_major) {
+    c_shape = {2, M, N};
+  } else {
+    c_shape = {2, N, M};
+  }
 
   const size_t a_size = 2 * M * K;
   const size_t b_size = 2 * N * K;
@@ -39,8 +45,13 @@ void Run(const Tin *a, const Tin *b, Tout *c, size_t M, size_t N, size_t K) {
         sum_imag += a_real * b_imag + a_imag * b_real;
       }
 
-      c_view(0, m, n) = sum_real;
-      c_view(1, m, n) = sum_imag;
+      if (output_mem_order == ccglib::mma::row_major) {
+        c_view(0, m, n) = sum_real;
+        c_view(1, m, n) = sum_imag;
+      } else {
+        c_view(0, n, m) = sum_real;
+        c_view(1, n, m) = sum_imag;
+      }
     }
   }
 }
@@ -59,7 +70,7 @@ template <typename T> inline int popcount(T x) {
 }
 
 void run_binary(const unsigned *a, const unsigned *b, int *c, size_t M,
-                size_t N, size_t K) {
+                size_t N, size_t K, ccglib::mma::MemOrder output_mem_order) {
   // M, N, K are the number of 1-bit samples
   // the actual shape of the input data is different along the fastest changing
   // axis (=K) because values are packed into unsigned ints
@@ -70,7 +81,12 @@ void run_binary(const unsigned *a, const unsigned *b, int *c, size_t M,
 
   const std::array<size_t, 3> a_shape = {2, M, K_PACKED};
   const std::array<size_t, 3> b_shape = {2, N, K_PACKED};
-  const std::array<size_t, 3> c_shape = {2, M, N};
+  std::array<size_t, 3> c_shape;
+  if (output_mem_order == ccglib::mma::row_major) {
+    c_shape = {2, M, N};
+  } else {
+    c_shape = {2, N, M};
+  }
 
   const size_t a_size = 2 * M * K_PACKED;
   const size_t b_size = 2 * N * K_PACKED;
@@ -145,8 +161,13 @@ void run_binary(const unsigned *a, const unsigned *b, int *c, size_t M,
                     popcount(bitwise_xor(a_imag, b_real));
       }
 
-      c_view(0, m, n) = 2 * (K_PADDED - sum_real);
-      c_view(1, m, n) = 2 * (K_PADDED - K_PADDING - sum_imag);
+      if (output_mem_order == ccglib::mma::row_major) {
+        c_view(0, m, n) = 2 * (K_PADDED - sum_real);
+        c_view(1, m, n) = 2 * (K_PADDED - K_PADDING - sum_imag);
+      } else {
+        c_view(0, n, m) = 2 * (K_PADDED - sum_real);
+        c_view(1, n, m) = 2 * (K_PADDED - K_PADDING - sum_imag);
+      }
     }
   }
 }
@@ -154,18 +175,18 @@ void run_binary(const unsigned *a, const unsigned *b, int *c, size_t M,
 
 namespace ccglib::reference {
 void GEMM::Run(const half *a, const half *b, float *c, size_t M, size_t N,
-               size_t K) {
-  ::Run<half, float>(a, b, c, M, N, K);
+               size_t K, ccglib::mma::MemOrder output_mem_order) {
+  ::Run<half, float>(a, b, c, M, N, K, output_mem_order);
 }
 
 void GEMM::Run(const float *a, const float *b, float *c, size_t M, size_t N,
-               size_t K) {
-  ::Run<float, float>(a, b, c, M, N, K);
+               size_t K, ccglib::mma::MemOrder output_mem_order) {
+  ::Run<float, float>(a, b, c, M, N, K, output_mem_order);
 }
 
 void GEMM::Run(const unsigned *a, const unsigned *b, int *c, size_t M, size_t N,
-               size_t K) {
-  ::run_binary(a, b, c, M, N, K);
+               size_t K, ccglib::mma::MemOrder output_mem_order) {
+  ::run_binary(a, b, c, M, N, K, output_mem_order);
 }
 
 } // end namespace ccglib::reference

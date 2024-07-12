@@ -5,16 +5,24 @@
 #include <xtensor/xadapt.hpp>
 #include <xtensor/xtensor.hpp>
 
+#include <ccglib/gemm/mem_order.h>
+#include <ccglib/gemm/reference.h>
+
 #include "fpequals.h"
 
 template <typename Tin, typename Tout, size_t NrInputBits>
 void verify(const Tin *a, const Tin *b, const Tout *c, size_t B, size_t M,
-            size_t N, size_t K) {
+            size_t N, size_t K, ccglib::mma::MemOrder output_mem_order) {
   const size_t kPackingFactor = sizeof(Tin) * CHAR_BIT / NrInputBits;
 
   const std::array<size_t, 4> a_shape = {B, 2, M, K / kPackingFactor};
   const std::array<size_t, 4> b_shape = {B, 2, N, K / kPackingFactor};
-  const std::array<size_t, 4> c_shape = {B, 2, M, N};
+  std::array<size_t, 4> c_shape;
+  if (output_mem_order == ccglib::mma::row_major) {
+    c_shape = {B, 2, M, N};
+  } else {
+    c_shape = {B, 2, N, M};
+  }
 
   const size_t a_size = B * 2 * M * K / kPackingFactor;
   const size_t b_size = B * 2 * N * K / kPackingFactor;
@@ -31,14 +39,22 @@ void verify(const Tin *a, const Tin *b, const Tout *c, size_t B, size_t M,
     size_t aoffset = batch * 2 * M * K / kPackingFactor;
     size_t boffset = batch * 2 * N * K / kPackingFactor;
     size_t coffset = batch * 2 * M * N;
-    gemm.Run(a + aoffset, b + boffset, c_ref.data() + coffset, M, N, K);
+    gemm.Run(a + aoffset, b + boffset, c_ref.data() + coffset, M, N, K,
+             output_mem_order);
   }
 
   for (size_t b = 0; b < B; b++) {
     for (size_t m = 0; m < M; m++) {
       for (size_t n = 0; n < N; n++) {
-        std::complex<Tout> ref(c_ref(b, 0, m, n), c_ref(b, 1, m, n));
-        std::complex<Tout> tst(c_view(b, 0, m, n), c_view(b, 1, m, n));
+        std::complex<Tout> ref;
+        std::complex<Tout> tst;
+        if (output_mem_order == ccglib::mma::row_major) {
+          ref = {c_ref(b, 0, m, n), c_ref(b, 1, m, n)};
+          tst = {c_view(b, 0, m, n), c_view(b, 1, m, n)};
+        } else {
+          ref = {c_ref(b, 0, n, m), c_ref(b, 1, n, m)};
+          tst = {c_view(b, 0, n, m), c_view(b, 1, n, m)};
+        }
         ccglib::test::fpEquals(ref, tst, ccglib::test::getEpsilon<Tin>());
       }
     }

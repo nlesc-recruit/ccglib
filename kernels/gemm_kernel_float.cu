@@ -36,6 +36,14 @@ using Tout = float;
 #error NBIT must be 16 or 32
 #endif
 
+// Check memory layout of A and B matrix
+#ifdef A_COL_MAJOR
+#error "float GEMM does not currently support col-major A matrix"
+#endif
+#ifdef B_ROW_MAJOR
+#error "float GEMM does not currently support row-major B matrix"
+#endif
+
 // basic data layout
 using A_t = Tin[BATCH_SIZE][COMPLEX][M_GLOBAL][K_GLOBAL];
 using B_t = Tin[BATCH_SIZE][COMPLEX][N_GLOBAL][K_GLOBAL];
@@ -44,7 +52,44 @@ using A_opt_t = Tin[BATCH_SIZE][M_GLOBAL / M_PER_BLOCK][K_GLOBAL / K_PER_WMMA]
                    [COMPLEX][M_PER_BLOCK][K_PER_WMMA];
 using B_opt_t = Tin[BATCH_SIZE][N_GLOBAL / N_PER_BLOCK][K_GLOBAL / K_PER_WMMA]
                    [COMPLEX][N_PER_BLOCK][K_PER_WMMA];
+
+#ifdef C_ROW_MAJOR
 using C_t = Tout[BATCH_SIZE][COMPLEX][M_GLOBAL][N_GLOBAL];
+#else
+using C_t = Tout[BATCH_SIZE][COMPLEX][N_GLOBAL][M_GLOBAL];
+#endif
+
+inline __device__ size_t global_idx_m(const size_t &blockM, const size_t &warpM,
+                                      const size_t &m) {
+  return blockM * M_PER_BLOCK + warpM * M_PER_WARP + m * M_PER_WMMA;
+}
+
+inline __device__ size_t global_idx_n(const size_t &blockN, const size_t &warpN,
+                                      const size_t &n) {
+  return blockN * N_PER_BLOCK + warpN * N_PER_WARP + n * N_PER_WMMA;
+}
+
+inline __device__ void store_matrix(
+    wmma::fragment<wmma::accumulator, M_PER_WMMA, N_PER_WMMA, K_PER_WMMA, Tout>
+        sum[COMPLEX][M_PER_WARP / M_PER_WMMA][N_PER_WARP / N_PER_WMMA],
+    C_t C, const size_t &batch, const size_t &blockM, const size_t &warpM,
+    const size_t &blockN, const size_t &warpN) {
+  for (size_t c = 0; c < COMPLEX; c++) {
+    for (size_t m = 0; m < (M_PER_WARP / M_PER_WMMA); m++) {
+      for (size_t n = 0; n < (N_PER_WARP / N_PER_WMMA); n++) {
+        const size_t idx_m = global_idx_m(blockM, warpM, m);
+        const size_t idx_n = global_idx_n(blockN, warpN, n);
+#ifdef C_ROW_MAJOR
+        wmma::store_matrix_sync(&(C[batch][c][idx_m][idx_n]), sum[c][m][n],
+                                N_GLOBAL, wmma::mem_row_major);
+#else
+        wmma::store_matrix_sync(&(C[batch][c][idx_n][idx_m]), sum[c][m][n],
+                                M_GLOBAL, wmma::mem_col_major);
+#endif
+      }
+    }
+  }
+}
 
 extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
                                                    const B_t B) {
@@ -85,9 +130,7 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
       for (size_t m = 0; m < M_TILES; m++) {
         size_t k_index = k * K_PER_WMMA;
         wmma::load_matrix_sync(
-            a[c][m],
-            &A[batch][c][blockM * M_PER_BLOCK + warpM * M_PER_WARP +
-                         m * M_PER_WMMA][k_index],
+            a[c][m], &A[batch][c][global_idx_m(blockM, warpM, m)][k_index],
             K_GLOBAL);
       }
     }
@@ -96,9 +139,7 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
       for (size_t n = 0; n < N_TILES; n++) {
         size_t k_index = k * K_PER_WMMA;
         wmma::load_matrix_sync(
-            b[c][n],
-            &B[batch][c][blockN * N_PER_BLOCK + warpN * N_PER_WARP +
-                         n * N_PER_WMMA][k_index],
+            b[c][n], &B[batch][c][global_idx_n(blockN, warpN, n)][k_index],
             K_GLOBAL);
       }
     }
@@ -134,18 +175,7 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
   }
 
   // store the result to global memory
-  for (size_t c = 0; c < COMPLEX; c++) {
-    for (size_t m = 0; m < M_TILES; m++) {
-      for (size_t n = 0; n < N_TILES; n++) {
-        Tout *c_ptr =
-            &C[batch][c]
-              [blockM * M_PER_BLOCK + warpM * M_PER_WARP + m * M_PER_WMMA]
-              [blockN * N_PER_BLOCK + warpN * N_PER_WARP + n * N_PER_WMMA];
-        wmma::store_matrix_sync(c_ptr, sum[c][m][n], N_GLOBAL,
-                                wmma::mem_row_major);
-      }
-    }
-  }
+  store_matrix(sum, C, batch, blockM, warpM, blockN, warpN);
 }
 
 extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
@@ -286,16 +316,5 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
   }
 
   // store the result to global memory
-  for (size_t c = 0; c < COMPLEX; c++) {
-    for (size_t m = 0; m < M_TILES; m++) {
-      for (size_t n = 0; n < N_TILES; n++) {
-        Tout *c_ptr =
-            &C[batch][c]
-              [blockM * M_PER_BLOCK + warpM * M_PER_WARP + m * M_PER_WMMA]
-              [blockN * N_PER_BLOCK + warpN * N_PER_WARP + n * N_PER_WMMA];
-        wmma::store_matrix_sync(c_ptr, sum[c][m][n], N_GLOBAL,
-                                wmma::mem_row_major);
-      }
-    }
-  }
+  store_matrix(sum, C, batch, blockM, warpM, blockN, warpN);
 }

@@ -16,6 +16,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
 
 #include "verify.h"
 
@@ -141,31 +142,31 @@ private:
     d_c_->zero(bytes_c_);
   }
 
-  void verify_output() {
+  void verify_output(ccglib::mma::MemOrder output_mem_order) {
     // copy C to host
     stream_->memcpyDtoHAsync(*h_c_, *d_c_, bytes_c_);
     stream_->synchronize();
 
     // verify output
-    verify<Tin, Tout, NrInputBits>(static_cast<const Tin *>(*h_a_),
-                                   static_cast<const Tin *>(*h_b_),
-                                   static_cast<Tout *>(*h_c_), kBatchSize,
-                                   global_m_, global_n_, global_k_);
+    verify<Tin, Tout, NrInputBits>(
+        static_cast<const Tin *>(*h_a_), static_cast<const Tin *>(*h_b_),
+        static_cast<Tout *>(*h_c_), kBatchSize, global_m_, global_n_, global_k_,
+        output_mem_order);
   }
 
 protected:
-  void complex_gemm_basic() {
+  void complex_gemm_basic(ccglib::mma::MemOrder output_mem_order) {
     initialize_memory();
 
     ccglib::mma::GEMM gemm_mma(kBatchSize, global_m_, global_n_, global_k_,
                                NrInputBits, *device_, *stream_, Precision,
-                               ccglib::mma::basic);
+                               ccglib::mma::basic, output_mem_order);
     gemm_mma.Run(*d_a_, *d_b_, *d_c_);
 
-    verify_output();
+    verify_output(output_mem_order);
   }
 
-  void complex_gemm_opt() {
+  void complex_gemm_opt(ccglib::mma::MemOrder output_mem_order) {
     initialize_memory();
 
     // Allocate device memory for transposed input data
@@ -186,11 +187,11 @@ protected:
 
     ccglib::mma::GEMM gemm_mma(kBatchSize, global_m_, global_n_, global_k_,
                                NrInputBits, *device_, *stream_, Precision,
-                               ccglib::mma::opt);
+                               ccglib::mma::opt, output_mem_order);
 
     gemm_mma.Run(d_a_trans, d_b_trans, *d_c_);
 
-    verify_output();
+    verify_output(output_mem_order);
   }
 };
 
@@ -204,35 +205,100 @@ using ComplexGemmTestFixtureInt1 =
 TEST_CASE_METHOD(ComplexGemmTestFixtureFloat16,
                  "Complex GEMM Test - float16 basic",
                  "[complex-gemm-test-float16-basic]") {
-  ComplexGemmTestFixtureFloat16::complex_gemm_basic();
+  SECTION("C row-major") {
+    ComplexGemmTestFixtureFloat16::complex_gemm_basic(ccglib::mma::row_major);
+  }
+  SECTION("C col-major") {
+    ComplexGemmTestFixtureFloat16::complex_gemm_basic(ccglib::mma::col_major);
+  }
 }
 
 TEST_CASE_METHOD(ComplexGemmTestFixtureFloat16,
                  "Complex GEMM Test - float16 opt",
                  "[complex-gemm-test-float16-opt]") {
-  ComplexGemmTestFixtureFloat16::complex_gemm_opt();
+  SECTION("C row-major") {
+    ComplexGemmTestFixtureFloat16::complex_gemm_opt(ccglib::mma::row_major);
+  }
+  SECTION("C col-major") {
+    ComplexGemmTestFixtureFloat16::complex_gemm_opt(ccglib::mma::col_major);
+  }
 }
 
 TEST_CASE_METHOD(ComplexGemmTestFixtureFloat32,
                  "Complex GEMM Test - float32 basic",
                  "[complex-gemm-test-float32-basic]") {
-  ComplexGemmTestFixtureFloat32::complex_gemm_basic();
+  SECTION("C row-major") {
+    ComplexGemmTestFixtureFloat32::complex_gemm_basic(ccglib::mma::row_major);
+  }
+  SECTION("C col-major") {
+    ComplexGemmTestFixtureFloat32::complex_gemm_basic(ccglib::mma::col_major);
+  }
 }
 
 TEST_CASE_METHOD(ComplexGemmTestFixtureFloat32,
                  "Complex GEMM Test - float32 opt",
                  "[complex-gemm-test-float32-opt]") {
-  ComplexGemmTestFixtureFloat32::complex_gemm_opt();
+  SECTION("C row-major") {
+    ComplexGemmTestFixtureFloat32::complex_gemm_opt(ccglib::mma::row_major);
+  }
+  SECTION("C col-major") {
+    ComplexGemmTestFixtureFloat32::complex_gemm_opt(ccglib::mma::col_major);
+  }
 }
 
 TEST_CASE_METHOD(ComplexGemmTestFixtureInt1, "Complex GEMM Test - int1 basic",
                  "[complex-gemm-test-int1-basic]") {
-  ComplexGemmTestFixtureInt1::complex_gemm_basic();
+  SECTION("C row-major") {
+    ComplexGemmTestFixtureInt1::complex_gemm_basic(ccglib::mma::row_major);
+  }
+  SECTION("C col-major") {
+    ComplexGemmTestFixtureInt1::complex_gemm_basic(ccglib::mma::col_major);
+  }
 }
 
 TEST_CASE_METHOD(ComplexGemmTestFixtureInt1, "Complex GEMM Test - int1 opt",
                  "[complex-gemm-test-int1-opt]") {
-  ComplexGemmTestFixtureInt1::complex_gemm_opt();
+  SECTION("C row-major") {
+    ComplexGemmTestFixtureInt1::complex_gemm_opt(ccglib::mma::row_major);
+  }
+  SECTION("C col-major") {
+    ComplexGemmTestFixtureInt1::complex_gemm_opt(ccglib::mma::col_major);
+  }
+}
+
+TEST_CASE("Unsupported matrix layout") {
+  const size_t batch_size = 16;
+  const size_t m = 16;
+  const size_t n = 16;
+  const size_t k = 256;
+
+  cu::init();
+  cu::Device device(0);
+  cu::Context context(CU_CTX_BLOCKING_SYNC, device);
+  cu::Stream stream;
+
+  ccglib::mma::MemOrder layout_a = ccglib::mma::col_major;
+  ccglib::mma::MemOrder layout_b = ccglib::mma::col_major;
+  ccglib::mma::MemOrder layout_c = ccglib::mma::row_major;
+
+  // float16 could support different layouts, but not currently implemented
+  // A must be row-major, B col-major
+  SECTION("float16") {
+    CHECK_THROWS_WITH(
+        ccglib::mma::GEMM(batch_size, m, n, k, 16, device, stream,
+                          ccglib::mma::float16, ccglib::mma::basic, layout_c,
+                          layout_a, layout_b),
+        Catch::Matchers::ContainsSubstring("NVRTC_ERROR_COMPILATION"));
+  }
+
+  // 1-bit requires A row-major, B col-major
+  SECTION("int1") {
+    CHECK_THROWS_WITH(
+        ccglib::mma::GEMM(batch_size, m, n, k, 1, device, stream,
+                          ccglib::mma::int1, ccglib::mma::basic, layout_c,
+                          layout_a, layout_b),
+        Catch::Matchers::ContainsSubstring("NVRTC_ERROR_COMPILATION"));
+  }
 }
 
 } // namespace ccglib::test
