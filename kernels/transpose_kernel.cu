@@ -13,10 +13,12 @@
 
 #if NBIT == 16
 using T = half;
+#elif NBIT == 32
+using T = float;
 #elif NBIT == 1
 using T = unsigned int;
 #else
-#error NBIT must be 16 or 1
+#error NBIT must be 1, 16, 32
 #endif
 
 #define PACKING_FACTOR (sizeof(T) * CHAR_BIT / NBIT)

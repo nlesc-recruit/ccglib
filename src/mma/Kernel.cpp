@@ -22,6 +22,9 @@ void Kernel::SetParameters(Precision precision) {
   case ccglib::mma::Precision::float16:
     parameters_ = Kernel::GetParameters<Precision::float16>();
     break;
+  case ccglib::mma::Precision::float32:
+    parameters_ = Kernel::GetParameters<Precision::float32>();
+    break;
   case ccglib::mma::Precision::int1:
     parameters_ = Kernel::GetParameters<Precision::int1>();
     break;
@@ -36,6 +39,8 @@ std::string Kernel::GetSource() const {
   switch (precision_) {
   case ccglib::mma::float16:
     return Kernel::GetSource<Precision::float16>();
+  case ccglib::mma::float32:
+    return Kernel::GetSource<Precision::float32>();
   case ccglib::mma::int1:
     return Kernel::GetSource<Precision::int1>();
   default:

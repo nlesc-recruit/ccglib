@@ -1,3 +1,4 @@
+#include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <cuda_fp16.h>
 #include <limits.h>
@@ -11,25 +12,34 @@
 
 namespace ccglib::test {
 
-TEST_CASE("Reference complex float16") {
-  const size_t M = 3;
-  const size_t N = 3;
-  const size_t K = 2;
-  const size_t COMPLEX = 2;
-  // Matrix a row-major a(2,M,K)
-  const half a[COMPLEX * M * K] = {1, 2, 3, 4, 5, 6, 6, 5, 4, 3, 2, 1};
-  // Matrix a column-major a(2,M,K)
-  const half b[COMPLEX * N * K] = {1, 2, 3, 4, 5, 6, 6, 5, 4, 3, 2, 1};
-  // Matrix c=a*b row-major c(2,M,N)
-  const std::array<float, COMPLEX * M * N> c_ref = {
-      -56, -28, 0, -28, 0, 28, 0, 28, 56, 32, 48, 64, 48, 48, 48, 64, 48, 32};
+template <typename InputType> class TestImpl {
+public:
+  void runTestReference() {
+    const size_t M = 3;
+    const size_t N = 3;
+    const size_t K = 2;
+    const size_t COMPLEX = 2;
+    // Matrix a row-major a(2,M,K)
+    const InputType a[COMPLEX * M * K] = {1, 2, 3, 4, 5, 6, 6, 5, 4, 3, 2, 1};
+    // Matrix a column-major a(2,M,K)
+    const InputType b[COMPLEX * N * K] = {1, 2, 3, 4, 5, 6, 6, 5, 4, 3, 2, 1};
+    // Matrix c=a*b row-major c(2,M,N)
+    const std::array<float, COMPLEX * M * N> c_ref = {
+        -56, -28, 0, -28, 0, 28, 0, 28, 56, 32, 48, 64, 48, 48, 48, 64, 48, 32};
 
-  std::array<float, COMPLEX * M * N> c_test;
+    std::array<float, COMPLEX * M * N> c_test;
 
-  ccglib::reference::GEMM gemm;
-  gemm.Run(a, b, &c_test[0], M, N, K);
+    ccglib::reference::GEMM gemm;
+    gemm.Run(a, b, &c_test[0], M, N, K);
 
-  REQUIRE(c_ref == c_test);
+    REQUIRE(c_ref == c_test);
+  }
+};
+
+using TestTypes = std::tuple<half, float>;
+TEMPLATE_LIST_TEST_CASE_METHOD(TestImpl, "Reference complex float",
+                               "[correctness]", TestTypes) {
+  SECTION("Simple reference output") { TestImpl<TestType>::runTestReference(); }
 }
 
 TEST_CASE("Reference complex binary") {

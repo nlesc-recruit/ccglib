@@ -158,6 +158,11 @@ void GEMM::Run(const half *a, const half *b, float *c, size_t M, size_t N,
   ::Run<half, float>(a, b, c, M, N, K);
 }
 
+void GEMM::Run(const float *a, const float *b, float *c, size_t M, size_t N,
+               size_t K) {
+  ::Run<float, float>(a, b, c, M, N, K);
+}
+
 void GEMM::Run(const unsigned *a, const unsigned *b, int *c, size_t M, size_t N,
                size_t K) {
   ::run_binary(a, b, c, M, N, K);

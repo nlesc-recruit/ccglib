@@ -23,6 +23,14 @@
 #define COMPLEX 2
 #endif
 
+static inline float float_to_tf32(float x) {
+  // converting float to tf32 is equivalent to zeroing the last 13 bits
+  float value = x;
+  int *value_int = reinterpret_cast<int *>(&value);
+  *value_int &= 0xffffe000; // 32 bits: 19 ones followed by 13 zeroes
+  return *reinterpret_cast<float *>(value_int);
+}
+
 namespace ccglib::test {
 
 template <typename Tin, typename Tout, size_t NrInputBits,
@@ -85,16 +93,19 @@ private:
     // fill a and b with random values (fixed seed), initalize c to zero
     if constexpr (std::is_same_v<T, __half>) {
       unsigned int seed = 0;
-      const float scale = 1.0f;
       for (int idx = 0; idx < bytes_a_ / sizeof(T); idx++) {
-        a[idx] = __float2half(
-            2.0f * scale * (static_cast<float>(rand_r(&seed)) / RAND_MAX) -
-            scale);
+        a[idx] = __float2half(static_cast<float>(rand_r(&seed)) / RAND_MAX);
       }
       for (int idx = 0; idx < bytes_b_ / sizeof(T); idx++) {
-        b[idx] = __float2half(
-            2.0f * scale * (static_cast<float>(rand_r(&seed)) / RAND_MAX) -
-            scale);
+        b[idx] = __float2half(static_cast<float>(rand_r(&seed)) / RAND_MAX);
+      }
+    } else if constexpr (std::is_same_v<T, float>) {
+      unsigned int seed = 0;
+      for (int idx = 0; idx < bytes_a_ / sizeof(T); idx++) {
+        a[idx] = float_to_tf32(static_cast<float>(rand_r(&seed)) / RAND_MAX);
+      }
+      for (int idx = 0; idx < bytes_b_ / sizeof(T); idx++) {
+        b[idx] = float_to_tf32(static_cast<float>(rand_r(&seed)) / RAND_MAX);
       }
     } else if constexpr (std::is_same_v<T, unsigned int>) {
       unsigned int seed = 0;
@@ -104,6 +115,9 @@ private:
       for (int idx = 0; idx < bytes_b_ / sizeof(T); idx++) {
         b[idx] = static_cast<unsigned int>(rand_r(&seed));
       }
+    } else {
+      throw std::runtime_error(
+          "No init input matrices implemented for this type");
     }
   }
 
@@ -182,6 +196,8 @@ protected:
 
 using ComplexGemmTestFixtureFloat16 =
     ComplexGemmTestFixture<half, float, 16, ccglib::mma::float16>;
+using ComplexGemmTestFixtureFloat32 =
+    ComplexGemmTestFixture<float, float, 32, ccglib::mma::float32>;
 using ComplexGemmTestFixtureInt1 =
     ComplexGemmTestFixture<unsigned int, int32_t, 1, ccglib::mma::int1>;
 
@@ -195,6 +211,18 @@ TEST_CASE_METHOD(ComplexGemmTestFixtureFloat16,
                  "Complex GEMM Test - float16 opt",
                  "[complex-gemm-test-float16-opt]") {
   ComplexGemmTestFixtureFloat16::complex_gemm_opt();
+}
+
+TEST_CASE_METHOD(ComplexGemmTestFixtureFloat32,
+                 "Complex GEMM Test - float32 basic",
+                 "[complex-gemm-test-float32-basic]") {
+  ComplexGemmTestFixtureFloat32::complex_gemm_basic();
+}
+
+TEST_CASE_METHOD(ComplexGemmTestFixtureFloat32,
+                 "Complex GEMM Test - float32 opt",
+                 "[complex-gemm-test-float32-opt]") {
+  ComplexGemmTestFixtureFloat32::complex_gemm_opt();
 }
 
 TEST_CASE_METHOD(ComplexGemmTestFixtureInt1, "Complex GEMM Test - int1 basic",

@@ -8,6 +8,8 @@ class GEMM {
 public:
   virtual void Run(const half *a, const half *b, float *c, size_t M, size_t N,
                    size_t K);
+  virtual void Run(const float *a, const float *b, float *c, size_t M, size_t N,
+                   size_t K);
   virtual void Run(const unsigned *a, const unsigned *b, int *c, size_t M,
                    size_t N, size_t K);
 };

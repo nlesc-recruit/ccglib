@@ -28,8 +28,12 @@ using namespace nvcuda;
 using Tin = half;
 using Ttc = half;
 using Tout = float;
+#elif NBIT == 32
+using Tin = float;
+using Ttc = wmma::precision::tf32;
+using Tout = float;
 #else
-#error NBIT must be 16
+#error NBIT must be 16 or 32
 #endif
 
 // basic data layout
@@ -75,6 +79,8 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
         b[COMPLEX][N_TILES];
 
     // load matrices from global memory
+    // float is implicitly converted to tf32. No conversion is done in half
+    // precision mode.
     for (size_t c = 0; c < COMPLEX; c++) {
       for (size_t m = 0; m < M_TILES; m++) {
         size_t k_index = k * K_PER_WMMA;
@@ -210,6 +216,8 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
     __syncthreads();
 
     // load A matrix from shared memory
+    // float is implicitly converted to tf32. No conversion is done in half
+    // precision mode.
     for (size_t c = 0; c < COMPLEX; c++) {
       for (size_t m = 0; m < M_TILES; m++) {
         wmma::load_matrix_sync(
@@ -220,6 +228,8 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
     }
 
     // load B matrix from shared memory
+    // float is implicitly converted to tf32. No conversion is done in half
+    // precision mode.
     for (size_t c = 0; c < COMPLEX; c++) {
       for (size_t n = 0; n < N_TILES; n++) {
         wmma::load_matrix_sync(

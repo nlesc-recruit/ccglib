@@ -27,7 +27,7 @@ add_library(
 target_link_libraries(ccglib PRIVATE cudawrappers::cu cudawrappers::nvrtc
                                      OpenMP::OpenMP_CXX xtensor)
 
-target_embed_source(ccglib ../kernels/gemm_kernel_float16.cu)
+target_embed_source(ccglib ../kernels/gemm_kernel_float.cu)
 target_embed_source(ccglib ../kernels/gemm_kernel_int1.cu)
 target_embed_source(ccglib ../kernels/transpose_kernel.cu)
 target_embed_source(ccglib ../kernels/packing_kernel.cu)

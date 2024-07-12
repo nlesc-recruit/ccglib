@@ -3,7 +3,7 @@
 
 namespace ccglib::mma {
 
-enum Precision { float16, int1 };
+enum Precision { int1, float16, float32 };
 
 }
 
