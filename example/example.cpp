@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
   cu::DeviceMemory d_c(bytes_c);
   d_c.zero(bytes_c);
 
-  ccglib::mma::GEMM gemm_mma(batch_size, global_m, global_k, global_n,
+  ccglib::mma::GEMM gemm_mma(batch_size, global_m, global_n, global_k,
                              nr_input_bits, device, stream,
                              ccglib::mma::float16, ccglib::mma::basic);
 
