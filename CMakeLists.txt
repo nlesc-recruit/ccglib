@@ -25,6 +25,9 @@ FetchContent_MakeAvailable(cudawrappers)
 include(cmake/xtensor.cmake)
 
 option(CCGLIB_BUILD_TESTING "Build the test suite" OFF)
+option(CCGLIB_BUILD_BENCHMARK "Build the benchmark suite" OFF)
+option(CCGLIB_BENCHMARK_WITH_PMT
+       "Enable Power Measurement Toolkit support in the benchmark suite" OFF)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
@@ -33,6 +36,10 @@ add_subdirectory(src)
 if(CCGLIB_BUILD_TESTING)
   enable_testing()
   add_subdirectory(test)
+endif()
+
+if(CCGLIB_BUILD_BENCHMARK)
+  add_subdirectory(benchmark)
 endif()
 
 include(GNUInstallDirs)
