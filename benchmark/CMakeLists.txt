@@ -11,12 +11,16 @@ FetchContent_Declare(
   GIT_TAG v3.2.0)
 FetchContent_MakeAvailable(cxxopts)
 
-add_executable(benchmark_gemm benchmark_gemm.cu)
-target_link_libraries(benchmark_gemm ccglib cudawrappers::cu
-                      cudawrappers::nvrtc cxxopts)
-if(CCGLIB_BENCHMARK_WITH_PMT)
-  target_link_libraries(benchmark_gemm pmt)
-endif()
+set(BENCHMARKS gemm packing transpose)
+foreach(benchmark ${BENCHMARKS})
+  add_executable(benchmark_${benchmark} benchmark_${benchmark}.cu)
 
-target_include_directories(benchmark_gemm
-                           PRIVATE "${PROJECT_SOURCE_DIR}/include")
+  target_link_libraries(benchmark_${benchmark} ccglib cudawrappers::cu
+                        cudawrappers::nvrtc cxxopts)
+  if(CCGLIB_BENCHMARK_WITH_PMT)
+    target_link_libraries(benchmark_${benchmark} pmt)
+  endif()
+
+  target_include_directories(benchmark_${benchmark}
+                             PRIVATE "${PROJECT_SOURCE_DIR}/include")
+endforeach()

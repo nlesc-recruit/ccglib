@@ -10,14 +10,13 @@
 #endif
 
 cxxopts::Options create_commandline_parser(const char *argv[]) {
-  cxxopts::Options options(argv[0], "GEMM benchmark");
+  cxxopts::Options options(argv[0], "Transpose benchmark");
 
   options.add_options()(
       "b", "Size of batch axis",
       cxxopts::value<size_t>()->default_value(std::to_string(1)))(
       "m", "Size(s) of M axis", cxxopts::value<std::vector<size_t>>())(
       "n", "Size(s) of N axis", cxxopts::value<std::vector<size_t>>())(
-      "k", "Size(s) of K axis", cxxopts::value<std::vector<size_t>>())(
       "pad", "Pad input when not multiple of tile size",
       cxxopts::value<bool>()->default_value(std::to_string(false)))(
       "nr_benchmarks", "Number of benchmarks",
@@ -53,7 +52,7 @@ cxxopts::ParseResult parse_commandline(int argc, const char *argv[]) {
       exit(EXIT_SUCCESS);
     }
 
-    std::vector<std::string> required_options{"m", "n", "k", "precision"};
+    std::vector<std::string> required_options{"m", "n", "precision"};
     for (auto &opt : required_options) {
       if (!result.count(opt)) {
         std::cerr << "Required argument missing: " << opt << std::endl;
@@ -69,11 +68,6 @@ cxxopts::ParseResult parse_commandline(int argc, const char *argv[]) {
   }
 }
 
-inline double calc_tops(const size_t batch_size, const size_t M, const size_t N,
-                        const size_t K, const float runtime) {
-  return 8ULL * 1e-9 * batch_size * M * N * K / runtime;
-}
-
 inline size_t align(const size_t a, const size_t b) {
   return ccglib::helper::ceildiv(a, b) * b;
 }
@@ -85,7 +79,6 @@ int main(int argc, const char *argv[]) {
   const size_t B = cmdline["b"].as<size_t>();
   std::vector<size_t> M_input = cmdline["m"].as<std::vector<size_t>>();
   std::vector<size_t> N_input = cmdline["n"].as<std::vector<size_t>>();
-  std::vector<size_t> K_input = cmdline["k"].as<std::vector<size_t>>();
   const bool pad = cmdline["pad"].as<bool>();
   const size_t nr_benchmarks = cmdline["nr_benchmarks"].as<size_t>();
   const float benchmark_duration = cmdline["benchmark_duration"].as<float>();
@@ -113,13 +106,9 @@ int main(int argc, const char *argv[]) {
       {"int1", 1}};
   const size_t nr_input_bits = map_input_bits[precision];
 
-  // The output size is currently the same for all supported types
-  const size_t nr_output_bits = 32;
-
-  // If one of the input M, N, K arrays is size one and others are bigger,
+  // If one of the input M, N arrays is size one and other is bigger,
   // repeat the single value
-  const size_t max_size =
-      std::max({M_input.size(), N_input.size(), K_input.size()});
+  const size_t max_size = std::max({M_input.size(), N_input.size()});
   if (M_input.size() == 1) {
     M_input.resize(max_size);
     for (size_t idx = 1; idx < max_size; idx++) {
@@ -132,16 +121,9 @@ int main(int argc, const char *argv[]) {
       N_input[idx] = N_input[0];
     }
   }
-  if (K_input.size() == 1) {
-    K_input.resize(max_size);
-    for (size_t idx = 1; idx < max_size; idx++) {
-      K_input[idx] = K_input[0];
-    }
-  }
 
-  // M, N, K should be the same length
-  if (!((M_input.size() == N_input.size()) &&
-        (N_input.size() == K_input.size()))) {
+  // M, N should be the same length
+  if (!((M_input.size() == N_input.size()))) {
     throw std::runtime_error("m, n, k must be the same length");
   }
   const size_t num_sizes = M_input.size();
@@ -158,42 +140,32 @@ int main(int argc, const char *argv[]) {
 
   std::vector<size_t> M(num_sizes);
   std::vector<size_t> N(num_sizes);
-  std::vector<size_t> K(num_sizes);
+
   if (pad) {
     for (size_t i = 0; i < num_sizes; i++) {
       M[i] = align(M_input[i], tile_sizes.x);
-      N[i] = align(N_input[i], tile_sizes.y);
-      K[i] = align(K_input[i], tile_sizes.z);
+      N[i] = align(N_input[i], tile_sizes.z);
     }
   } else {
     M = M_input;
     N = N_input;
-    K = K_input;
     for (size_t i = 0; i < num_sizes; i++) {
       if (M[i] % tile_sizes.x != 0) {
         throw std::runtime_error("all m must be a multiple of " +
                                  std::to_string(tile_sizes.x));
       }
-      if (N[i] % tile_sizes.y != 0) {
+      if (N[i] % tile_sizes.z != 0) {
         throw std::runtime_error("all n must be a multiple of " +
-                                 std::to_string(tile_sizes.y));
-      }
-      if (K[i] % tile_sizes.z != 0) {
-        throw std::runtime_error("all k must be a multiple of " +
                                  std::to_string(tile_sizes.z));
       }
     }
   }
 
   // Get max size for A, B, C given the input sizes
-  size_t num_a{0};
-  size_t num_b{0};
-  size_t num_c{0};
+  size_t num_elements{0};
 
   for (size_t i = 0; i < num_sizes; i++) {
-    num_a = std::max(num_a, M[i] * K[i]);
-    num_b = std::max(num_b, N[i] * K[i]);
-    num_c = std::max(num_c, M[i] * N[i]);
+    num_elements = std::max(num_elements, M[i] * N[i]);
   }
 
   // GPU init
@@ -203,13 +175,14 @@ int main(int argc, const char *argv[]) {
   cu::Stream stream;
 
   // Allocate memory for GEMM input / output
-  cu::DeviceMemory d_a(B * complex * num_a * nr_input_bits / CHAR_BIT);
-  cu::DeviceMemory d_b(B * complex * num_b * nr_input_bits / CHAR_BIT);
-  cu::DeviceMemory d_c(B * complex * num_c * nr_output_bits / CHAR_BIT);
+  const size_t bytes = B * complex * num_elements * nr_input_bits / CHAR_BIT;
+  cu::DeviceMemory d_input(bytes);
+  cu::DeviceMemory d_output(bytes);
 
   // Fill inputs with non-zero data
-  stream.memsetAsync(d_a, static_cast<unsigned char>(0xAA), d_a.size());
-  stream.memsetAsync(d_b, static_cast<unsigned char>(0xBB), d_b.size());
+  stream.memsetAsync(d_input, static_cast<unsigned char>(0xAA), d_input.size());
+  stream.memsetAsync(d_output, static_cast<unsigned char>(0xBB),
+                     d_output.size());
   stream.synchronize();
 
 #if defined(HAVE_PMT)
@@ -219,22 +192,23 @@ int main(int argc, const char *argv[]) {
   // Benchmark, time with either cu events or PMT
   if (csv) {
     // Print output header
-    std::cout << "#M,N,K,runtime_ms,tops";
+    std::cout << "#M,N,runtime_ms,gbytes";
 #if defined(HAVE_PMT)
-    std::cout << ",watt,tops_per_joule";
+    std::cout << ",watt";
 #endif
     std::cout << std::endl;
   }
   for (size_t bench = 0; bench < nr_benchmarks; bench++) {
     for (size_t idx = 0; idx < num_sizes; idx++) {
-      ccglib::mma::GEMM gemm(B, M[idx], N[idx], K[idx], nr_input_bits, device,
-                             stream, gemm_precision, gemm_variant);
+      ccglib::transpose::Transpose transpose(B, M[idx], N[idx], tile_sizes.x,
+                                             tile_sizes.z, nr_input_bits,
+                                             device, stream);
 
       // Run once to get estimate of runtime per kernel
       cu::Event start;
       cu::Event end;
       stream.record(start);
-      gemm.Run(d_a, d_b, d_c);
+      transpose.Run(d_input, d_output);
       stream.record(end);
       stream.synchronize();
       const size_t nr_iterations =
@@ -243,7 +217,7 @@ int main(int argc, const char *argv[]) {
       // If this is the first iteration, do a warmup run
       if (bench == 0 && idx == 0) {
         for (size_t warmup = 0; warmup < nr_iterations; warmup++) {
-          gemm.Run(d_a, d_b, d_c);
+          transpose.Run(d_input, d_output);
         }
       }
       stream.synchronize();
@@ -256,7 +230,7 @@ int main(int argc, const char *argv[]) {
       stream.record(start);
 #endif
       for (size_t iter = 0; iter < nr_iterations; iter++) {
-        gemm.Run(d_a, d_b, d_c);
+        transpose.Run(d_input, d_output);
       }
 #if defined(HAVE_PMT)
       stream.synchronize();
@@ -269,26 +243,25 @@ int main(int argc, const char *argv[]) {
       const double runtime_ms = end.elapsedTime(start) / nr_iterations;
 #endif
 
-      const double tops =
-          calc_tops(B, M_input[idx], N_input[idx], K_input[idx], runtime_ms);
+      const size_t bytes =
+          B * complex * M[idx] * N[idx] * nr_input_bits / CHAR_BIT;
+      const double gbytes = (2 * bytes) / runtime_ms * 1e-6;
 
       if (csv) {
-        std::cout << M_input[idx] << "," << N_input[idx] << "," << K_input[idx]
-                  << "," << runtime_ms << "," << tops;
+        std::cout << M_input[idx] << "," << N_input[idx] << "," << runtime_ms
+                  << "," << gbytes;
       } else {
         const std::string shape = std::to_string(M_input[idx]) + "x" +
-                                  std::to_string(N_input[idx]) + "x" +
-                                  std::to_string(K_input[idx]);
+                                  std::to_string(N_input[idx]) + "x";
         std::cout << std::setw(20) << shape << " " << std::setw(7) << runtime_ms
-                  << " ms, " << std::setw(7) << tops << " TOps/s";
+                  << " ms, " << std::setw(7) << gbytes << " GByte/s";
       }
 #if defined(HAVE_PMT)
       const double watts = pmt::PMT::watts(pmt_start, pmt_end);
       if (csv) {
-        std::cout << "," << watts << "," << tops / watts;
+        std::cout << "," << watts;
       } else {
-        std::cout << ", " << std::setw(7) << watts << " W, " << std::setw(7)
-                  << tops / watts << " TOps/J";
+        std::cout << ", " << std::setw(7) << watts << " W";
       }
 #endif
       std::cout << std::endl;
