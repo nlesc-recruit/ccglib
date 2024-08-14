@@ -5,14 +5,17 @@
 
 namespace ccglib::packing {
 enum Direction { pack, unpack };
+enum ComplexAxisLocation { complex_first, complex_last };
 
 class Packing {
 public:
   Packing(size_t N, cu::Device &device, cu::Stream &stream);
   void Run(cu::HostMemory &h_input, cu::DeviceMemory &d_output,
-           Direction direction);
+           Direction direction,
+           ComplexAxisLocation complex_axis_location = complex_first);
   void Run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output,
-           Direction direction);
+           Direction direction,
+           ComplexAxisLocation complex_axis_location = complex_first);
 
 private:
   size_t N_;

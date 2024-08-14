@@ -1,20 +1,27 @@
 extern "C" __global__ void
-pack_bits(unsigned *output, const unsigned char *input, const size_t n) {
+pack_bits(unsigned *output, const unsigned char *input, bool complex_last) {
   size_t tid = threadIdx.x + blockIdx.x * static_cast<size_t>(blockDim.x);
-  if (tid >= n) {
+  if (tid >= N) {
     return;
   }
 
-  unsigned output_value = __ballot_sync(__activemask(), input[tid]);
+  size_t input_index = tid;
+  if (complex_last) {
+    // map from real0, real1, .... imag0, imag1... indexing to
+    // real0, imag0, real1, imag1, ...
+    input_index = (input_index * 2) % (N - 1);
+  }
+
+  unsigned output_value = __ballot_sync(__activemask(), input[input_index]);
   if (tid % 32 == 0) {
     output[tid / 32] = output_value;
   }
 }
 
 extern "C" __global__ void unpack_bits(unsigned char *output,
-                                       const unsigned *input, const size_t n) {
+                                       const unsigned *input) {
   size_t tid = threadIdx.x + blockIdx.x * static_cast<size_t>(blockDim.x);
-  if (tid >= n) {
+  if (tid >= N) {
     return;
   }
 
