@@ -169,18 +169,21 @@ int main(int argc, const char *argv[]) {
     M = M_input;
     N = N_input;
     K = K_input;
-    for (size_t i = 0; i < num_sizes; i++) {
-      if (M[i] % tile_sizes.x != 0) {
-        throw std::runtime_error("all m must be a multiple of " +
-                                 std::to_string(tile_sizes.x));
-      }
-      if (N[i] % tile_sizes.y != 0) {
-        throw std::runtime_error("all n must be a multiple of " +
-                                 std::to_string(tile_sizes.y));
-      }
-      if (K[i] % tile_sizes.z != 0) {
-        throw std::runtime_error("all k must be a multiple of " +
-                                 std::to_string(tile_sizes.z));
+    // Int1 kernel does not support non-multiples
+    if (gemm_precision == ccglib::mma::int1) {
+      for (size_t i = 0; i < num_sizes; i++) {
+        if (M[i] % tile_sizes.x != 0) {
+          throw std::runtime_error("all m must be a multiple of " +
+                                   std::to_string(tile_sizes.x));
+        }
+        if (N[i] % tile_sizes.y != 0) {
+          throw std::runtime_error("all n must be a multiple of " +
+                                   std::to_string(tile_sizes.y));
+        }
+        if (K[i] % tile_sizes.z != 0) {
+          throw std::runtime_error("all k must be a multiple of " +
+                                   std::to_string(tile_sizes.z));
+        }
       }
     }
   }

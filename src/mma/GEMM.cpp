@@ -61,6 +61,8 @@ GEMM::Impl::Impl(size_t B_, size_t M_, size_t N_, size_t K_,
 #if defined(DEBUG)
   std::cout << "Problem size (B, M, N, K): (" << B_ << ", " << M_ << ", " << N_
             << ", " << K_ << ")" << std::endl;
+  std::cout << "Block sizes (m, n): (" << parameters.m_per_block << ", "
+            << parameters.n_per_block << ")" << std::endl;
   std::cout << "Thread block size: (" << threads_.x << ", " << threads_.y
             << ", " << threads_.z << ")" << std::endl;
   std::cout << "Threads per block: " << threads_.x * threads_.y * threads_.z
@@ -152,7 +154,6 @@ GEMM::GEMM(size_t B_, size_t M_, size_t N_, size_t K_, size_t nr_input_bits_,
     : impl_(std::make_unique<Impl>(B_, M_, N_, K_, nr_input_bits_, device_,
                                    stream_, precision, variant, a_mem_order,
                                    b_mem_order, c_mem_order)){};
-
 GEMM::~GEMM() = default;
 
 void GEMM::Run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b,

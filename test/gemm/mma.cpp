@@ -12,6 +12,7 @@
 
 #include <ccglib/gemm/mma.h>
 #include <ccglib/gemm/reference.h>
+#include <ccglib/helper.h>
 #include <ccglib/transpose/transpose.h>
 
 #include <catch2/catch_test_macros.hpp>
@@ -44,16 +45,22 @@ public:
     context_ =
         std::make_unique<cu::Context>(CU_CTX_SCHED_BLOCKING_SYNC, *device_);
     stream_ = std::make_unique<cu::Stream>();
+  }
 
+  void init(size_t m, size_t n, size_t k) {
     const dim3 dimensions =
         ccglib::mma::GEMM::GetDimensions(Precision, ccglib::mma::opt);
     m_per_block_ = dimensions.x;
     n_per_block_ = dimensions.y;
     k_per_wmma_ = dimensions.z;
 
-    global_m_ = m_per_block_;
-    global_n_ = n_per_block_;
-    global_k_ = 4 * k_per_wmma_;
+    global_m_ = m;
+    global_n_ = n;
+    global_k_ = k;
+
+    size_t global_m_padded_ = helper::ceildiv(m, m_per_block_) * m_per_block_;
+    size_t global_n_padded_ = helper::ceildiv(n, n_per_block_) * n_per_block_;
+    size_t global_k_padded_ = helper::ceildiv(k, k_per_wmma_) * k_per_wmma_;
 
     const size_t kPackingFactor = sizeof(Tin) * CHAR_BIT / NrInputBits;
     bytes_a_ = sizeof(Tin) * kBatchSize * COMPLEX * global_m_ * global_k_ /
@@ -61,6 +68,13 @@ public:
     bytes_b_ = sizeof(Tin) * kBatchSize * COMPLEX * global_n_ * global_k_ /
                kPackingFactor;
     bytes_c_ = sizeof(Tout) * kBatchSize * COMPLEX * global_m_ * global_n_;
+
+    bytes_a_padded_ = sizeof(Tin) * kBatchSize * COMPLEX * global_m_padded_ *
+                      global_k_padded_ / kPackingFactor;
+    bytes_b_padded_ = sizeof(Tin) * kBatchSize * COMPLEX * global_n_padded_ *
+                      global_k_padded_ / kPackingFactor;
+    bytes_c_padded_ = sizeof(Tout) * kBatchSize * COMPLEX * global_m_padded_ *
+                      global_n_padded_;
   }
 
 private:
@@ -89,6 +103,9 @@ private:
   size_t bytes_a_;
   size_t bytes_b_;
   size_t bytes_c_;
+  size_t bytes_a_padded_;
+  size_t bytes_b_padded_;
+  size_t bytes_c_padded_;
 
   template <typename T> void init_input_matrices(T *a, T *b) {
     // fill a and b with random values (fixed seed), initalize c to zero
@@ -170,8 +187,8 @@ protected:
     initialize_memory();
 
     // Allocate device memory for transposed input data
-    cu::DeviceMemory d_a_trans(bytes_a_);
-    cu::DeviceMemory d_b_trans(bytes_b_);
+    cu::DeviceMemory d_a_trans(bytes_a_padded_);
+    cu::DeviceMemory d_b_trans(bytes_b_padded_);
 
     // Transpose A
     ccglib::transpose::Transpose transpose_a(kBatchSize, global_m_, global_k_,
@@ -206,9 +223,17 @@ TEST_CASE_METHOD(ComplexGemmTestFixtureFloat16,
                  "Complex GEMM Test - float16 basic",
                  "[complex-gemm-test-float16-basic]") {
   SECTION("C row-major") {
+    const size_t gM = GENERATE(34, 128, 149, 255);
+    const size_t gN = GENERATE(46, 64, 75, 127);
+    const size_t gK = GENERATE(18, 64, 75, 127);
+    ComplexGemmTestFixtureFloat16::init(gM, gN, gK);
     ComplexGemmTestFixtureFloat16::complex_gemm_basic(ccglib::mma::row_major);
   }
   SECTION("C col-major") {
+    const size_t gM = 128;
+    const size_t gN = 64;
+    const size_t gK = 64;
+    ComplexGemmTestFixtureFloat16::init(gM, gN, gK);
     ComplexGemmTestFixtureFloat16::complex_gemm_basic(ccglib::mma::col_major);
   }
 }
@@ -217,9 +242,17 @@ TEST_CASE_METHOD(ComplexGemmTestFixtureFloat16,
                  "Complex GEMM Test - float16 opt",
                  "[complex-gemm-test-float16-opt]") {
   SECTION("C row-major") {
+    const size_t gM = GENERATE(34, 128, 149, 255);
+    const size_t gN = GENERATE(46, 64, 75, 127);
+    const size_t gK = GENERATE(18, 64, 75, 127);
+    ComplexGemmTestFixtureFloat16::init(gM, gN, gK);
     ComplexGemmTestFixtureFloat16::complex_gemm_opt(ccglib::mma::row_major);
   }
   SECTION("C col-major") {
+    const size_t gM = 128;
+    const size_t gN = 64;
+    const size_t gK = 64;
+    ComplexGemmTestFixtureFloat16::init(gM, gN, gK);
     ComplexGemmTestFixtureFloat16::complex_gemm_opt(ccglib::mma::col_major);
   }
 }
@@ -228,9 +261,17 @@ TEST_CASE_METHOD(ComplexGemmTestFixtureFloat32,
                  "Complex GEMM Test - float32 basic",
                  "[complex-gemm-test-float32-basic]") {
   SECTION("C row-major") {
+    const size_t gM = GENERATE(34, 128, 149, 255);
+    const size_t gN = GENERATE(46, 64, 75, 127);
+    const size_t gK = GENERATE(18, 64, 75, 127);
+    ComplexGemmTestFixtureFloat32::init(gM, gN, gK);
     ComplexGemmTestFixtureFloat32::complex_gemm_basic(ccglib::mma::row_major);
   }
   SECTION("C col-major") {
+    const size_t gM = 128;
+    const size_t gN = 64;
+    const size_t gK = 64;
+    ComplexGemmTestFixtureFloat32::init(gM, gN, gK);
     ComplexGemmTestFixtureFloat32::complex_gemm_basic(ccglib::mma::col_major);
   }
 }
@@ -239,9 +280,17 @@ TEST_CASE_METHOD(ComplexGemmTestFixtureFloat32,
                  "Complex GEMM Test - float32 opt",
                  "[complex-gemm-test-float32-opt]") {
   SECTION("C row-major") {
+    const size_t gM = GENERATE(34, 128, 149, 255);
+    const size_t gN = GENERATE(46, 64, 75, 127);
+    const size_t gK = GENERATE(18, 64, 75, 127);
+    ComplexGemmTestFixtureFloat32::init(gM, gN, gK);
     ComplexGemmTestFixtureFloat32::complex_gemm_opt(ccglib::mma::row_major);
   }
   SECTION("C col-major") {
+    const size_t gM = 128;
+    const size_t gN = 64;
+    const size_t gK = 64;
+    ComplexGemmTestFixtureFloat32::init(gM, gN, gK);
     ComplexGemmTestFixtureFloat32::complex_gemm_opt(ccglib::mma::col_major);
   }
 }
@@ -249,9 +298,17 @@ TEST_CASE_METHOD(ComplexGemmTestFixtureFloat32,
 TEST_CASE_METHOD(ComplexGemmTestFixtureInt1, "Complex GEMM Test - int1 basic",
                  "[complex-gemm-test-int1-basic]") {
   SECTION("C row-major") {
+    const size_t gM = 64;
+    const size_t gN = 64;
+    const size_t gK = 256;
+    ComplexGemmTestFixtureInt1::init(gM, gN, gK);
     ComplexGemmTestFixtureInt1::complex_gemm_basic(ccglib::mma::row_major);
   }
   SECTION("C col-major") {
+    const size_t gM = 64;
+    const size_t gN = 64;
+    const size_t gK = 256;
+    ComplexGemmTestFixtureInt1::init(gM, gN, gK);
     ComplexGemmTestFixtureInt1::complex_gemm_basic(ccglib::mma::col_major);
   }
 }
@@ -259,9 +316,17 @@ TEST_CASE_METHOD(ComplexGemmTestFixtureInt1, "Complex GEMM Test - int1 basic",
 TEST_CASE_METHOD(ComplexGemmTestFixtureInt1, "Complex GEMM Test - int1 opt",
                  "[complex-gemm-test-int1-opt]") {
   SECTION("C row-major") {
+    const size_t gM = 64;
+    const size_t gN = 64;
+    const size_t gK = 256;
+    ComplexGemmTestFixtureInt1::init(gM, gN, gK);
     ComplexGemmTestFixtureInt1::complex_gemm_opt(ccglib::mma::row_major);
   }
   SECTION("C col-major") {
+    const size_t gM = 64;
+    const size_t gN = 64;
+    const size_t gK = 256;
+    ComplexGemmTestFixtureInt1::init(gM, gN, gK);
     ComplexGemmTestFixtureInt1::complex_gemm_opt(ccglib::mma::col_major);
   }
 }

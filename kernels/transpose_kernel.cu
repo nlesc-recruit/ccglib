@@ -23,10 +23,16 @@ using T = unsigned int;
 
 #define PACKING_FACTOR (sizeof(T) * CHAR_BIT / NBIT)
 
+#define M_IS_PADDED ((M_GLOBAL % M_CHUNK) != 0)
+#define N_IS_PADDED ((N_GLOBAL % N_CHUNK) != 0)
+
+#define M_GLOBAL_PADDED ((M_GLOBAL / M_CHUNK + M_IS_PADDED) * M_CHUNK)
+#define N_GLOBAL_PADDED ((N_GLOBAL / N_CHUNK + N_IS_PADDED) * N_CHUNK)
+
 extern "C" {
 __global__ void transpose(
-    T out[BATCH_SIZE][M_GLOBAL / M_CHUNK][N_GLOBAL / N_CHUNK][COMPLEX][M_CHUNK]
-         [N_CHUNK / PACKING_FACTOR],
+    T out[BATCH_SIZE][M_GLOBAL_PADDED / M_CHUNK][N_GLOBAL_PADDED / N_CHUNK]
+         [COMPLEX][M_CHUNK][N_CHUNK / PACKING_FACTOR],
     const T in[BATCH_SIZE][COMPLEX][M_GLOBAL][N_GLOBAL / PACKING_FACTOR]) {
   const size_t idx_B = blockIdx.z;
   const size_t idx_N =
@@ -34,20 +40,25 @@ __global__ void transpose(
   const size_t idx_M =
       threadIdx.y + blockIdx.y * static_cast<size_t>(blockDim.y);
 
-  static_assert(M_GLOBAL % M_CHUNK == 0);
-  static_assert(N_GLOBAL % N_CHUNK == 0);
+  static_assert(M_GLOBAL_PADDED % M_CHUNK == 0);
+  static_assert(N_GLOBAL_PADDED % N_CHUNK == 0);
   static_assert(N_CHUNK % PACKING_FACTOR == 0);
 
-  if (idx_B < BATCH_SIZE && idx_M < M_GLOBAL &&
-      idx_N < N_GLOBAL / PACKING_FACTOR) {
+  if (idx_B < BATCH_SIZE && idx_M < M_GLOBAL_PADDED &&
+      idx_N < N_GLOBAL_PADDED / PACKING_FACTOR) {
     size_t b = idx_B;
     size_t m = idx_M / M_CHUNK;
     size_t m_c = idx_M % M_CHUNK;
     size_t n = idx_N / (N_CHUNK / PACKING_FACTOR);
     size_t n_c = idx_N % (N_CHUNK / PACKING_FACTOR);
 
-    out[b][m][n][REAL][m_c][n_c] = in[b][REAL][idx_M][idx_N];
-    out[b][m][n][IMAG][m_c][n_c] = in[b][IMAG][idx_M][idx_N];
+    if (idx_M < M_GLOBAL && idx_N < N_GLOBAL / PACKING_FACTOR) {
+      out[b][m][n][REAL][m_c][n_c] = in[b][REAL][idx_M][idx_N];
+      out[b][m][n][IMAG][m_c][n_c] = in[b][IMAG][idx_M][idx_N];
+    } else {
+      out[b][m][n][REAL][m_c][n_c] = 0;
+      out[b][m][n][IMAG][m_c][n_c] = 0;
+    }
   }
 };
 }
