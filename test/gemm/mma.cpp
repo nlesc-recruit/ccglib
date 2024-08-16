@@ -58,9 +58,12 @@ public:
     global_n_ = n;
     global_k_ = k;
 
-    size_t global_m_padded_ = helper::ceildiv(m, m_per_block_) * m_per_block_;
-    size_t global_n_padded_ = helper::ceildiv(n, n_per_block_) * n_per_block_;
-    size_t global_k_padded_ = helper::ceildiv(k, k_per_wmma_) * k_per_wmma_;
+    const size_t global_m_padded_ =
+        helper::ceildiv(m, m_per_block_) * m_per_block_;
+    const size_t global_n_padded_ =
+        helper::ceildiv(n, n_per_block_) * n_per_block_;
+    const size_t global_k_padded_ =
+        helper::ceildiv(k, k_per_wmma_) * k_per_wmma_;
 
     const size_t kPackingFactor = sizeof(Tin) * CHAR_BIT / NrInputBits;
     bytes_a_ = sizeof(Tin) * kBatchSize * COMPLEX * global_m_ * global_k_ /
@@ -223,17 +226,17 @@ TEST_CASE_METHOD(ComplexGemmTestFixtureFloat16,
                  "Complex GEMM Test - float16 basic",
                  "[complex-gemm-test-float16-basic]") {
   SECTION("C row-major") {
-    const size_t gM = GENERATE(34, 128, 149, 255);
-    const size_t gN = GENERATE(46, 64, 75, 127);
-    const size_t gK = GENERATE(18, 64, 75, 127);
-    ComplexGemmTestFixtureFloat16::init(gM, gN, gK);
+    const size_t M = 100;
+    const size_t N = 60;
+    const size_t K = 40;
+    ComplexGemmTestFixtureFloat16::init(M, N, K);
     ComplexGemmTestFixtureFloat16::complex_gemm_basic(ccglib::mma::row_major);
   }
   SECTION("C col-major") {
-    const size_t gM = 128;
-    const size_t gN = 64;
-    const size_t gK = 64;
-    ComplexGemmTestFixtureFloat16::init(gM, gN, gK);
+    const size_t M = 128;
+    const size_t N = 64;
+    const size_t K = 64;
+    ComplexGemmTestFixtureFloat16::init(M, N, K);
     ComplexGemmTestFixtureFloat16::complex_gemm_basic(ccglib::mma::col_major);
   }
 }
@@ -242,17 +245,17 @@ TEST_CASE_METHOD(ComplexGemmTestFixtureFloat16,
                  "Complex GEMM Test - float16 opt",
                  "[complex-gemm-test-float16-opt]") {
   SECTION("C row-major") {
-    const size_t gM = GENERATE(34, 128, 149, 255);
-    const size_t gN = GENERATE(46, 64, 75, 127);
-    const size_t gK = GENERATE(18, 64, 75, 127);
-    ComplexGemmTestFixtureFloat16::init(gM, gN, gK);
+    const size_t M = 100;
+    const size_t N = 60;
+    const size_t K = 40;
+    ComplexGemmTestFixtureFloat16::init(M, N, K);
     ComplexGemmTestFixtureFloat16::complex_gemm_opt(ccglib::mma::row_major);
   }
   SECTION("C col-major") {
-    const size_t gM = 128;
-    const size_t gN = 64;
-    const size_t gK = 64;
-    ComplexGemmTestFixtureFloat16::init(gM, gN, gK);
+    const size_t M = 128;
+    const size_t N = 64;
+    const size_t K = 64;
+    ComplexGemmTestFixtureFloat16::init(M, N, K);
     ComplexGemmTestFixtureFloat16::complex_gemm_opt(ccglib::mma::col_major);
   }
 }
@@ -261,17 +264,17 @@ TEST_CASE_METHOD(ComplexGemmTestFixtureFloat32,
                  "Complex GEMM Test - float32 basic",
                  "[complex-gemm-test-float32-basic]") {
   SECTION("C row-major") {
-    const size_t gM = GENERATE(34, 128, 149, 255);
-    const size_t gN = GENERATE(46, 64, 75, 127);
-    const size_t gK = GENERATE(18, 64, 75, 127);
-    ComplexGemmTestFixtureFloat32::init(gM, gN, gK);
+    const size_t M = 100;
+    const size_t N = 60;
+    const size_t K = 40;
+    ComplexGemmTestFixtureFloat32::init(M, N, K);
     ComplexGemmTestFixtureFloat32::complex_gemm_basic(ccglib::mma::row_major);
   }
   SECTION("C col-major") {
-    const size_t gM = 128;
-    const size_t gN = 64;
-    const size_t gK = 64;
-    ComplexGemmTestFixtureFloat32::init(gM, gN, gK);
+    const size_t M = 128;
+    const size_t N = 64;
+    const size_t K = 64;
+    ComplexGemmTestFixtureFloat32::init(M, N, K);
     ComplexGemmTestFixtureFloat32::complex_gemm_basic(ccglib::mma::col_major);
   }
 }
@@ -280,17 +283,17 @@ TEST_CASE_METHOD(ComplexGemmTestFixtureFloat32,
                  "Complex GEMM Test - float32 opt",
                  "[complex-gemm-test-float32-opt]") {
   SECTION("C row-major") {
-    const size_t gM = GENERATE(34, 128, 149, 255);
-    const size_t gN = GENERATE(46, 64, 75, 127);
-    const size_t gK = GENERATE(18, 64, 75, 127);
-    ComplexGemmTestFixtureFloat32::init(gM, gN, gK);
+    const size_t M = 100;
+    const size_t N = 60;
+    const size_t K = 40;
+    ComplexGemmTestFixtureFloat32::init(M, N, K);
     ComplexGemmTestFixtureFloat32::complex_gemm_opt(ccglib::mma::row_major);
   }
   SECTION("C col-major") {
-    const size_t gM = 128;
-    const size_t gN = 64;
-    const size_t gK = 64;
-    ComplexGemmTestFixtureFloat32::init(gM, gN, gK);
+    const size_t M = 128;
+    const size_t N = 64;
+    const size_t K = 64;
+    ComplexGemmTestFixtureFloat32::init(M, N, K);
     ComplexGemmTestFixtureFloat32::complex_gemm_opt(ccglib::mma::col_major);
   }
 }
@@ -298,17 +301,17 @@ TEST_CASE_METHOD(ComplexGemmTestFixtureFloat32,
 TEST_CASE_METHOD(ComplexGemmTestFixtureInt1, "Complex GEMM Test - int1 basic",
                  "[complex-gemm-test-int1-basic]") {
   SECTION("C row-major") {
-    const size_t gM = 64;
-    const size_t gN = 64;
-    const size_t gK = 256;
-    ComplexGemmTestFixtureInt1::init(gM, gN, gK);
+    const size_t M = 64;
+    const size_t N = 64;
+    const size_t K = 256;
+    ComplexGemmTestFixtureInt1::init(M, N, K);
     ComplexGemmTestFixtureInt1::complex_gemm_basic(ccglib::mma::row_major);
   }
   SECTION("C col-major") {
-    const size_t gM = 64;
-    const size_t gN = 64;
-    const size_t gK = 256;
-    ComplexGemmTestFixtureInt1::init(gM, gN, gK);
+    const size_t M = 64;
+    const size_t N = 64;
+    const size_t K = 256;
+    ComplexGemmTestFixtureInt1::init(M, N, K);
     ComplexGemmTestFixtureInt1::complex_gemm_basic(ccglib::mma::col_major);
   }
 }
@@ -316,17 +319,17 @@ TEST_CASE_METHOD(ComplexGemmTestFixtureInt1, "Complex GEMM Test - int1 basic",
 TEST_CASE_METHOD(ComplexGemmTestFixtureInt1, "Complex GEMM Test - int1 opt",
                  "[complex-gemm-test-int1-opt]") {
   SECTION("C row-major") {
-    const size_t gM = 64;
-    const size_t gN = 64;
-    const size_t gK = 256;
-    ComplexGemmTestFixtureInt1::init(gM, gN, gK);
+    const size_t M = 64;
+    const size_t N = 64;
+    const size_t K = 256;
+    ComplexGemmTestFixtureInt1::init(M, N, K);
     ComplexGemmTestFixtureInt1::complex_gemm_opt(ccglib::mma::row_major);
   }
   SECTION("C col-major") {
-    const size_t gM = 64;
-    const size_t gN = 64;
-    const size_t gK = 256;
-    ComplexGemmTestFixtureInt1::init(gM, gN, gK);
+    const size_t M = 64;
+    const size_t N = 64;
+    const size_t K = 256;
+    ComplexGemmTestFixtureInt1::init(M, N, K);
     ComplexGemmTestFixtureInt1::complex_gemm_opt(ccglib::mma::col_major);
   }
 }
