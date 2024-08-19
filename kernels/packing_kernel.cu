@@ -1,3 +1,7 @@
+#if defined(__HIP__) && !defined(__HIP_PLATFORM_NVIDIA__)
+#error "Packing kernel is only available for NVIDIA GPUs"
+#endif
+
 extern "C" __global__ void
 pack_bits(unsigned *output, const unsigned char *input, bool complex_last) {
   size_t tid = threadIdx.x + blockIdx.x * static_cast<size_t>(blockDim.x);

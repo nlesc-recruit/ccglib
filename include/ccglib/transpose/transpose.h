@@ -20,8 +20,8 @@ private:
 
   size_t nr_bits;
 
-  cu::Device &device;
-  cu::Stream &stream;
+  cu::Device &device_;
+  cu::Stream &stream_;
 
   void compile_kernel();
 

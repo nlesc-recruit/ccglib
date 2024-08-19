@@ -1,9 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
-#include <cuda_fp16.h>
 #include <cudawrappers/cu.hpp>
 #include <iostream>
 #include <limits.h>
 
+#include <ccglib/fp16.h>
 #include <ccglib/transpose/transpose.h>
 
 namespace ccglib::test {
@@ -45,9 +45,10 @@ private:
       unsigned int seed = 0;
       const float scale = 1.0f;
       for (int idx = 0; idx < kBytesA / sizeof(T); idx++) {
-        a[idx] = __float2half(
-            2.0f * scale * (static_cast<float>(rand_r(&seed)) / RAND_MAX) -
-            scale);
+        a[idx] = __float2half(2.0f * scale *
+                                  (static_cast<float>(rand_r(&seed)) /
+                                   static_cast<float>(RAND_MAX)) -
+                              scale);
       }
     } else if constexpr (std::is_same_v<T, unsigned int>) {
       unsigned int seed = 0;
@@ -103,8 +104,9 @@ private:
             const size_t n_local = n / (kNPerChunk / kPackingFactor);
             const size_t n_chunk = n % (kNPerChunk / kPackingFactor);
 
-            REQUIRE((*in_ptr)[b][c][m][n] ==
-                    (*out_ptr)[b][m_local][n_local][c][m_chunk][n_chunk]);
+            REQUIRE(static_cast<float>((*in_ptr)[b][c][m][n]) ==
+                    static_cast<float>(
+                        (*out_ptr)[b][m_local][n_local][c][m_chunk][n_chunk]));
           }
         }
       }

@@ -1,7 +1,5 @@
 #include <stdexcept>
 
-#include <cuda_runtime.h>
-
 #include "Kernel.h"
 
 namespace ccglib::mma {

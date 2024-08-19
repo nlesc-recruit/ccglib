@@ -2,14 +2,13 @@
 #include <iostream>
 #include <type_traits>
 
-#include <cuda_fp16.h>
 #include <limits.h>
 #include <math.h>
-#include <omp.h>
 
 #include <cudawrappers/cu.hpp>
 #include <cudawrappers/nvrtc.hpp>
 
+#include <ccglib/fp16.h>
 #include <ccglib/gemm/mma.h>
 #include <ccglib/gemm/reference.h>
 #include <ccglib/helper.h>
@@ -115,19 +114,32 @@ private:
     if constexpr (std::is_same_v<T, __half>) {
       unsigned int seed = 0;
       for (int idx = 0; idx < bytes_a_ / sizeof(T); idx++) {
-        a[idx] = __float2half(static_cast<float>(rand_r(&seed)) / RAND_MAX);
+        a[idx] = __float2half(static_cast<float>(rand_r(&seed)) /
+                              static_cast<float>(RAND_MAX));
       }
       for (int idx = 0; idx < bytes_b_ / sizeof(T); idx++) {
-        b[idx] = __float2half(static_cast<float>(rand_r(&seed)) / RAND_MAX);
+        b[idx] = __float2half(static_cast<float>(rand_r(&seed)) /
+                              static_cast<float>(RAND_MAX));
       }
     } else if constexpr (std::is_same_v<T, float>) {
       unsigned int seed = 0;
       for (int idx = 0; idx < bytes_a_ / sizeof(T); idx++) {
-        a[idx] = float_to_tf32(static_cast<float>(rand_r(&seed)) / RAND_MAX);
+        a[idx] =
+            static_cast<float>(rand_r(&seed)) / static_cast<float>(RAND_MAX);
       }
       for (int idx = 0; idx < bytes_b_ / sizeof(T); idx++) {
-        b[idx] = float_to_tf32(static_cast<float>(rand_r(&seed)) / RAND_MAX);
+        b[idx] =
+            static_cast<float>(rand_r(&seed)) / static_cast<float>(RAND_MAX);
       }
+      // AMD uses actual FP32, NVIDIA uses TF32
+#if !defined(__HIP_PLATFORM_AMD__)
+      for (int idx = 0; idx < bytes_a_ / sizeof(T); idx++) {
+        a[idx] = float_to_tf32(a[idx]);
+      }
+      for (int idx = 0; idx < bytes_b_ / sizeof(T); idx++) {
+        b[idx] = float_to_tf32(b[idx]);
+      }
+#endif
     } else if constexpr (std::is_same_v<T, unsigned int>) {
       unsigned int seed = 0;
       for (int idx = 0; idx < bytes_a_ / sizeof(T); idx++) {
@@ -217,10 +229,18 @@ protected:
 
 using ComplexGemmTestFixtureFloat16 =
     ComplexGemmTestFixture<half, float, 16, ccglib::mma::float16>;
+// on AMD, FP32 is only available on CDNA-class GPUs (GFX9)
+// on NVIDIA, TF32 is used
+#if !defined(__HIP_PLATFORM_AMD__) ||                                          \
+    (defined(__HIP_PLATFORM_AMD__) && defined __GFX9__)
 using ComplexGemmTestFixtureFloat32 =
     ComplexGemmTestFixture<float, float, 32, ccglib::mma::float32>;
+#endif
+// int1 is only available on NVIDIA
+#if !defined(__HIP_PLATFORM_AMD__)
 using ComplexGemmTestFixtureInt1 =
     ComplexGemmTestFixture<unsigned int, int32_t, 1, ccglib::mma::int1>;
+#endif
 
 TEST_CASE_METHOD(ComplexGemmTestFixtureFloat16,
                  "Complex GEMM Test - float16 basic",
@@ -260,6 +280,8 @@ TEST_CASE_METHOD(ComplexGemmTestFixtureFloat16,
   }
 }
 
+#if !defined(__HIP_PLATFORM_AMD__) ||                                          \
+    (defined(__HIP_PLATFORM_AMD__) && defined __GFX9__)
 TEST_CASE_METHOD(ComplexGemmTestFixtureFloat32,
                  "Complex GEMM Test - float32 basic",
                  "[complex-gemm-test-float32-basic]") {
@@ -297,7 +319,9 @@ TEST_CASE_METHOD(ComplexGemmTestFixtureFloat32,
     ComplexGemmTestFixtureFloat32::complex_gemm_opt(ccglib::mma::col_major);
   }
 }
+#endif
 
+#if !defined(__HIP_PLATFORM_AMD__)
 TEST_CASE_METHOD(ComplexGemmTestFixtureInt1, "Complex GEMM Test - int1 basic",
                  "[complex-gemm-test-int1-basic]") {
   SECTION("C row-major") {
@@ -333,12 +357,19 @@ TEST_CASE_METHOD(ComplexGemmTestFixtureInt1, "Complex GEMM Test - int1 opt",
     ComplexGemmTestFixtureInt1::complex_gemm_opt(ccglib::mma::col_major);
   }
 }
+#endif
 
 TEST_CASE("Unsupported matrix layout") {
   const size_t batch_size = 16;
   const size_t m = 16;
   const size_t n = 16;
   const size_t k = 256;
+
+#if defined(__HIP__)
+  const std::string error_name = "HIPRTC_ERROR_COMPILATION";
+#else
+  const std::string error_name = "NVRTC_ERROR_COMPILATION";
+#endif
 
   cu::init();
   cu::Device device(0);
@@ -352,21 +383,22 @@ TEST_CASE("Unsupported matrix layout") {
   // float16 could support different layouts, but not currently implemented
   // A must be row-major, B col-major
   SECTION("float16") {
-    CHECK_THROWS_WITH(
-        ccglib::mma::GEMM(batch_size, m, n, k, 16, device, stream,
-                          ccglib::mma::float16, ccglib::mma::basic, layout_c,
-                          layout_a, layout_b),
-        Catch::Matchers::ContainsSubstring("NVRTC_ERROR_COMPILATION"));
+    CHECK_THROWS_WITH(ccglib::mma::GEMM(batch_size, m, n, k, 16, device, stream,
+                                        ccglib::mma::float16,
+                                        ccglib::mma::basic, layout_c, layout_a,
+                                        layout_b),
+                      Catch::Matchers::ContainsSubstring(error_name));
   }
 
+#if !defined(__HIP_PLATFORM_AMD__)
   // 1-bit requires A row-major, B col-major
   SECTION("int1") {
-    CHECK_THROWS_WITH(
-        ccglib::mma::GEMM(batch_size, m, n, k, 1, device, stream,
-                          ccglib::mma::int1, ccglib::mma::basic, layout_c,
-                          layout_a, layout_b),
-        Catch::Matchers::ContainsSubstring("NVRTC_ERROR_COMPILATION"));
+    CHECK_THROWS_WITH(ccglib::mma::GEMM(batch_size, m, n, k, 1, device, stream,
+                                        ccglib::mma::int1, ccglib::mma::basic,
+                                        layout_c, layout_a, layout_b),
+                      Catch::Matchers::ContainsSubstring(error_name));
   }
+#endif
 }
 
 } // namespace ccglib::test

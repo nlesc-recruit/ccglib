@@ -10,9 +10,9 @@ int main(int argc, char *argv[]) {
   cu::Stream stream;
 
   // data size and type
-  const int global_m = 256;
-  const int global_n = 256;
-  const int global_k = 256;
+  const int global_m = 8192;
+  const int global_n = 8192;
+  const int global_k = 8192;
   const int batch_size = 1;
   const int COMPLEX = 2;
 
@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
 
   ccglib::mma::GEMM gemm_mma(batch_size, global_m, global_n, global_k,
                              nr_input_bits, device, stream,
-                             ccglib::mma::float16, ccglib::mma::basic);
+                             ccglib::mma::float16, ccglib::mma::opt);
 
   // run the GEMM kernel
   cu::Event start, end;
@@ -61,5 +61,7 @@ int main(int argc, char *argv[]) {
 
   // print runtime
   const float runtime = end.elapsedTime(start);
+  const double tflops = 8ULL * 1e-9 * global_m * global_n * global_k / runtime;
   std::cout << "runtime: " << runtime << " ms" << std::endl;
+  std::cout << "TFLOPS: " << tflops << std::endl;
 }

@@ -14,15 +14,15 @@ Transpose::Transpose(size_t B, size_t M, size_t N, size_t M_chunk,
                      size_t N_chunk, size_t nr_bits, cu::Device &device,
                      cu::Stream &stream)
     : B(B), M(M), N(N), M_chunk(M_chunk), N_chunk(N_chunk), nr_bits(nr_bits),
-      device(device), stream(stream) {
+      device_(device), stream_(stream) {
   compile_kernel();
 }
 
 void Transpose::Run(cu::HostMemory &h_input, cu::DeviceMemory &d_output) {
-  cu::DeviceMemory d_input = stream.memAllocAsync(h_input.size());
-  stream.memcpyHtoDAsync(d_input, h_input, h_input.size());
+  cu::DeviceMemory d_input = stream_.memAllocAsync(h_input.size());
+  stream_.memcpyHtoDAsync(d_input, h_input, h_input.size());
   Run(d_input, d_output);
-  stream.memFreeAsync(d_input);
+  stream_.memFreeAsync(d_input);
 }
 
 void Transpose::Run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output) {
@@ -32,25 +32,30 @@ void Transpose::Run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output) {
   std::vector<const void *> parameters = {d_output.parameter(),
                                           d_input.parameter()};
 
-  stream.launchKernel(*function, grid.x, grid.y, grid.z, threads.x, threads.y,
-                      threads.z, 0, parameters);
+  stream_.launchKernel(*function, grid.x, grid.y, grid.z, threads.x, threads.y,
+                       threads.z, 0, parameters);
 }
 
 void Transpose::compile_kernel() {
   const std::string cuda_include_path = nvrtc::findIncludePath();
 
-  const int capability = helper::get_capability(device);
+  const std::string arch = device_.getArch();
 
-  std::vector<std::string> options = {"-std=c++17",
-                                      "-arch=sm_" + std::to_string(capability),
-                                      "-I" + cuda_include_path,
-                                      "-DBATCH_SIZE=" + std::to_string(B) +
-                                          "UL",
-                                      "-DM_GLOBAL=" + std::to_string(M) + "UL",
-                                      "-DN_GLOBAL=" + std::to_string(N) + "UL",
-                                      "-DNBIT=" + std::to_string(nr_bits),
-                                      "-DM_CHUNK=" + std::to_string(M_chunk),
-                                      "-DN_CHUNK=" + std::to_string(N_chunk)};
+  std::vector<std::string> options = {
+    "-std=c++17",
+#if defined(__HIP__)
+    "--offload-arch=" + arch,
+#else
+    "-arch=" + arch,
+#endif
+    "-I" + cuda_include_path,
+    "-DBATCH_SIZE=" + std::to_string(B) + "UL",
+    "-DM_GLOBAL=" + std::to_string(M) + "UL",
+    "-DN_GLOBAL=" + std::to_string(N) + "UL",
+    "-DNBIT=" + std::to_string(nr_bits),
+    "-DM_CHUNK=" + std::to_string(M_chunk),
+    "-DN_CHUNK=" + std::to_string(N_chunk)
+  };
 
   const std::string kernel(&_binary_kernels_transpose_kernel_cu_start,
                            &_binary_kernels_transpose_kernel_cu_end);

@@ -1,5 +1,10 @@
+#if defined(__HIP__)
+#include <limits.h>
+#else
 #include <cuda/std/limits>
-#include <cuda_fp16.h>
+#endif
+
+#include "ccglib/fp16.h"
 
 #ifndef COMPLEX
 #define COMPLEX 2

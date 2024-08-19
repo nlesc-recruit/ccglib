@@ -1,8 +1,8 @@
 #ifndef REFERENCE_GEMM_H_
 #define REFERENCE_GEMM_H_
 
+#include <ccglib/fp16.h>
 #include <ccglib/gemm/mem_order.h>
-#include <cuda_fp16.h>
 
 namespace ccglib::reference {
 class GEMM {

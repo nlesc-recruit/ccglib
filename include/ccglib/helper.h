@@ -1,15 +1,7 @@
 #ifndef HELPER_H_
 #define HELPER_H_
 
-#include <cudawrappers/cu.hpp>
-
 namespace ccglib::helper {
-inline int get_capability(cu::Device &device) {
-  return 10 *
-             device
-                 .getAttribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR>() +
-         device.getAttribute<CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR>();
-}
 
 template <typename T> inline T ceildiv(T a, T b) {
   // Only for positive a and b

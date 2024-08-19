@@ -25,7 +25,7 @@ private:
   MemOrder b_mem_order_;
   MemOrder c_mem_order_;
   Variant variant_;
-  const Kernel &kernel_;
+  const Kernel kernel_;
 
   size_t B_;
   size_t K_;
@@ -86,33 +86,38 @@ void GEMM::Impl::Run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b,
 void GEMM::Impl::compile_kernel() {
   const std::string cuda_include_path = nvrtc::findIncludePath();
 
-  const int capability = helper::get_capability(device_);
+  const std::string arch = device_.getArch();
 
   const Kernel::Parameters parameters = kernel_.GetParameters();
 
   std::vector<std::string> options = {
-      "-std=c++17",
-      "-arch=sm_" + std::to_string(capability),
-      "-I" + cuda_include_path,
-      "-Dblock_size_x=" + std::to_string(threads_.x),
-      "-Dblock_size_y=" + std::to_string(threads_.y),
-      "-Dblock_size_z=" + std::to_string(threads_.z),
-      "-DBATCH_SIZE=" + std::to_string(B_) + "UL",
-      "-DM_GLOBAL=" + std::to_string(M_) + "UL",
-      "-DN_GLOBAL=" + std::to_string(N_) + "UL",
-      "-DK_GLOBAL=" + std::to_string(K_) + "UL",
-      "-DK_PADDING=" + std::to_string(0) +
-          "UL", // will be required when K is not a multiple of K_PER_WMMA
-      "-DNBIT=" + std::to_string(nr_input_bits_),
-      "-DM_PER_BLOCK=" + std::to_string(parameters.m_per_block),
-      "-DM_PER_WARP=" + std::to_string(parameters.m_per_warp),
-      "-DM_PER_WMMA=" + std::to_string(parameters.m_per_wmma),
-      "-DN_PER_BLOCK=" + std::to_string(parameters.n_per_block),
-      "-DN_PER_WARP=" + std::to_string(parameters.n_per_warp),
-      "-DN_PER_WMMA=" + std::to_string(parameters.n_per_wmma),
-      "-DK_PER_WMMA=" + std::to_string(parameters.k_per_wmma),
-      "-DWARP_SIZE=" + std::to_string(parameters.warp_size),
-      "-DNBUFFER=" + std::to_string(parameters.nbuffer)};
+    "-std=c++17",
+#if defined(__HIP__)
+    "--offload-arch=" + arch,
+#else
+    "-arch=" + arch,
+#endif
+    "-I" + cuda_include_path,
+    "-Dblock_size_x=" + std::to_string(threads_.x),
+    "-Dblock_size_y=" + std::to_string(threads_.y),
+    "-Dblock_size_z=" + std::to_string(threads_.z),
+    "-DBATCH_SIZE=" + std::to_string(B_) + "UL",
+    "-DM_GLOBAL=" + std::to_string(M_) + "UL",
+    "-DN_GLOBAL=" + std::to_string(N_) + "UL",
+    "-DK_GLOBAL=" + std::to_string(K_) + "UL",
+    "-DK_PADDING=" + std::to_string(0) +
+        "UL", // will be required when K is not a multiple of K_PER_WMMA
+    "-DNBIT=" + std::to_string(nr_input_bits_),
+    "-DM_PER_BLOCK=" + std::to_string(parameters.m_per_block),
+    "-DM_PER_WARP=" + std::to_string(parameters.m_per_warp),
+    "-DM_PER_WMMA=" + std::to_string(parameters.m_per_wmma),
+    "-DN_PER_BLOCK=" + std::to_string(parameters.n_per_block),
+    "-DN_PER_WARP=" + std::to_string(parameters.n_per_warp),
+    "-DN_PER_WMMA=" + std::to_string(parameters.n_per_wmma),
+    "-DK_PER_WMMA=" + std::to_string(parameters.k_per_wmma),
+    "-DWARP_SIZE=" + std::to_string(parameters.warp_size),
+    "-DNBUFFER=" + std::to_string(parameters.nbuffer)
+  };
 
   if (a_mem_order_ == MemOrder::row_major) {
     options.push_back("-DA_ROW_MAJOR");

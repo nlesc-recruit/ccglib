@@ -1,3 +1,7 @@
+#if defined(__HIP_PLATFORM_AMD__) && (NBIT == 1)
+#error "1-bit GEMM is only available for NVIDIA GPUs"
+#endif
+
 #include <cuda/pipeline>
 #include <cuda/std/limits>
 #include <mma.h>

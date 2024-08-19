@@ -41,4 +41,8 @@ set(TESTS test-helper test-reference test-mma test-packing test-transpose)
 
 foreach(test IN ITEMS ${TESTS})
   add_test(NAME ${test} COMMAND ${test})
+  if(${CCGLIB_BACKEND_HIP})
+    get_target_property(sources ${test} SOURCES)
+    set_source_files_properties(${sources} PROPERTIES LANGUAGE HIP)
+  endif()
 endforeach()

@@ -7,6 +7,19 @@
 
 namespace ccglib::test {
 
+// Packing kernel is not supported on AMD GPUs
+#if defined(__HIP_PLATFORM_AMD__)
+TEST_CASE("Unsupported") {
+  const size_t N = 2048;
+  cu::init();
+  cu::Device device(0);
+  cu::Context context(CU_CTX_BLOCKING_SYNC, device);
+  cu::Stream stream;
+
+  CHECK_THROWS(ccglib::packing::Packing(N, device, stream));
+}
+
+#else
 TEST_CASE("Packing") {
   const size_t N = 2048;
   const size_t bytes_in = sizeof(unsigned char) * N;
@@ -65,7 +78,7 @@ TEST_CASE("Unpacking") {
 
   auto generator = std::bind(std::uniform_int_distribution<>(0, UINT32_MAX),
                              std::default_random_engine());
-  for (int i = 0; i < N; i++) {
+  for (int i = 0; i < N / packing_factor; i++) {
     static_cast<unsigned *>(h_in)[i] = generator();
   }
 
@@ -181,5 +194,6 @@ TEST_CASE("Packing - complex-last") {
     REQUIRE(input_value == output_value);
   }
 }
+#endif
 
 } // namespace ccglib::test

@@ -216,7 +216,11 @@ int main(int argc, const char *argv[]) {
   stream.synchronize();
 
 #if defined(HAVE_PMT)
+#if defined(__HIP__)
+  auto sensor = pmt::Create("rocm", device_id);
+#else
   auto sensor = pmt::Create("nvidia", device_id);
+#endif
 #endif
 
   // Benchmark, time with either cu events or PMT

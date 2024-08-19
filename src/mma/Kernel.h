@@ -1,7 +1,11 @@
 #ifndef MMA_KERNEL_H_
 #define MMA_KERNEL_H_
 
+#if defined(__HIP__)
+#include <hip/hip_runtime.h>
+#else
 #include <cuda_runtime.h>
+#endif
 
 #include <string>
 

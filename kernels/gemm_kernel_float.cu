@@ -1,11 +1,16 @@
-#include <cuda/pipeline>
-#include <cuda_fp16.h>
-#include <mma.h>
-
+#if defined(__HIP_PLATFORM_AMD__)
+#include <rocwmma/rocwmma.hpp>
+namespace wmma = rocwmma;
+#include "sync_copies.h"
+#else
 #include "async_copies.h"
 #include "wmma_extension.h"
-
+#include <cuda/pipeline>
+#include <mma.h>
 using namespace nvcuda;
+#endif
+
+#include "ccglib/fp16.h"
 
 #ifndef COMPLEX
 #define COMPLEX 2
@@ -30,7 +35,12 @@ using Ttc = half;
 using Tout = float;
 #elif NBIT == 32
 using Tin = float;
+// Use FP32 on AMD and TF32 on NVIDIA
+#if defined(__HIP_PLATFORM_AMD__)
+using Ttc = float;
+#else
 using Ttc = wmma::precision::tf32;
+#endif
 using Tout = float;
 #else
 #error NBIT must be 16 or 32
@@ -104,6 +114,10 @@ inline __device__ void store_matrix(
   }
 }
 
+#if defined(__HIP_PLATFORM_AMD__)
+inline __device__ void __syncwarp(){};
+#endif
+
 extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
                                                    const B_t B) {
   const size_t batch = blockIdx.z;
@@ -122,7 +136,7 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
   for (size_t c = 0; c < COMPLEX; c++) {
     for (size_t m = 0; m < M_TILES; m++) {
       for (size_t n = 0; n < N_TILES; n++) {
-        wmma::fill_fragment(sum[c][m][n], 0);
+        wmma::fill_fragment(sum[c][m][n], .0f);
       }
     }
   }
@@ -225,8 +239,8 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
     // step 3
     __syncwarp();
     for (size_t n = 0; n < N_TILES; n++) {
-      for (auto &element : b[IMAG][n].x) {
-        element = -element;
+      for (size_t element = 0; element < b[IMAG][n].num_elements; element++) {
+        b[IMAG][n].x[element] = -b[IMAG][n].x[element];
       }
     }
     __syncwarp();
@@ -270,6 +284,9 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
 #endif
 }
 
+// Optimized GEMM kernel
+// On NVIDIA GPUs, multiple shared memory buffers and asynchronous memory
+// copies are used. On AMD GPUs, one shared memory buffer is used.
 extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
                                                  const B_opt_t B) {
   const size_t batch = blockIdx.z;
@@ -293,7 +310,7 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
   for (size_t c = 0; c < COMPLEX; c++) {
     for (size_t m = 0; m < M_TILES; m++) {
       for (size_t n = 0; n < N_TILES; n++) {
-        wmma::fill_fragment(sum[c][m][n], 0);
+        wmma::fill_fragment(sum[c][m][n], .0f);
       }
     }
   }
@@ -321,7 +338,9 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
   C_s_t C_s = reinterpret_cast<C_s_t>(&shmem[0]);
 #endif
 
+#if !defined(__HIP_PLATFORM_AMD__)
   cuda::pipeline<cuda::thread_scope_thread> pipe = cuda::make_pipeline();
+#endif
 
   for (size_t k = 0, k_buf = 0; k < K_TILES; k++) {
 
@@ -334,6 +353,12 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
         b[COMPLEX][N_TILES];
 
     // copy next data to smem
+#if defined(__HIP_PLATFORM_AMD__)
+    copy_sync<int4, sizeof(A_s[0]), num_threads>(
+        &A_s[0][0][0], &A[batch][blockM][k][0][0][0], tid);
+    copy_sync<int4, sizeof(B_s[0]), num_threads>(
+        &B_s[0][0][0], &B[batch][blockM][k][0][0][0], tid);
+#else
     for (; k_buf < K_TILES && k_buf < (k + NBUFFER); k_buf++) {
       pipe.producer_acquire();
       copy_async<sizeof(A_s[0]), num_threads>(
@@ -353,6 +378,7 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
 
     // Synchronize threads before loading the fragments from shared memory
     __syncthreads();
+#endif
 
     // load A matrix from shared memory
     // float is implicitly converted to tf32. No conversion is done in half
@@ -399,8 +425,8 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
     // step 3
     __syncwarp();
     for (size_t n = 0; n < N_TILES; n++) {
-      for (auto &element : b[IMAG][n].x) {
-        element = -element;
+      for (size_t element = 0; element < b[IMAG][n].num_elements; element++) {
+        b[IMAG][n].x[element] = -b[IMAG][n].x[element];
       }
     }
     __syncwarp();
@@ -415,7 +441,9 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
       }
     }
 
+#if !defined(__HIP_PLATFORM_AMD__)
     pipe.consumer_release();
+#endif
 
     __syncthreads();
   } // k

@@ -62,11 +62,18 @@ void Packing::Run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output,
 void Packing::compile_kernel() {
   const std::string cuda_include_path = nvrtc::findIncludePath();
 
-  const int capability = helper::get_capability(device_);
+  const std::string arch = device_.getArch();
 
   std::vector<std::string> options = {
-      "-std=c++17", "-arch=sm_" + std::to_string(capability),
-      "-I" + cuda_include_path, "-DN=" + std::to_string(N_) + "UL"};
+    "-std=c++17",
+#if defined(__HIP__)
+    "--offload-arch=" + arch,
+#else
+    "-arch=" + arch,
+#endif
+    "-I" + cuda_include_path,
+    "-DN=" + std::to_string(N_) + "UL"
+  };
 
   const std::string kernel(&_binary_kernels_packing_kernel_cu_start,
                            &_binary_kernels_packing_kernel_cu_end);
