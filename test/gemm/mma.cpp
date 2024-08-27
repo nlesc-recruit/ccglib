@@ -18,6 +18,9 @@
 #include <catch2/generators/catch_generators.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
+#include <xtensor/xadapt.hpp>
+#include <xtensor/xtensor.hpp>
+
 #include "verify.h"
 
 #ifndef COMPLEX
@@ -192,7 +195,8 @@ protected:
 
     ccglib::mma::GEMM gemm_mma(kBatchSize, global_m_, global_n_, global_k_,
                                NrInputBits, *device_, *stream_, Precision,
-                               ccglib::mma::basic, output_mem_order);
+                               ccglib::mma::basic, ccglib::mma::complex_middle,
+                               output_mem_order);
     gemm_mma.Run(*d_a_, *d_b_, *d_c_);
 
     verify_output(output_mem_order);
@@ -219,11 +223,64 @@ protected:
 
     ccglib::mma::GEMM gemm_mma(kBatchSize, global_m_, global_n_, global_k_,
                                NrInputBits, *device_, *stream_, Precision,
-                               ccglib::mma::opt, output_mem_order);
+                               ccglib::mma::opt, ccglib::mma::complex_middle,
+                               output_mem_order);
 
     gemm_mma.Run(d_a_trans, d_b_trans, *d_c_);
 
     verify_output(output_mem_order);
+  }
+
+  void
+  complex_gemm_opt(ccglib::mma::MemOrder output_mem_order,
+                   ccglib::mma::ComplexAxisLocation complex_axis_location) {
+    initialize_memory();
+
+    // Allocate device memory for transposed input data
+    cu::DeviceMemory d_a_trans(bytes_a_padded_);
+    cu::DeviceMemory d_b_trans(bytes_b_padded_);
+
+    // Transpose A
+    ccglib::transpose::Transpose transpose_a(kBatchSize, global_m_, global_k_,
+                                             m_per_block_, k_per_wmma_,
+                                             NrInputBits, *device_, *stream_);
+    transpose_a.Run(*h_a_, d_a_trans);
+
+    // Transpose B
+    ccglib::transpose::Transpose transpose_b(kBatchSize, global_n_, global_k_,
+                                             n_per_block_, k_per_wmma_,
+                                             NrInputBits, *device_, *stream_);
+    transpose_b.Run(*h_b_, d_b_trans);
+
+    ccglib::mma::GEMM gemm_mma(kBatchSize, global_m_, global_n_, global_k_,
+                               NrInputBits, *device_, *stream_, Precision,
+                               ccglib::mma::opt, complex_axis_location,
+                               output_mem_order);
+
+    gemm_mma.Run(d_a_trans, d_b_trans, *d_c_);
+
+    // convert the output from complex-last to to complex-middle layout and
+    // reuse the verify function that expects complex-middle layout
+    if (complex_axis_location == ccglib::mma::complex_last) {
+      // copy C to host
+      stream_->memcpyDtoHAsync(*h_c_, *d_c_, bytes_c_);
+      stream_->synchronize();
+
+      // move complex axis to middle
+      const std::array<size_t, 3> shape{kBatchSize, global_m_ * global_n_,
+                                        COMPLEX};
+      auto h_c_complex_last = xt::adapt(static_cast<Tout *>(*h_c_), shape);
+      xt::xtensor<Tout, 3> h_c_complex_middle =
+          xt::transpose(h_c_complex_last, {0, 2, 1});
+
+      // verify output
+      verify<Tin, Tout, NrInputBits>(
+          static_cast<const Tin *>(*h_a_), static_cast<const Tin *>(*h_b_),
+          static_cast<Tout *>(h_c_complex_middle.data()), kBatchSize, global_m_,
+          global_n_, global_k_, output_mem_order);
+    } else {
+      verify_output(output_mem_order);
+    }
   }
 };
 
@@ -277,6 +334,14 @@ TEST_CASE_METHOD(ComplexGemmTestFixtureFloat16,
     const size_t K = 64;
     ComplexGemmTestFixtureFloat16::init(M, N, K);
     ComplexGemmTestFixtureFloat16::complex_gemm_opt(ccglib::mma::col_major);
+  }
+  SECTION("Complex-last output") {
+    const size_t M = 100;
+    const size_t N = 60;
+    const size_t K = 40;
+    ComplexGemmTestFixtureFloat16::init(M, N, K);
+    ComplexGemmTestFixtureFloat16::complex_gemm_opt(ccglib::mma::row_major,
+                                                    ccglib::mma::complex_last);
   }
 }
 
@@ -385,8 +450,9 @@ TEST_CASE("Unsupported matrix layout") {
   SECTION("float16") {
     CHECK_THROWS_WITH(ccglib::mma::GEMM(batch_size, m, n, k, 16, device, stream,
                                         ccglib::mma::float16,
-                                        ccglib::mma::basic, layout_c, layout_a,
-                                        layout_b),
+                                        ccglib::mma::basic,
+                                        ccglib::mma::complex_middle, layout_c,
+                                        layout_a, layout_b),
                       Catch::Matchers::ContainsSubstring(error_name));
   }
 
@@ -395,7 +461,8 @@ TEST_CASE("Unsupported matrix layout") {
   SECTION("int1") {
     CHECK_THROWS_WITH(ccglib::mma::GEMM(batch_size, m, n, k, 1, device, stream,
                                         ccglib::mma::int1, ccglib::mma::basic,
-                                        layout_c, layout_a, layout_b),
+                                        ccglib::mma::complex_middle, layout_c,
+                                        layout_a, layout_b),
                       Catch::Matchers::ContainsSubstring(error_name));
   }
 #endif

@@ -1,6 +1,7 @@
 #ifndef MMA_GEMM_H_
 #define MMA_GEMM_H_
 
+#include <ccglib/gemm/complex_order.h>
 #include <ccglib/gemm/mem_order.h>
 #include <ccglib/gemm/precision.h>
 #include <ccglib/gemm/variant.h>
@@ -13,6 +14,8 @@ public:
   GEMM(size_t B_, size_t M_, size_t N_, size_t K_, size_t nr_input_bits_,
        cu::Device &device_, cu::Stream &stream_, Precision precision,
        Variant Variant = Variant::opt,
+       ComplexAxisLocation complex_axis_location =
+           ComplexAxisLocation::complex_middle,
        MemOrder c_mem_order = MemOrder::row_major,
        MemOrder a_mem_order = MemOrder::row_major,
        MemOrder b_mem_order = MemOrder::col_major);

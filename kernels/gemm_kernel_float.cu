@@ -76,10 +76,18 @@ using B_opt_t =
     Tin[BATCH_SIZE][N_GLOBAL_PADDED / N_PER_BLOCK][K_GLOBAL_PADDED / K_PER_WMMA]
        [COMPLEX][N_PER_BLOCK][K_PER_WMMA];
 
+#if defined(COMPLEX_MIDDLE)
 #ifdef C_ROW_MAJOR
 using C_t = Tout[BATCH_SIZE][COMPLEX][M_GLOBAL][N_GLOBAL];
 #else
 using C_t = Tout[BATCH_SIZE][COMPLEX][N_GLOBAL][M_GLOBAL];
+#endif
+#elif defined(COMPLEX_LAST)
+#ifdef C_ROW_MAJOR
+using C_t = Tout[BATCH_SIZE][M_GLOBAL][N_GLOBAL][COMPLEX];
+#else
+using C_t = Tout[BATCH_SIZE][N_GLOBAL][M_GLOBAL][COMPLEX];
+#endif
 #endif
 
 inline __device__ size_t global_idx_m(const size_t &blockM, const size_t &warpM,
@@ -329,7 +337,7 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
                      [K_PER_WMMA];
   A_s_t A_s = reinterpret_cast<A_s_t>(&shmem[0]);
   B_s_t B_s = reinterpret_cast<B_s_t>(&shmem[A_s_size]);
-#if M_IS_PADDED || N_IS_PADDED
+#if defined(COMPLEX_LAST) || M_IS_PADDED || N_IS_PADDED
   constexpr size_t C_s_size = (M_PER_BLOCK / M_PER_WARP) *
                               (N_PER_BLOCK / N_PER_WARP) * M_PER_WMMA *
                               N_PER_WMMA;
@@ -449,6 +457,7 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
   } // k
 
   // store the result to global memory
+#if defined(COMPLEX_MIDDLE)
 #if M_IS_PADDED || N_IS_PADDED
   for (size_t c = 0; c < COMPLEX; c++) {
     for (size_t m = 0; m < M_TILES; m++) {
@@ -473,5 +482,28 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
   } // c
 #else
   store_matrix(sum, C, batch, blockM, warpM, blockN, warpN);
+#endif
+#elif defined(COMPLEX_LAST)
+  for (size_t m = 0; m < M_TILES; m++) {
+    for (size_t n = 0; n < N_TILES; n++) {
+      for (size_t c = 0; c < COMPLEX; c++) {
+        wmma::store_matrix_sync(&C_s[warpM][warpN][0][0], sum[c][m][n],
+                                N_PER_WMMA, wmma::mem_row_major);
+        __syncwarp();
+        size_t m_index = global_idx_m(blockM, warpM, m);
+        size_t n_index = global_idx_n(blockN, warpN, n);
+        for (size_t t = threadIdx.x; t < M_PER_WMMA * N_PER_WMMA;
+             t += WARP_SIZE) {
+          size_t i = t / N_PER_WMMA;
+          size_t j = t % N_PER_WMMA;
+          // store the submatrix, padded values are set to zero
+          if (m_index + i < M_GLOBAL && n_index + j < N_GLOBAL) {
+            C[batch][m_index + i][n_index + j][c] = C_s[warpM][warpN][i][j];
+          }
+        }
+        __syncwarp();
+      }
+    }
+  } // c
 #endif
 }

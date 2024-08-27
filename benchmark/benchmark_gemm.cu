@@ -30,6 +30,8 @@ cxxopts::Options create_commandline_parser(const char *argv[]) {
       cxxopts::value<std::string>())(
       "variant", "GEMM kernel variant (basic or opt)",
       cxxopts::value<std::string>()->default_value("opt"))(
+      "complex_axis", "Location of complex axis (middle or last)",
+      cxxopts::value<std::string>()->default_value("middle"))(
 
 #ifdef HAVE_PMT
       "measure_power", "Measure power usage",
@@ -91,6 +93,7 @@ int main(int argc, const char *argv[]) {
   const float benchmark_duration = cmdline["benchmark_duration"].as<float>();
   const std::string precision = cmdline["precision"].as<std::string>();
   const std::string variant = cmdline["variant"].as<std::string>();
+  const std::string complex_axis = cmdline["complex_axis"].as<std::string>();
   const bool csv = cmdline["csv"].as<bool>();
   const unsigned device_id = cmdline["device"].as<unsigned>();
 
@@ -105,6 +108,13 @@ int main(int argc, const char *argv[]) {
   std::map<std::string, ccglib::mma::Variant> map_gemm_variant{
       {"basic", ccglib::mma::basic}, {"opt", ccglib::mma::opt}};
   ccglib::mma::Variant gemm_variant = map_gemm_variant[variant];
+
+  // Select complex axis location
+  std::map<std::string, ccglib::mma::ComplexAxisLocation> map_gemm_complex_axis{
+      {"middle", ccglib::mma::complex_middle},
+      {"last", ccglib::mma::complex_last}};
+  ccglib::mma::ComplexAxisLocation gemm_complex_axis_location =
+      map_gemm_complex_axis[complex_axis];
 
   // Select size of input / output types
   std::map<std::string, size_t> map_input_bits{
@@ -235,7 +245,8 @@ int main(int argc, const char *argv[]) {
   for (size_t bench = 0; bench < nr_benchmarks; bench++) {
     for (size_t idx = 0; idx < num_sizes; idx++) {
       ccglib::mma::GEMM gemm(B, M[idx], N[idx], K[idx], nr_input_bits, device,
-                             stream, gemm_precision, gemm_variant);
+                             stream, gemm_precision, gemm_variant,
+                             gemm_complex_axis_location);
 
       // Run once to get estimate of runtime per kernel
       cu::Event start;
