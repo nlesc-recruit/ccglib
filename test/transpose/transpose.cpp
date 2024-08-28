@@ -6,6 +6,9 @@
 #include <ccglib/fp16.h>
 #include <ccglib/transpose/transpose.h>
 
+#include <xtensor/xadapt.hpp>
+#include <xtensor/xtensor.hpp>
+
 namespace ccglib::test {
 
 template <typename T, size_t NrInputBits> class TransposeTestFixture {
@@ -75,7 +78,7 @@ private:
     d_a_trans_->zero(kBytesA);
   }
 
-  void verify_output() {
+  void verify_output(transpose::ComplexAxisLocation complex_axis_location) {
     // copy output to host
     stream_->memcpyDtoHAsync(*h_a_trans_, *d_a_trans_, kBytesA);
     stream_->synchronize();
@@ -83,16 +86,25 @@ private:
     // verification
     // data is transposed from shape [batch][complex][m][n / packing_factor] to
     // [batch][m/m_per_chunk][n/n_per_chunk][complex][m_per_chunk][n_per_chunk /
-    // packing_factor] where packing_factor is the number of samples per item
-    // (e.g. 32 for 1-bit samples packed into 32-bit ints.)
+    // packing_factor] in complex-middle mode, where packing_factor is the
+    // number of samples per item (e.g. 32 for 1-bit samples packed into 32-bit
+    // ints.) In complex-last mode, complex is the last axis.
 
-    // reinterpret the data as a multi-dimensional array for easier indexing
-    using Tinput = T[kBatchSize][kComplex][kGlobalM][kGlobalN / kPackingFactor];
-    using Toutput = T[kBatchSize][kGlobalM / kMPerChunk][kGlobalN / kNPerChunk]
-                     [kComplex][kMPerChunk][kNPerChunk / kPackingFactor];
-    Tinput *in_ptr = reinterpret_cast<Tinput *>(static_cast<T *>(*h_a_));
-    Toutput *out_ptr =
-        reinterpret_cast<Toutput *>(static_cast<T *>(*h_a_trans_));
+    std::array<size_t, 4> shape_input;
+    if (complex_axis_location ==
+        transpose::ComplexAxisLocation::complex_middle) {
+      shape_input = {kBatchSize, kComplex, kGlobalM, kGlobalN / kPackingFactor};
+    } else if (complex_axis_location ==
+               transpose::ComplexAxisLocation::complex_last) {
+      shape_input = {kBatchSize, kGlobalM, kGlobalN / kPackingFactor, kComplex};
+    }
+
+    std::array<size_t, 6> shape_output{
+        kBatchSize, kGlobalM / kMPerChunk,      kGlobalN / kNPerChunk, kComplex,
+        kMPerChunk, kNPerChunk / kPackingFactor};
+
+    auto input = xt::adapt(static_cast<T *>(*h_a_), shape_input);
+    auto output = xt::adapt(static_cast<T *>(*h_a_trans_), shape_output);
 
     for (size_t b = 0; b < kBatchSize; b++) {
       for (size_t c = 0; c < kComplex; c++) {
@@ -104,9 +116,19 @@ private:
             const size_t n_local = n / (kNPerChunk / kPackingFactor);
             const size_t n_chunk = n % (kNPerChunk / kPackingFactor);
 
-            REQUIRE(static_cast<float>((*in_ptr)[b][c][m][n]) ==
-                    static_cast<float>(
-                        (*out_ptr)[b][m_local][n_local][c][m_chunk][n_chunk]));
+            float in;
+            if (complex_axis_location ==
+                transpose::ComplexAxisLocation::complex_middle) {
+              in = input(b, c, m, n);
+            } else if (complex_axis_location ==
+                       transpose::ComplexAxisLocation::complex_last) {
+              in = input(b, m, n, c);
+            }
+
+            const float out = static_cast<float>(
+                output(b, m_local, n_local, c, m_chunk, n_chunk));
+
+            REQUIRE(in == out);
           }
         }
       }
@@ -114,15 +136,15 @@ private:
   }
 
 protected:
-  void transpose() {
+  void transpose(transpose::ComplexAxisLocation complex_axis_location) {
     init_memory();
 
-    ccglib::transpose::Transpose transpose_a(kBatchSize, kGlobalM, kGlobalN,
-                                             kMPerChunk, kNPerChunk,
-                                             NrInputBits, *device_, *stream_);
+    ccglib::transpose::Transpose transpose_a(
+        kBatchSize, kGlobalM, kGlobalN, kMPerChunk, kNPerChunk, NrInputBits,
+        *device_, *stream_, complex_axis_location);
     transpose_a.Run(*d_a_, *d_a_trans_);
 
-    verify_output();
+    verify_output(complex_axis_location);
   }
 };
 
@@ -131,12 +153,20 @@ using TransposeTestFixtureInt1 = TransposeTestFixture<unsigned int, 1>;
 
 TEST_CASE_METHOD(TransposeTestFixtureFloat16, "Transpose Test - float16",
                  "[transpose-test-float16]") {
-  TransposeTestFixtureFloat16::transpose();
+  SECTION("complex-middle") {
+    TransposeTestFixtureFloat16::transpose(
+        transpose::ComplexAxisLocation::complex_middle);
+  }
+  SECTION("complex-last") {
+    TransposeTestFixtureFloat16::transpose(
+        transpose::ComplexAxisLocation::complex_last);
+  }
 }
 
 TEST_CASE_METHOD(TransposeTestFixtureInt1, "Transpose Test - int1",
                  "[transpose-test-int1]") {
-  TransposeTestFixtureInt1::transpose();
+  TransposeTestFixtureInt1::transpose(
+      transpose::ComplexAxisLocation::complex_middle);
 }
 
 } // namespace ccglib::test

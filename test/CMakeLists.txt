@@ -35,7 +35,7 @@ add_executable(test-transpose transpose/transpose.cpp)
 target_include_directories(
   test-transpose PRIVATE ${CMAKE_BINARY_DIR} "${PROJECT_SOURCE_DIR}/include")
 target_link_libraries(test-transpose PRIVATE ccglib cudawrappers::cu
-                                             Catch2::Catch2WithMain)
+                                             Catch2::Catch2WithMain xtensor)
 
 set(TESTS test-helper test-reference test-mma test-packing test-transpose)
 
