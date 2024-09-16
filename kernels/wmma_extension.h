@@ -39,13 +39,22 @@ inline __device__ void bmma_sync(
     const fragment<matrix_b, 16, 8, 256, experimental::precision::b1, col_major>
         &b,
     const fragment<accumulator, 16, 8, 256, int> &c,
-    experimental::bmmaBitOp = experimental::bmmaBitOpXOR,
+    experimental::bmmaBitOp bitOp = experimental::bmmaBitOpXOR,
     experimental::bmmaAccumulateOp = experimental::bmmaAccumulateOpPOPC) {
-  asm("mma.sync.aligned.m16n8k256.row.col.s32.b1.b1.s32.xor.popc {%0, %1, %2, "
-      "%3}, {%4, %5, %6, %7}, {%8, %9}, {%10, %11, %12, %13};"
-      : "=r"(d.x[0]), "=r"(d.x[1]), "=r"(d.x[2]), "=r"(d.x[3])
-      : "r"(a.x[0]), "r"(a.x[1]), "r"(a.x[2]), "r"(a.x[3]), "r"(b.x[0]),
-        "r"(b.x[1]), "r"(c.x[0]), "r"(c.x[1]), "r"(c.x[2]), "r"(c.x[3]));
+
+  if (bitOp == experimental::bmmaBitOpXOR) {
+    asm("mma.sync.aligned.m16n8k256.row.col.s32.b1.b1.s32.xor.popc {%0, %1, "
+        "%2, %3}, {%4, %5, %6, %7}, {%8, %9}, {%10, %11, %12, %13};"
+        : "=r"(d.x[0]), "=r"(d.x[1]), "=r"(d.x[2]), "=r"(d.x[3])
+        : "r"(a.x[0]), "r"(a.x[1]), "r"(a.x[2]), "r"(a.x[3]), "r"(b.x[0]),
+          "r"(b.x[1]), "r"(c.x[0]), "r"(c.x[1]), "r"(c.x[2]), "r"(c.x[3]));
+  } else if (bitOp == experimental::bmmaBitOpAND) {
+    asm("mma.sync.aligned.m16n8k256.row.col.s32.b1.b1.s32.and.popc {%0, %1, "
+        "%2, %3}, {%4, %5, %6, %7}, {%8, %9}, {%10, %11, %12, %13};"
+        : "=r"(d.x[0]), "=r"(d.x[1]), "=r"(d.x[2]), "=r"(d.x[3])
+        : "r"(a.x[0]), "r"(a.x[1]), "r"(a.x[2]), "r"(a.x[3]), "r"(b.x[0]),
+          "r"(b.x[1]), "r"(c.x[0]), "r"(c.x[1]), "r"(c.x[2]), "r"(c.x[3]));
+  }
 }
 
 inline __device__ void load_matrix_sync(

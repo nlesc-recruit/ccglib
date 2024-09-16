@@ -72,6 +72,13 @@ inline __device__ size_t global_idx_n(const size_t &blockN, const size_t &warpN,
   return blockN * N_PER_BLOCK + warpN * N_PER_WARP + n * N_PER_WMMA;
 }
 
+/* bit-wise negation of a tensor core fragment */
+template <typename FragT> inline __device__ void negate(FragT &fragment) {
+  for (auto &element : fragment.x) {
+    element = ~element;
+  }
+}
+
 inline __device__ void store_matrix(
     wmma::fragment<wmma::accumulator, M_PER_WMMA, N_PER_WMMA, K_PER_WMMA, Tout>
         sum[COMPLEX][M_PER_WARP / M_PER_WMMA][N_PER_WARP / N_PER_WMMA],
@@ -97,27 +104,24 @@ inline __device__ void store_matrix(
 // Starting with the hopper generation, bmma with XOR is no longer available in
 // hardware With this custom implementation, the result of bmma_sync is slightly
 // different than the XOR version, but this is easily corrected in the final
-// output. After this function is run, the data in the a and b fragments is
-// flipped
+// output.
 #if __CUDA_ARCH__ >= 900
 static inline __device__ void bmma_sync_and(
-    wmma::fragment<wmma::accumulator, 16, 8, 256, int> &d,
-    wmma::fragment<wmma::matrix_a, 16, 8, 256,
+    wmma::fragment<wmma::accumulator, M_PER_WMMA, N_PER_WMMA, K_PER_WMMA, int>
+        &d,
+    wmma::fragment<wmma::matrix_a, M_PER_WMMA, N_PER_WMMA, K_PER_WMMA,
                    wmma::experimental::precision::b1, wmma::row_major> &a,
-    wmma::fragment<wmma::matrix_b, 16, 8, 256,
+    wmma::fragment<wmma::matrix_b, M_PER_WMMA, N_PER_WMMA, K_PER_WMMA,
                    wmma::experimental::precision::b1, wmma::col_major> &b,
-    const wmma::fragment<wmma::accumulator, 16, 8, 256, int> &c) {
-  // AND, flip inputs a and b, AND again
+    const wmma::fragment<wmma::accumulator, M_PER_WMMA, N_PER_WMMA, K_PER_WMMA,
+                         int> &c) {
+  // AND, flip inputs a and b, AND again, flip inputs back
   wmma::bmma_sync(d, a, b, c, wmma::experimental::bmmaBitOpAND);
-  __syncwarp();
-  for (auto &element : a.x) {
-    element = ~element;
-  }
-  for (auto &element : b.x) {
-    element = ~element;
-  }
-  __syncwarp();
+  negate(a);
+  negate(b);
   wmma::bmma_sync(d, a, b, c, wmma::experimental::bmmaBitOpAND);
+  negate(a);
+  negate(b);
 }
 #endif
 
@@ -200,13 +204,9 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t &C, const A_t &A,
     }
 
     // step 3
-    __syncwarp();
     for (size_t n = 0; n < N_TILES; n++) {
-      for (auto &element : b[IMAG][n].x) {
-        element = ~element;
-      }
+      negate(b[IMAG][n]);
     }
-    __syncwarp();
 
     // step 4 and 5
     for (size_t m = 0; m < M_TILES; m++) {
@@ -233,7 +233,6 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t &C, const A_t &A,
   // amount of padding twice hence we end up with
   // a dot b (real part) = 2 * (K - popc(a xor b))
   // a dot b (imag part) = 2 * (K - K_PADDING - popc(a xor b))
-  __syncwarp();
   for (size_t c = 0; c < COMPLEX; c++) {
     size_t offset = c == REAL ? 0 : K_PADDING;
 
@@ -253,7 +252,6 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t &C, const A_t &A,
       }
     }
   }
-  __syncwarp();
 
   // store the result to global memory
   store_matrix(sum, C, batch, blockM, warpM, blockN, warpN);
@@ -351,13 +349,9 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
       }
     }
 
-    __syncwarp();
     for (size_t n = 0; n < N_TILES; n++) {
-      for (auto &element : b[IMAG][n].x) {
-        element = ~element;
-      }
+      negate(b[IMAG][n]);
     }
-    __syncwarp();
 
     for (size_t m = 0; m < M_TILES; m++) {
       for (size_t n = 0; n < N_TILES; n++) {
@@ -379,7 +373,6 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
   }
 
   // fix output values
-  __syncwarp();
   for (size_t c = 0; c < COMPLEX; c++) {
     size_t offset = c == REAL ? 0 : K_PADDING;
 
@@ -395,7 +388,6 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
       }
     }
   }
-  __syncwarp();
 
   // store the result to global memory
   store_matrix(sum, C, batch, blockM, warpM, blockN, warpN);
