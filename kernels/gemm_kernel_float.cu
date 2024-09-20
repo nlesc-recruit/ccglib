@@ -149,12 +149,6 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
     }
   }
 
-#if K_IS_PADDED || M_IS_PADDED || N_IS_PADDED
-  constexpr size_t num_threads = block_size_x * block_size_y * block_size_z;
-  const size_t tid = threadIdx.x + threadIdx.y * block_size_x +
-                     threadIdx.z * block_size_x * block_size_y;
-#endif
-
 #if K_IS_PADDED || M_IS_PADDED
   __shared__ Tin A_s[M_PER_BLOCK / M_PER_WARP][N_PER_BLOCK / N_PER_WARP]
                     [M_PER_WMMA][K_PER_WMMA];
