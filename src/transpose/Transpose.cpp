@@ -28,7 +28,9 @@ void Transpose::Run(cu::HostMemory &h_input, cu::DeviceMemory &d_output) {
 }
 
 void Transpose::Run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output) {
-  dim3 threads(32, 32);
+  const unsigned warp_size =
+      device_.getAttribute(CU_DEVICE_ATTRIBUTE_WARP_SIZE);
+  dim3 threads(warp_size, 1024 / warp_size);
   dim3 grid(helper::ceildiv(N, threads.x), helper::ceildiv(M, threads.y), B);
 
   std::vector<const void *> parameters = {d_output.parameter(),

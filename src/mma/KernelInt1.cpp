@@ -17,8 +17,6 @@ template <> Kernel::Parameters Kernel::GetParameters<Precision::int1>() const {
                                           .n_per_wmma = 8,
 
                                           .k_per_wmma = 256,
-
-                                          .warp_size = 32,
                                           .nbuffer = 4};
 
   return kernel_parameters;

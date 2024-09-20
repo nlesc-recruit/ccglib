@@ -11,6 +11,7 @@
 
 #include <ccglib/gemm/precision.h>
 #include <ccglib/gemm/variant.h>
+#include <cudawrappers/cu.hpp>
 
 namespace ccglib::mma {
 
@@ -27,13 +28,12 @@ public:
 
     size_t k_per_wmma;
 
-    size_t warp_size;
     size_t nbuffer;
   };
 
   Kernel(Precision precision, Variant variant);
 
-  dim3 GetThreads() const;
+  dim3 GetThreads(cu::Device &device) const;
   std::string GetSource() const;
   Parameters GetParameters() const { return parameters_; };
   std::string GetName() const;

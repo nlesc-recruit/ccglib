@@ -19,8 +19,6 @@ Kernel::Parameters Kernel::GetParameters<Precision::float32>() const {
     .n_per_wmma = 16,
 
     .k_per_wmma = 8,
-
-    .warp_size = 32,
 #if defined(__HIP_PLATFORM_AMD__)
     .nbuffer = 1
 #else

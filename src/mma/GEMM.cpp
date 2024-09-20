@@ -57,7 +57,7 @@ GEMM::Impl::Impl(size_t B_, size_t M_, size_t N_, size_t K_,
       c_mem_order_(c_mem_order), a_mem_order_(a_mem_order),
       b_mem_order_(b_mem_order), kernel_(Kernel(precision, variant)) {
   const Kernel::Parameters parameters = kernel_.GetParameters();
-  threads_ = kernel_.GetThreads();
+  threads_ = kernel_.GetThreads(device_);
   grid_ = dim3(ccglib::helper::ceildiv(N_, parameters.n_per_block),
                ccglib::helper::ceildiv(M_, parameters.m_per_block), B_);
 
@@ -105,6 +105,8 @@ void GEMM::Impl::compile_kernel() {
   const std::string cuda_include_path = nvrtc::findIncludePath();
 
   const std::string arch = device_.getArch();
+  const unsigned warp_size =
+      device_.getAttribute(CU_DEVICE_ATTRIBUTE_WARP_SIZE);
 
   const Kernel::Parameters parameters = kernel_.GetParameters();
 
@@ -126,6 +128,7 @@ void GEMM::Impl::compile_kernel() {
     "-DK_PADDING=" + std::to_string(0) +
         "UL", // will be required when K is not a multiple of K_PER_WMMA
     "-DNBIT=" + std::to_string(nr_input_bits_),
+    "-DWARP_SIZE=" + std::to_string(warp_size),
     "-DM_PER_BLOCK=" + std::to_string(parameters.m_per_block),
     "-DM_PER_WARP=" + std::to_string(parameters.m_per_warp),
     "-DM_PER_WMMA=" + std::to_string(parameters.m_per_wmma),
@@ -133,7 +136,6 @@ void GEMM::Impl::compile_kernel() {
     "-DN_PER_WARP=" + std::to_string(parameters.n_per_warp),
     "-DN_PER_WMMA=" + std::to_string(parameters.n_per_wmma),
     "-DK_PER_WMMA=" + std::to_string(parameters.k_per_wmma),
-    "-DWARP_SIZE=" + std::to_string(parameters.warp_size),
     "-DNBUFFER=" + std::to_string(parameters.nbuffer)
   };
 
