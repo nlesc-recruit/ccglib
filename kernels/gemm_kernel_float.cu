@@ -335,7 +335,8 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
   constexpr size_t C_s_size = (M_PER_BLOCK / M_PER_WARP) *
                               (N_PER_BLOCK / N_PER_WARP) * M_PER_WMMA *
                               N_PER_WMMA;
-  static_assert((A_s_size + B_s_size) * sizeof(Tin) >= C_s_size * sizeof(Tout));
+  static_assert((A_s_size + B_s_size) * sizeof(Tin) >= C_s_size * sizeof(Tout),
+                "A_s + B_s >= C_s");
   typedef Tout(*C_s_t)[N_PER_BLOCK / N_PER_WARP][M_PER_WMMA][N_PER_WMMA];
   C_s_t C_s = reinterpret_cast<C_s_t>(&shmem[0]);
 #endif
