@@ -21,6 +21,7 @@
 #include <xtensor/xadapt.hpp>
 #include <xtensor/xtensor.hpp>
 
+#include "arch.h"
 #include "verify.h"
 
 #ifndef COMPLEX
@@ -41,6 +42,8 @@ template <typename Tin, typename Tout, size_t NrInputBits,
           ccglib::mma::Precision Precision>
 class ComplexGemmTestFixture {
 public:
+  std::unique_ptr<cu::Device> device_;
+
   ComplexGemmTestFixture() {
     cu::init();
     device_ = std::make_unique<cu::Device>(0);
@@ -83,7 +86,6 @@ public:
   }
 
 private:
-  std::unique_ptr<cu::Device> device_;
   std::unique_ptr<cu::Context> context_;
   std::unique_ptr<cu::Stream> stream_;
 
@@ -286,13 +288,8 @@ protected:
 
 using ComplexGemmTestFixtureFloat16 =
     ComplexGemmTestFixture<half, float, 16, ccglib::mma::float16>;
-// on AMD, FP32 is only available on CDNA-class GPUs (GFX9)
-// on NVIDIA, TF32 is used
-#if !defined(__HIP_PLATFORM_AMD__) ||                                          \
-    (defined(__HIP_PLATFORM_AMD__) && defined __GFX9__)
 using ComplexGemmTestFixtureFloat32 =
     ComplexGemmTestFixture<float, float, 32, ccglib::mma::float32>;
-#endif
 // int1 is only available on NVIDIA
 #if !defined(__HIP_PLATFORM_AMD__)
 using ComplexGemmTestFixtureInt1 =
@@ -345,11 +342,18 @@ TEST_CASE_METHOD(ComplexGemmTestFixtureFloat16,
   }
 }
 
-#if !defined(__HIP_PLATFORM_AMD__) ||                                          \
-    (defined(__HIP_PLATFORM_AMD__) && defined __GFX9__)
+// on AMD, FP32 is only available on CDNA-class GPUs (GFX9)
+// on NVIDIA, TF32 is used
 TEST_CASE_METHOD(ComplexGemmTestFixtureFloat32,
                  "Complex GEMM Test - float32 basic",
                  "[complex-gemm-test-float32-basic]") {
+  // on AMD, skip on unsupported GPUs
+#ifdef __HIP_PLATFORM_AMD__
+  if (!isCDNA(*ComplexGemmTestFixtureFloat32().device_)) {
+    SKIP("Float32 is only available on CDNA GPUs");
+  }
+#endif
+
   SECTION("C row-major") {
     const size_t M = 100;
     const size_t N = 60;
@@ -369,6 +373,13 @@ TEST_CASE_METHOD(ComplexGemmTestFixtureFloat32,
 TEST_CASE_METHOD(ComplexGemmTestFixtureFloat32,
                  "Complex GEMM Test - float32 opt",
                  "[complex-gemm-test-float32-opt]") {
+  // on AMD, return on unsupported GPUs
+#ifdef __HIP_PLATFORM_AMD__
+  if (!isCDNA(*ComplexGemmTestFixtureFloat32().device_)) {
+    SKIP("Float32 is only available on CDNA GPUs");
+  }
+#endif
+
   SECTION("C row-major") {
     const size_t M = 100;
     const size_t N = 60;
@@ -384,7 +395,6 @@ TEST_CASE_METHOD(ComplexGemmTestFixtureFloat32,
     ComplexGemmTestFixtureFloat32::complex_gemm_opt(ccglib::mma::col_major);
   }
 }
-#endif
 
 #if !defined(__HIP_PLATFORM_AMD__)
 TEST_CASE_METHOD(ComplexGemmTestFixtureInt1, "Complex GEMM Test - int1 basic",
