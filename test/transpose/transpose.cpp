@@ -135,7 +135,7 @@ private:
     }
   }
 
-protected:
+public:
   void transpose(transpose::ComplexAxisLocation complex_axis_location) {
     init_memory();
 

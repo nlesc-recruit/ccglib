@@ -1,7 +1,3 @@
-#include <complex>
-#include <iostream>
-#include <type_traits>
-
 #include <limits.h>
 #include <math.h>
 
@@ -14,6 +10,7 @@
 #include <ccglib/helper.h>
 #include <ccglib/transpose/transpose.h>
 
+#include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
@@ -22,6 +19,7 @@
 #include <xtensor/xtensor.hpp>
 
 #include "arch.h"
+#include "ccglib/gemm/precision.h"
 #include "verify.h"
 
 #ifndef COMPLEX
@@ -42,6 +40,8 @@ template <typename Tin, typename Tout, size_t NrInputBits,
           ccglib::mma::Precision Precision>
 class ComplexGemmTestFixture {
 public:
+  using InputType = Tin;
+  using OutputType = Tout;
   std::unique_ptr<cu::Device> device_;
 
   ComplexGemmTestFixture() {
@@ -286,151 +286,158 @@ protected:
   }
 };
 
-using ComplexGemmTestFixtureFloat16 =
-    ComplexGemmTestFixture<half, float, 16, ccglib::mma::float16>;
-using ComplexGemmTestFixtureFloat32 =
-    ComplexGemmTestFixture<float, float, 32, ccglib::mma::float32>;
+using TestTypesComplexGemm =
+    std::tuple<ComplexGemmTestFixture<half, float, 16, ccglib::mma::float16>,
+               ComplexGemmTestFixture<float, float, 32, ccglib::mma::float32>>;
+
+// GemmTestTraits is a template struct that provides parameters for the
+// GemmTestBasic and GemmTestOpt test cases.
+//
+// It is specialized for each Fixture type in the TestTypesComplexGemm tuple.
+//
+// In the absence of a specialization, it will trigger a static assertion.
+template <typename Fixture, typename Cond = void> struct GemmTestTraits {
+  static_assert(!std::is_void_v<Cond>,
+                "GemmTestTraits not specialized for this Fixture type.");
+};
+
+template <typename T, typename Tuple> struct IsTypeInTuple;
+
+template <typename T, typename... Types>
+struct IsTypeInTuple<T, std::tuple<Types...>>
+    : std::disjunction<std::is_same<T, Types>...> {};
+
+template <typename T, typename Tuple>
+constexpr bool IsTypeInTuple_v = IsTypeInTuple<T, Tuple>::value;
+
+template <typename Fixture>
+struct GemmTestTraits<
+    Fixture, std::enable_if_t<IsTypeInTuple_v<Fixture, TestTypesComplexGemm>>> {
+  static constexpr size_t M_row_major = 100;
+  static constexpr size_t N_row_major = 60;
+  static constexpr size_t K_row_major = 40;
+
+  static constexpr size_t M_col_major = 128;
+  static constexpr size_t N_col_major = 64;
+  static constexpr size_t K_col_major = 64;
+
+  static constexpr size_t InputSize =
+      sizeof(typename Fixture::InputType) * CHAR_BIT;
+  static constexpr size_t OutputSize =
+      sizeof(typename Fixture::OutputType) * CHAR_BIT;
+};
+
 // int1 is only available on NVIDIA
 #if !defined(__HIP_PLATFORM_AMD__)
 using ComplexGemmTestFixtureInt1 =
-    ComplexGemmTestFixture<unsigned int, int32_t, 1, ccglib::mma::int1>;
+    ComplexGemmTestFixture<unsigned int, int32_t, 1,
+                           ccglib::mma::Precision::int1>;
+
+template <typename Fixture>
+struct GemmTestTraits<
+    Fixture,
+    std::enable_if_t<std::is_same_v<Fixture, ComplexGemmTestFixtureInt1>>> {
+  static constexpr size_t M_row_major = 64;
+  static constexpr size_t N_row_major = 64;
+  static constexpr size_t K_row_major = 256;
+
+  static constexpr size_t M_col_major = 64;
+  static constexpr size_t N_col_major = 64;
+  static constexpr size_t K_col_major = 256;
+
+  static constexpr size_t InputSize = 1;
+  static constexpr size_t OutputSize =
+      sizeof(typename Fixture::OutputType) * CHAR_BIT;
+};
 #endif
 
-TEST_CASE_METHOD(ComplexGemmTestFixtureFloat16,
-                 "Complex GEMM Test - float16 basic",
-                 "[complex-gemm-test-float16-basic]") {
-  SECTION("C row-major") {
-    const size_t M = 100;
-    const size_t N = 60;
-    const size_t K = 40;
-    ComplexGemmTestFixtureFloat16::init(M, N, K);
-    ComplexGemmTestFixtureFloat16::complex_gemm_basic(ccglib::mma::row_major);
-  }
-  SECTION("C col-major") {
-    const size_t M = 128;
-    const size_t N = 64;
-    const size_t K = 64;
-    ComplexGemmTestFixtureFloat16::init(M, N, K);
-    ComplexGemmTestFixtureFloat16::complex_gemm_basic(ccglib::mma::col_major);
-  }
-}
+template <typename Fixture> struct GemmTestBasic : public Fixture {
+  void run_tests() {
+    using Traits = GemmTestTraits<Fixture>;
 
-TEST_CASE_METHOD(ComplexGemmTestFixtureFloat16,
-                 "Complex GEMM Test - float16 opt",
-                 "[complex-gemm-test-float16-opt]") {
-  SECTION("C row-major") {
-    const size_t M = 100;
-    const size_t N = 60;
-    const size_t K = 40;
-    ComplexGemmTestFixtureFloat16::init(M, N, K);
-    ComplexGemmTestFixtureFloat16::complex_gemm_opt(ccglib::mma::row_major);
+    SECTION(
+        "basic-row-major - InputSize: " + std::to_string(Traits::InputSize) +
+        "b, OutputSize: " + std::to_string(Traits::OutputSize) + "b") {
+      this->init(Traits::M_row_major, Traits::N_row_major, Traits::K_row_major);
+      this->complex_gemm_basic(ccglib::mma::row_major);
+    }
+    SECTION(
+        "basic-col-major - InputSize: " + std::to_string(Traits::InputSize) +
+        "b. OutputSize: " + std::to_string(Traits::OutputSize) + "b") {
+      this->init(Traits::M_col_major, Traits::N_col_major, Traits::K_col_major);
+      this->complex_gemm_basic(ccglib::mma::col_major);
+    }
   }
-  SECTION("C col-major") {
-    const size_t M = 128;
-    const size_t N = 64;
-    const size_t K = 64;
-    ComplexGemmTestFixtureFloat16::init(M, N, K);
-    ComplexGemmTestFixtureFloat16::complex_gemm_opt(ccglib::mma::col_major);
-  }
-  SECTION("Complex-last output") {
-    const size_t M = 100;
-    const size_t N = 60;
-    const size_t K = 40;
-    ComplexGemmTestFixtureFloat16::init(M, N, K);
-    ComplexGemmTestFixtureFloat16::complex_gemm_opt(ccglib::mma::row_major,
-                                                    ccglib::mma::complex_last);
-  }
-}
+};
 
-// on AMD, FP32 is only available on CDNA-class GPUs (GFX9)
-// on NVIDIA, TF32 is used
-TEST_CASE_METHOD(ComplexGemmTestFixtureFloat32,
-                 "Complex GEMM Test - float32 basic",
-                 "[complex-gemm-test-float32-basic]") {
+template <typename Fixture> struct GemmTestOpt : public Fixture {
+  void run_tests() {
+    using Traits = GemmTestTraits<Fixture>;
+
+    SECTION("opt-row-major - InputSize: " + std::to_string(Traits::InputSize) +
+            "b, OutputSize: " + std::to_string(Traits::OutputSize) + "b") {
+      this->init(Traits::M_row_major, Traits::N_row_major, Traits::K_row_major);
+      this->complex_gemm_opt(ccglib::mma::row_major);
+    }
+    SECTION("opt-row-major - InputSize: " + std::to_string(Traits::InputSize) +
+            "b, OutputSize: " + std::to_string(Traits::OutputSize) + "b") {
+      this->init(Traits::M_col_major, Traits::N_col_major, Traits::K_col_major);
+      this->complex_gemm_opt(ccglib::mma::col_major);
+    }
+
+    if constexpr (std::is_same_v<typename Fixture::InputType, half>) {
+      SECTION("opt-row-major-complex-last - InputSize: " +
+              std::to_string(Traits::InputSize) +
+              "b, OutputSize: " + std::to_string(Traits::OutputSize) + "b") {
+        this->init(100, 60, 40);
+        this->complex_gemm_opt(ccglib::mma::row_major,
+                               ccglib::mma::complex_last);
+      }
+    }
+  }
+};
+
+TEMPLATE_LIST_TEST_CASE_METHOD(GemmTestBasic, "Complex GEMM Test",
+                               "[complex-gemm-test-basic]",
+                               TestTypesComplexGemm) {
   // on AMD, skip on unsupported GPUs
 #ifdef __HIP_PLATFORM_AMD__
-  if (!isCDNA(*ComplexGemmTestFixtureFloat32().device_)) {
-    SKIP("Float32 is only available on CDNA GPUs");
+  if constexpr (std::is_same_v<typename GemmTestBasic<TestType>::InputType,
+                               float>) {
+    if (!isCDNA(*GemmTestBasic<TestType>().device_)) {
+      SKIP("Float32 is only available on CDNA GPUs");
+    }
   }
 #endif
 
-  SECTION("C row-major") {
-    const size_t M = 100;
-    const size_t N = 60;
-    const size_t K = 40;
-    ComplexGemmTestFixtureFloat32::init(M, N, K);
-    ComplexGemmTestFixtureFloat32::complex_gemm_basic(ccglib::mma::row_major);
-  }
-  SECTION("C col-major") {
-    const size_t M = 128;
-    const size_t N = 64;
-    const size_t K = 64;
-    ComplexGemmTestFixtureFloat32::init(M, N, K);
-    ComplexGemmTestFixtureFloat32::complex_gemm_basic(ccglib::mma::col_major);
-  }
+  GemmTestBasic<TestType>().run_tests();
 }
 
-TEST_CASE_METHOD(ComplexGemmTestFixtureFloat32,
-                 "Complex GEMM Test - float32 opt",
-                 "[complex-gemm-test-float32-opt]") {
-  // on AMD, return on unsupported GPUs
+TEMPLATE_LIST_TEST_CASE_METHOD(GemmTestOpt, "Complex GEMM Test",
+                               "[complex-gemm-test-opt]",
+                               TestTypesComplexGemm) {
+  // on AMD, skip on unsupported GPUs
 #ifdef __HIP_PLATFORM_AMD__
-  if (!isCDNA(*ComplexGemmTestFixtureFloat32().device_)) {
-    SKIP("Float32 is only available on CDNA GPUs");
+  if constexpr (std::is_same_v<typename GemmTestOpt<TestType>::InputType,
+                               float>) {
+    if (!isCDNA(*GemmTestOpt<TestType>().device_)) {
+      SKIP("Float32 is only available on CDNA GPUs");
+    }
   }
 #endif
 
-  SECTION("C row-major") {
-    const size_t M = 100;
-    const size_t N = 60;
-    const size_t K = 40;
-    ComplexGemmTestFixtureFloat32::init(M, N, K);
-    ComplexGemmTestFixtureFloat32::complex_gemm_opt(ccglib::mma::row_major);
-  }
-  SECTION("C col-major") {
-    const size_t M = 128;
-    const size_t N = 64;
-    const size_t K = 64;
-    ComplexGemmTestFixtureFloat32::init(M, N, K);
-    ComplexGemmTestFixtureFloat32::complex_gemm_opt(ccglib::mma::col_major);
-  }
+  GemmTestOpt<TestType>().run_tests();
 }
 
 #if !defined(__HIP_PLATFORM_AMD__)
 TEST_CASE_METHOD(ComplexGemmTestFixtureInt1, "Complex GEMM Test - int1 basic",
                  "[complex-gemm-test-int1-basic]") {
-  SECTION("C row-major") {
-    const size_t M = 64;
-    const size_t N = 64;
-    const size_t K = 256;
-    ComplexGemmTestFixtureInt1::init(M, N, K);
-    ComplexGemmTestFixtureInt1::complex_gemm_basic(ccglib::mma::row_major);
-  }
-  SECTION("C col-major") {
-    const size_t M = 64;
-    const size_t N = 64;
-    const size_t K = 256;
-    ComplexGemmTestFixtureInt1::init(M, N, K);
-    ComplexGemmTestFixtureInt1::complex_gemm_basic(ccglib::mma::col_major);
-  }
+  GemmTestBasic<ComplexGemmTestFixtureInt1>().run_tests();
 }
 
 TEST_CASE_METHOD(ComplexGemmTestFixtureInt1, "Complex GEMM Test - int1 opt",
                  "[complex-gemm-test-int1-opt]") {
-  SECTION("C row-major") {
-    const size_t M = 64;
-    const size_t N = 64;
-    const size_t K = 256;
-    ComplexGemmTestFixtureInt1::init(M, N, K);
-    ComplexGemmTestFixtureInt1::complex_gemm_opt(ccglib::mma::row_major);
-  }
-  SECTION("C col-major") {
-    const size_t M = 64;
-    const size_t N = 64;
-    const size_t K = 256;
-    ComplexGemmTestFixtureInt1::init(M, N, K);
-    ComplexGemmTestFixtureInt1::complex_gemm_opt(ccglib::mma::col_major);
-  }
+  GemmTestOpt<ComplexGemmTestFixtureInt1>().run_tests();
 }
 #endif
 
