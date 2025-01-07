@@ -13,7 +13,10 @@ pack_bits(unsigned *output, const unsigned char *input, bool complex_last) {
   if (complex_last) {
     // map from real0, real1, .... imag0, imag1... indexing to
     // real0, imag0, real1, imag1, ...
-    input_index = (input_index * 2) % (N - 1);
+    input_index *= 2;
+    if (input_index >= N) {
+      input_index -= N - 1;
+    }
   }
 
   unsigned output_value = __ballot_sync(__activemask(), input[input_index]);
