@@ -16,7 +16,7 @@ class GEMM::Impl {
 public:
   Impl(size_t B_, size_t M_, size_t N_, size_t K_, cu::Device &device_,
        cu::Stream &stream_, Precision precision, Variant variant,
-       ComplexAxisLocation complex_axis_location, MemOrder c_mem_order,
+       ComplexAxisLocation c_complex_axis_location, MemOrder c_mem_order,
        MemOrder a_mem_order, MemOrder b_mem_order);
 
   void Run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b, cu::DeviceMemory &d_c);
@@ -24,7 +24,7 @@ public:
 private:
   void compile_kernel();
 
-  ComplexAxisLocation complex_axis_location_;
+  ComplexAxisLocation c_complex_axis_location_;
   MemOrder a_mem_order_;
   MemOrder b_mem_order_;
   MemOrder c_mem_order_;
@@ -49,11 +49,11 @@ private:
 
 GEMM::Impl::Impl(size_t B_, size_t M_, size_t N_, size_t K_,
                  cu::Device &device_, cu::Stream &stream_, Precision precision,
-                 Variant variant, ComplexAxisLocation complex_axis_location,
+                 Variant variant, ComplexAxisLocation c_complex_axis_location,
                  MemOrder a_mem_order, MemOrder b_mem_order,
                  MemOrder c_mem_order)
     : B_(B_), M_(M_), N_(N_), K_(K_), device_(device_), stream_(stream_),
-      complex_axis_location_(complex_axis_location), variant_(variant),
+      c_complex_axis_location_(c_complex_axis_location), variant_(variant),
       c_mem_order_(c_mem_order), a_mem_order_(a_mem_order),
       b_mem_order_(b_mem_order), kernel_(Kernel(precision, variant)) {
   const Kernel::Parameters parameters = kernel_.GetParameters();
@@ -63,15 +63,15 @@ GEMM::Impl::Impl(size_t B_, size_t M_, size_t N_, size_t K_,
 
   const bool precision_is_int1 = (precision.input_type == ValueType::int1);
   const bool variant_is_basic = variant == Variant::basic;
-  const bool complex_axis_is_last =
-      complex_axis_location == ComplexAxisLocation::complex_last;
+  const bool c_complex_axis_is_last =
+      c_complex_axis_location == ComplexAxisLocation::complex_last;
 
-  if (precision_is_int1 && complex_axis_is_last) {
+  if (precision_is_int1 && c_complex_axis_is_last) {
     throw std::runtime_error(
         "complex-last output is not supported in int1 precision");
   }
 
-  if (variant_is_basic && complex_axis_is_last) {
+  if (variant_is_basic && c_complex_axis_is_last) {
     throw std::runtime_error(
         "complex-last output is not supported in basic variant");
   }
@@ -184,10 +184,10 @@ void GEMM::Impl::compile_kernel() {
     "-DNBUFFER=" + std::to_string(parameters.nbuffer)
   };
 
-  if (complex_axis_location_ == ComplexAxisLocation::complex_middle) {
-    options.push_back("-DCOMPLEX_MIDDLE");
-  } else if (complex_axis_location_ == ComplexAxisLocation::complex_last) {
-    options.push_back("-DCOMPLEX_LAST");
+  if (c_complex_axis_location_ == ComplexAxisLocation::complex_middle) {
+    options.push_back("-DC_COMPLEX_MIDDLE");
+  } else if (c_complex_axis_location_ == ComplexAxisLocation::complex_last) {
+    options.push_back("-DC_COMPLEX_LAST");
   }
 
   if (a_mem_order_ == MemOrder::row_major) {
@@ -234,12 +234,12 @@ void GEMM::Impl::compile_kernel() {
 GEMM::GEMM(const size_t B_, const size_t M_, const size_t N_, const size_t K_,
            const size_t, cu::Device &device_, cu::Stream &stream_,
            const Precision precision, const Variant variant,
-           const ComplexAxisLocation complex_axis_location,
+           const ComplexAxisLocation c_complex_axis_location,
            const MemOrder c_mem_order, const MemOrder a_mem_order,
            const MemOrder b_mem_order)
     : impl_(std::make_unique<Impl>(B_, M_, N_, K_, device_, stream_, precision,
-                                   variant, complex_axis_location, a_mem_order,
-                                   b_mem_order, c_mem_order)){};
+                                   variant, c_complex_axis_location,
+                                   a_mem_order, b_mem_order, c_mem_order)){};
 GEMM::~GEMM() = default;
 
 void GEMM::Run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b,

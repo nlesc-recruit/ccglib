@@ -95,13 +95,13 @@ using B_opt_t =
     Tin[BATCH_SIZE][N_GLOBAL_PADDED / N_PER_BLOCK][K_GLOBAL_PADDED / K_PER_WMMA]
        [COMPLEX][N_PER_BLOCK][K_PER_WMMA];
 
-#if defined(COMPLEX_MIDDLE)
+#if defined(C_COMPLEX_MIDDLE)
 #ifdef C_ROW_MAJOR
 using C_t = Tout[BATCH_SIZE][COMPLEX][M_GLOBAL][N_GLOBAL];
 #else
 using C_t = Tout[BATCH_SIZE][COMPLEX][N_GLOBAL][M_GLOBAL];
 #endif
-#elif defined(COMPLEX_LAST)
+#elif defined(C_COMPLEX_LAST)
 #ifdef C_ROW_MAJOR
 using C_t = Tout[BATCH_SIZE][M_GLOBAL][N_GLOBAL][COMPLEX];
 #else
@@ -350,7 +350,7 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
                      [K_PER_WMMA];
   A_s_t A_s = reinterpret_cast<A_s_t>(&shmem[0]);
   B_s_t B_s = reinterpret_cast<B_s_t>(&shmem[A_s_size]);
-#if defined(COMPLEX_LAST) || M_IS_PADDED || N_IS_PADDED
+#if defined(C_COMPLEX_LAST) || M_IS_PADDED || N_IS_PADDED
   constexpr size_t C_s_size = (M_PER_BLOCK / M_PER_WARP) *
                               (N_PER_BLOCK / N_PER_WARP) * M_PER_WMMA *
                               N_PER_WMMA;
@@ -471,7 +471,7 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
   } // k
 
   // store the result to global memory
-#if defined(COMPLEX_MIDDLE)
+#if defined(C_COMPLEX_MIDDLE)
 #if M_IS_PADDED || N_IS_PADDED
   for (size_t c = 0; c < COMPLEX; c++) {
     for (size_t m = 0; m < M_TILES; m++) {
@@ -497,7 +497,7 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
 #else
   store_matrix(sum, C, batch, blockM, warpM, blockN, warpN);
 #endif
-#elif defined(COMPLEX_LAST)
+#elif defined(C_COMPLEX_LAST)
   for (size_t m = 0; m < M_TILES; m++) {
     for (size_t n = 0; n < N_TILES; n++) {
       for (size_t c = 0; c < COMPLEX; c++) {

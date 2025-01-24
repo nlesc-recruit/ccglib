@@ -17,21 +17,21 @@ Packing::Packing(size_t N, cu::Device &device, cu::Stream &stream)
 
 void Packing::Run(cu::HostMemory &h_input, cu::DeviceMemory &d_output,
                   Direction direction,
-                  ComplexAxisLocation complex_axis_location) {
+                  ComplexAxisLocation input_complex_axis_location) {
   cu::DeviceMemory d_input = stream_.memAllocAsync(h_input.size());
   stream_.memcpyHtoDAsync(d_input, h_input, h_input.size());
-  Run(d_input, d_output, direction);
+  Run(d_input, d_output, direction, input_complex_axis_location);
   stream_.memFreeAsync(d_input);
 }
 
 void Packing::Run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output,
                   Direction direction,
-                  ComplexAxisLocation complex_axis_location) {
+                  ComplexAxisLocation input_complex_axis_location) {
   dim3 threads(256);
   dim3 grid(helper::ceildiv(N_, threads.x));
 
   bool complex_axis_is_last =
-      complex_axis_location == ComplexAxisLocation::complex_last;
+      input_complex_axis_location == ComplexAxisLocation::complex_last;
 
   std::vector<const void *> parameters = {d_output.parameter(),
                                           d_input.parameter()};

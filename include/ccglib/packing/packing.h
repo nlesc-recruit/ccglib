@@ -12,10 +12,10 @@ public:
   Packing(size_t N, cu::Device &device, cu::Stream &stream);
   void Run(cu::HostMemory &h_input, cu::DeviceMemory &d_output,
            Direction direction,
-           ComplexAxisLocation complex_axis_location = complex_first);
+           ComplexAxisLocation input_complex_axis_location = complex_first);
   void Run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output,
            Direction direction,
-           ComplexAxisLocation complex_axis_location = complex_first);
+           ComplexAxisLocation input_complex_axis_location = complex_first);
 
 private:
   size_t N_;

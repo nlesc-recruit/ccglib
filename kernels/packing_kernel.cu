@@ -2,15 +2,16 @@
 #error "Packing kernel is only available for NVIDIA GPUs"
 #endif
 
-extern "C" __global__ void
-pack_bits(unsigned *output, const unsigned char *input, bool complex_last) {
+extern "C" __global__ void pack_bits(unsigned *output,
+                                     const unsigned char *input,
+                                     bool input_complex_last) {
   size_t tid = threadIdx.x + blockIdx.x * static_cast<size_t>(blockDim.x);
   if (tid >= N) {
     return;
   }
 
   size_t input_index = tid;
-  if (complex_last) {
+  if (input_complex_last) {
     // map from real0, real1, .... imag0, imag1... indexing to
     // real0, imag0, real1, imag1, ...
     input_index *= 2;

@@ -10,7 +10,7 @@ class Transpose {
 public:
   Transpose(size_t B, size_t M, size_t N, size_t M_chunk, size_t N_chunk,
             size_t nr_bits, cu::Device &device, cu::Stream &stream,
-            ComplexAxisLocation complex_axis_location =
+            ComplexAxisLocation input_complex_axis_location =
                 ComplexAxisLocation::complex_middle);
   void Run(cu::HostMemory &h_input, cu::DeviceMemory &d_output);
   void Run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output);
@@ -23,7 +23,7 @@ private:
   size_t N_chunk;
 
   size_t nr_bits;
-  ComplexAxisLocation complex_axis_location_;
+  ComplexAxisLocation input_complex_axis_location_;
 
   cu::Device &device_;
   cu::Stream &stream_;

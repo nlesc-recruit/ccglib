@@ -13,10 +13,10 @@ namespace ccglib::transpose {
 Transpose::Transpose(size_t B, size_t M, size_t N, size_t M_chunk,
                      size_t N_chunk, size_t nr_bits, cu::Device &device,
                      cu::Stream &stream,
-                     ComplexAxisLocation complex_axis_location)
+                     ComplexAxisLocation input_complex_axis_location)
     : B(B), M(M), N(N), M_chunk(M_chunk), N_chunk(N_chunk), nr_bits(nr_bits),
       device_(device), stream_(stream),
-      complex_axis_location_(complex_axis_location) {
+      input_complex_axis_location_(input_complex_axis_location) {
   compile_kernel();
 }
 
@@ -61,10 +61,11 @@ void Transpose::compile_kernel() {
     "-DN_CHUNK=" + std::to_string(N_chunk)
   };
 
-  if (complex_axis_location_ == ComplexAxisLocation::complex_middle) {
-    options.push_back("-DCOMPLEX_MIDDLE");
-  } else if (complex_axis_location_ == ComplexAxisLocation::complex_last) {
-    options.push_back("-DCOMPLEX_LAST");
+  if (input_complex_axis_location_ == ComplexAxisLocation::complex_middle) {
+    options.push_back("-DINPUT_COMPLEX_MIDDLE");
+  } else if (input_complex_axis_location_ ==
+             ComplexAxisLocation::complex_last) {
+    options.push_back("-DINPUT_COMPLEX_LAST");
   }
 
   const std::string kernel(&_binary_kernels_transpose_kernel_cu_start,
