@@ -212,11 +212,12 @@ int main(int argc, const char *argv[]) {
   cu::Stream stream;
 
   const size_t nr_input_bits = gemm_precision.GetInputBits();
+  const size_t nr_output_bits = gemm_precision.GetOutputBits();
 
   // Allocate memory for GEMM input / output
   cu::DeviceMemory d_a(B * complex * num_a * nr_input_bits / CHAR_BIT);
   cu::DeviceMemory d_b(B * complex * num_b * nr_input_bits / CHAR_BIT);
-  cu::DeviceMemory d_c(B * complex * num_c * nr_input_bits / CHAR_BIT);
+  cu::DeviceMemory d_c(B * complex * num_c * nr_output_bits / CHAR_BIT);
 
   // Fill inputs with non-zero data
   stream.memsetAsync(d_a, static_cast<unsigned char>(0xAA), d_a.size());
