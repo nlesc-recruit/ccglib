@@ -19,9 +19,8 @@
 #include <xtensor/xtensor.hpp>
 
 #include "arch.h"
-#include "ccglib/gemm/precision.h"
 #include "verify.h"
-
+#include <ccglib/precision.h>
 #ifndef COMPLEX
 #define COMPLEX 2
 #endif
@@ -36,8 +35,8 @@ static inline float float_to_tf32(float x) {
 
 namespace ccglib::test {
 
-template <typename Tin, typename Tout, size_t NrInputBits,
-          ccglib::mma::Precision Precision>
+template <typename Tin, typename Tout, ccglib::ValueType InputPrecision,
+          ccglib::ValueType OutputPrecision>
 class ComplexGemmTestFixture {
 public:
   using InputType = Tin;
@@ -53,8 +52,8 @@ public:
   }
 
   void init(size_t m, size_t n, size_t k) {
-    const dim3 dimensions =
-        ccglib::mma::GEMM::GetDimensions(Precision, ccglib::mma::opt);
+    const dim3 dimensions = ccglib::mma::GEMM::GetDimensions(
+        {InputPrecision, OutputPrecision}, ccglib::mma::opt);
     m_per_block_ = dimensions.x;
     n_per_block_ = dimensions.y;
     k_per_wmma_ = dimensions.z;
@@ -70,7 +69,9 @@ public:
     const size_t global_k_padded_ =
         helper::ceildiv(k, k_per_wmma_) * k_per_wmma_;
 
-    const size_t kPackingFactor = sizeof(Tin) * CHAR_BIT / NrInputBits;
+    const size_t kPackingFactor =
+        sizeof(Tin) * CHAR_BIT /
+        ccglib::ValuePrecision{InputPrecision}.GetBitWidth();
     bytes_a_ = sizeof(Tin) * kBatchSize * COMPLEX * global_m_ * global_k_ /
                kPackingFactor;
     bytes_b_ = sizeof(Tin) * kBatchSize * COMPLEX * global_n_ * global_k_ /
@@ -185,20 +186,22 @@ private:
     stream_->synchronize();
 
     // verify output
-    verify<Tin, Tout, NrInputBits>(
+    verify<Tin, Tout, InputPrecision>(
         static_cast<const Tin *>(*h_a_), static_cast<const Tin *>(*h_b_),
         static_cast<Tout *>(*h_c_), kBatchSize, global_m_, global_n_, global_k_,
         output_mem_order);
   }
 
-protected:
+public:
   void complex_gemm_basic(ccglib::mma::MemOrder output_mem_order) {
     initialize_memory();
 
-    ccglib::mma::GEMM gemm_mma(kBatchSize, global_m_, global_n_, global_k_,
-                               NrInputBits, *device_, *stream_, Precision,
-                               ccglib::mma::basic, ccglib::mma::complex_middle,
-                               output_mem_order);
+    ccglib::mma::GEMM gemm_mma(
+        kBatchSize, global_m_, global_n_, global_k_,
+        ccglib::ValuePrecision{InputPrecision}.GetBitWidth(), *device_,
+        *stream_, {InputPrecision, OutputPrecision}, ccglib::mma::basic,
+        ccglib::mma::complex_middle, output_mem_order);
+
     gemm_mma.Run(*d_a_, *d_b_, *d_c_);
 
     verify_output(output_mem_order);
@@ -212,21 +215,23 @@ protected:
     cu::DeviceMemory d_b_trans(bytes_b_padded_);
 
     // Transpose A
-    ccglib::transpose::Transpose transpose_a(kBatchSize, global_m_, global_k_,
-                                             m_per_block_, k_per_wmma_,
-                                             NrInputBits, *device_, *stream_);
+    ccglib::transpose::Transpose transpose_a(
+        kBatchSize, global_m_, global_k_, m_per_block_, k_per_wmma_,
+        ccglib::ValuePrecision{InputPrecision}.GetBitWidth(), *device_,
+        *stream_);
     transpose_a.Run(*h_a_, d_a_trans);
 
     // Transpose B
-    ccglib::transpose::Transpose transpose_b(kBatchSize, global_n_, global_k_,
-                                             n_per_block_, k_per_wmma_,
-                                             NrInputBits, *device_, *stream_);
+    ccglib::transpose::Transpose transpose_b(
+        kBatchSize, global_n_, global_k_, n_per_block_, k_per_wmma_,
+        ccglib::ValuePrecision{InputPrecision}.GetBitWidth(), *device_,
+        *stream_);
     transpose_b.Run(*h_b_, d_b_trans);
 
-    ccglib::mma::GEMM gemm_mma(kBatchSize, global_m_, global_n_, global_k_,
-                               NrInputBits, *device_, *stream_, Precision,
-                               ccglib::mma::opt, ccglib::mma::complex_middle,
-                               output_mem_order);
+    ccglib::mma::GEMM gemm_mma(
+        kBatchSize, global_m_, global_n_, global_k_, InputPrecision, *device_,
+        *stream_, {InputPrecision, OutputPrecision}, ccglib::mma::opt,
+        ccglib::mma::complex_middle, output_mem_order);
 
     gemm_mma.Run(d_a_trans, d_b_trans, *d_c_);
 
@@ -243,21 +248,23 @@ protected:
     cu::DeviceMemory d_b_trans(bytes_b_padded_);
 
     // Transpose A
-    ccglib::transpose::Transpose transpose_a(kBatchSize, global_m_, global_k_,
-                                             m_per_block_, k_per_wmma_,
-                                             NrInputBits, *device_, *stream_);
+    ccglib::transpose::Transpose transpose_a(
+        kBatchSize, global_m_, global_k_, m_per_block_, k_per_wmma_,
+        ccglib::ValuePrecision{InputPrecision}.GetBitWidth(), *device_,
+        *stream_);
     transpose_a.Run(*h_a_, d_a_trans);
 
     // Transpose B
-    ccglib::transpose::Transpose transpose_b(kBatchSize, global_n_, global_k_,
-                                             n_per_block_, k_per_wmma_,
-                                             NrInputBits, *device_, *stream_);
+    ccglib::transpose::Transpose transpose_b(
+        kBatchSize, global_n_, global_k_, n_per_block_, k_per_wmma_,
+        ccglib::ValuePrecision{InputPrecision}.GetBitWidth(), *device_,
+        *stream_);
     transpose_b.Run(*h_b_, d_b_trans);
 
-    ccglib::mma::GEMM gemm_mma(kBatchSize, global_m_, global_n_, global_k_,
-                               NrInputBits, *device_, *stream_, Precision,
-                               ccglib::mma::opt, complex_axis_location,
-                               output_mem_order);
+    ccglib::mma::GEMM gemm_mma(
+        kBatchSize, global_m_, global_n_, global_k_, InputPrecision, *device_,
+        *stream_, {InputPrecision, OutputPrecision}, ccglib::mma::opt,
+        complex_axis_location, output_mem_order);
 
     gemm_mma.Run(d_a_trans, d_b_trans, *d_c_);
 
@@ -276,7 +283,7 @@ protected:
           xt::transpose(h_c_complex_last, {0, 2, 1});
 
       // verify output
-      verify<Tin, Tout, NrInputBits>(
+      verify<Tin, Tout, InputPrecision>(
           static_cast<const Tin *>(*h_a_), static_cast<const Tin *>(*h_b_),
           static_cast<Tout *>(h_c_complex_middle.data()), kBatchSize, global_m_,
           global_n_, global_k_, output_mem_order);
@@ -287,8 +294,14 @@ protected:
 };
 
 using TestTypesComplexGemm =
-    std::tuple<ComplexGemmTestFixture<half, float, 16, ccglib::mma::float16>,
-               ComplexGemmTestFixture<float, float, 32, ccglib::mma::float32>>;
+    std::tuple<ComplexGemmTestFixture<half, half, ccglib::ValueType::float16,
+                                      ccglib::ValueType::float16>,
+               ComplexGemmTestFixture<float, half, ccglib::ValueType::float32,
+                                      ccglib::ValueType::float16>,
+               ComplexGemmTestFixture<half, float, ccglib::ValueType::float16,
+                                      ccglib::ValueType::float32>,
+               ComplexGemmTestFixture<float, float, ccglib::ValueType::float32,
+                                      ccglib::ValueType::float32>>;
 
 // GemmTestTraits is a template struct that provides parameters for the
 // GemmTestBasic and GemmTestOpt test cases.
@@ -330,8 +343,8 @@ struct GemmTestTraits<
 // int1 is only available on NVIDIA
 #if !defined(__HIP_PLATFORM_AMD__)
 using ComplexGemmTestFixtureInt1 =
-    ComplexGemmTestFixture<unsigned int, int32_t, 1,
-                           ccglib::mma::Precision::int1>;
+    ComplexGemmTestFixture<unsigned int, int32_t, ccglib::ValueType::int1,
+                           ccglib::ValueType::int32>;
 
 template <typename Fixture>
 struct GemmTestTraits<
@@ -466,7 +479,7 @@ TEST_CASE("Unsupported matrix layout") {
   // A must be row-major, B col-major
   SECTION("float16") {
     CHECK_THROWS_WITH(ccglib::mma::GEMM(batch_size, m, n, k, 16, device, stream,
-                                        ccglib::mma::float16,
+                                        ccglib::ValueType::float16,
                                         ccglib::mma::basic,
                                         ccglib::mma::complex_middle, layout_c,
                                         layout_a, layout_b),
@@ -476,11 +489,12 @@ TEST_CASE("Unsupported matrix layout") {
 #if !defined(__HIP_PLATFORM_AMD__)
   // 1-bit requires A row-major, B col-major
   SECTION("int1") {
-    CHECK_THROWS_WITH(ccglib::mma::GEMM(batch_size, m, n, k, 1, device, stream,
-                                        ccglib::mma::int1, ccglib::mma::basic,
-                                        ccglib::mma::complex_middle, layout_c,
-                                        layout_a, layout_b),
-                      Catch::Matchers::ContainsSubstring(error_name));
+    CHECK_THROWS_WITH(
+        ccglib::mma::GEMM(batch_size, m, n, k, 1, device, stream,
+                          {ccglib::ValueType::int1, ccglib::ValueType::int32},
+                          ccglib::mma::basic, ccglib::mma::complex_middle,
+                          layout_c, layout_a, layout_b),
+        Catch::Matchers::ContainsSubstring(error_name));
   }
 #endif
 }

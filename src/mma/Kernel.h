@@ -9,8 +9,8 @@
 
 #include <string>
 
-#include <ccglib/gemm/precision.h>
 #include <ccglib/gemm/variant.h>
+#include <ccglib/precision.h>
 #include <cudawrappers/cu.hpp>
 
 namespace ccglib::mma {
@@ -31,23 +31,24 @@ public:
     size_t nbuffer;
   };
 
-  Kernel(Precision precision, Variant variant);
+  Kernel(Precision precision, const Variant &variant);
 
   dim3 GetThreads(cu::Device &device) const;
   std::string GetSource() const;
   Parameters GetParameters() const { return parameters_; };
   std::string GetName() const;
+  const Precision &GetPrecision() const { return precision_; }
 
 private:
-  Precision precision_;
-  Variant variant_;
+  const Precision precision_;
+  const Variant &variant_;
   Parameters parameters_;
 
-  template <Precision P> Parameters GetParameters() const;
+  template <ValueType T> Parameters GetCompileParameters() const;
 
-  void SetParameters(Precision precision);
+  void SetParameters(const Precision precision);
 
-  template <Precision P> std::string GetSource() const;
+  template <ValueType T> std::string GetSource() const;
 };
 
 } // namespace ccglib::mma

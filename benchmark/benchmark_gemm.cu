@@ -5,6 +5,8 @@
 #include <cudawrappers/cu.hpp>
 #include <cxxopts.hpp>
 
+#include <ccglib/precision.h>
+
 #if defined(HAVE_PMT)
 #include <pmt.h>
 #endif
@@ -12,34 +14,35 @@
 cxxopts::Options create_commandline_parser(const char *argv[]) {
   cxxopts::Options options(argv[0], "GEMM benchmark");
 
-  options.add_options()(
-      "b", "Size of batch axis",
-      cxxopts::value<size_t>()->default_value(std::to_string(1)))(
-      "m", "Size(s) of M axis", cxxopts::value<std::vector<size_t>>())(
-      "n", "Size(s) of N axis", cxxopts::value<std::vector<size_t>>())(
-      "k", "Size(s) of K axis", cxxopts::value<std::vector<size_t>>())(
-      "pad", "Pad input when not multiple of tile size",
-      cxxopts::value<bool>()->default_value(std::to_string(false)))(
-      "nr_benchmarks", "Number of benchmarks",
-      cxxopts::value<size_t>()->default_value(std::to_string(1)))(
-      "benchmark_duration", "Approximate benchmark duration (seconds)",
-      cxxopts::value<float>()->default_value(std::to_string(4)))(
-      "csv", "Format output to CSV",
-      cxxopts::value<bool>()->default_value(std::to_string(false)))(
-      "precision", "GEMM precision (float32, float16 or int1)",
-      cxxopts::value<std::string>())(
-      "variant", "GEMM kernel variant (basic or opt)",
-      cxxopts::value<std::string>()->default_value("opt"))(
-      "complex_axis", "Location of complex axis (middle or last)",
-      cxxopts::value<std::string>()->default_value("middle"))(
-
+  options.add_options()("b", "Size of batch axis",
+                        cxxopts::value<size_t>()->default_value(
+                            "1")) // Default value doesn't need std::to_string
+      ("m", "Size(s) of M axis", cxxopts::value<std::vector<size_t>>())(
+          "n", "Size(s) of N axis", cxxopts::value<std::vector<size_t>>())(
+          "k", "Size(s) of K axis", cxxopts::value<std::vector<size_t>>())(
+          "pad", "Pad input when not multiple of tile size",
+          cxxopts::value<bool>()->default_value(std::to_string(false)))(
+          "nr_benchmarks", "Number of benchmarks",
+          cxxopts::value<size_t>()->default_value("1"))(
+          "benchmark_duration", "Approximate benchmark duration (seconds)",
+          cxxopts::value<float>()->default_value("4"))(
+          "csv", "Format output to CSV",
+          cxxopts::value<bool>()->default_value(std::to_string(false)))(
+          "precision_in", "GEMM input precision (float32, float16, or int1)",
+          cxxopts::value<std::string>()->default_value("float32"))(
+          "precision_out", "GEMM output precision (float32, float16, or int1)",
+          cxxopts::value<std::string>()->default_value("float32"))(
+          "variant", "GEMM kernel variant (basic or opt)",
+          cxxopts::value<std::string>()->default_value("opt"))(
+          "complex_axis", "Location of complex axis (middle or last)",
+          cxxopts::value<std::string>()->default_value("middle"))
 #ifdef HAVE_PMT
-      "measure_power", "Measure power usage",
-      cxxopts::value<bool>()->default_value(std::to_string(false)))(
+          ("measure_power", "Measure power usage",
+           cxxopts::value<bool>()->default_value(std::to_string(false)))
 #endif
-      "device", "GPU device ID",
-      cxxopts::value<unsigned>()->default_value(std::to_string(0)))(
-      "h,help", "Print help");
+              ("device", "GPU device ID",
+               cxxopts::value<unsigned>()->default_value("0"))("h,help",
+                                                               "Print help");
 
   return options;
 }
@@ -55,7 +58,7 @@ cxxopts::ParseResult parse_commandline(int argc, const char *argv[]) {
       exit(EXIT_SUCCESS);
     }
 
-    std::vector<std::string> required_options{"m", "n", "k", "precision"};
+    std::vector<std::string> required_options{"m", "n", "k", "precision_in"};
     for (auto &opt : required_options) {
       if (!result.count(opt)) {
         std::cerr << "Required argument missing: " << opt << std::endl;
@@ -91,40 +94,33 @@ int main(int argc, const char *argv[]) {
   const bool pad = cmdline["pad"].as<bool>();
   const size_t nr_benchmarks = cmdline["nr_benchmarks"].as<size_t>();
   const float benchmark_duration = cmdline["benchmark_duration"].as<float>();
-  const std::string precision = cmdline["precision"].as<std::string>();
+  const std::string precision_in = cmdline["precision_in"].as<std::string>();
+  const std::string precision_out = cmdline["precision_out"].as<std::string>();
   const std::string variant = cmdline["variant"].as<std::string>();
   const std::string complex_axis = cmdline["complex_axis"].as<std::string>();
   const bool csv = cmdline["csv"].as<bool>();
   const unsigned device_id = cmdline["device"].as<unsigned>();
 
   // Select GEMM precision
-  std::map<std::string, ccglib::mma::Precision> map_gemm_precision{
-      {"float32", ccglib::mma::float32},
-      {"float16", ccglib::mma::float16},
-      {"int1", ccglib::mma::int1}};
-  ccglib::mma::Precision gemm_precision = map_gemm_precision[precision];
+  const std::map<const std::string, const ccglib::ValueType> map_gemm_precision{
+      {"float32", ccglib::ValueType::float32},
+      {"float16", ccglib::ValueType::float16},
+      {"int1", ccglib::ValueType::int1}};
+
+  const ccglib::Precision gemm_precision(map_gemm_precision.at(precision_in),
+                                         map_gemm_precision.at(precision_out));
 
   // Select GEMM variant
-  std::map<std::string, ccglib::mma::Variant> map_gemm_variant{
+  const std::map<const std::string, ccglib::mma::Variant> map_gemm_variant{
       {"basic", ccglib::mma::basic}, {"opt", ccglib::mma::opt}};
-  ccglib::mma::Variant gemm_variant = map_gemm_variant[variant];
+  const ccglib::mma::Variant &gemm_variant = map_gemm_variant.at(variant);
 
   // Select complex axis location
-  std::map<std::string, ccglib::mma::ComplexAxisLocation> map_gemm_complex_axis{
-      {"middle", ccglib::mma::complex_middle},
-      {"last", ccglib::mma::complex_last}};
-  ccglib::mma::ComplexAxisLocation gemm_complex_axis_location =
-      map_gemm_complex_axis[complex_axis];
-
-  // Select size of input / output types
-  std::map<std::string, size_t> map_input_bits{
-      {"float32", sizeof(float) * CHAR_BIT},
-      {"float16", sizeof(half) * CHAR_BIT},
-      {"int1", 1}};
-  const size_t nr_input_bits = map_input_bits[precision];
-
-  // The output size is currently the same for all supported types
-  const size_t nr_output_bits = 32;
+  const std::map<const std::string, const ccglib::mma::ComplexAxisLocation>
+      map_gemm_complex_axis{{"middle", ccglib::mma::complex_middle},
+                            {"last", ccglib::mma::complex_last}};
+  const ccglib::mma::ComplexAxisLocation &gemm_complex_axis_location =
+      map_gemm_complex_axis.at(complex_axis);
 
   // If one of the input M, N, K arrays is size one and others are bigger,
   // repeat the single value
@@ -180,7 +176,7 @@ int main(int argc, const char *argv[]) {
     N = N_input;
     K = K_input;
     // Int1 kernel does not support non-multiples
-    if (gemm_precision == ccglib::mma::int1) {
+    if (gemm_precision.input_type == ccglib::ValueType::int1) {
       for (size_t i = 0; i < num_sizes; i++) {
         if (M[i] % tile_sizes.x != 0) {
           throw std::runtime_error("all m must be a multiple of " +
@@ -215,10 +211,12 @@ int main(int argc, const char *argv[]) {
   cu::Context context(CU_CTX_BLOCKING_SYNC, device);
   cu::Stream stream;
 
+  const size_t nr_input_bits = gemm_precision.GetInputBits();
+
   // Allocate memory for GEMM input / output
   cu::DeviceMemory d_a(B * complex * num_a * nr_input_bits / CHAR_BIT);
   cu::DeviceMemory d_b(B * complex * num_b * nr_input_bits / CHAR_BIT);
-  cu::DeviceMemory d_c(B * complex * num_c * nr_output_bits / CHAR_BIT);
+  cu::DeviceMemory d_c(B * complex * num_c * nr_input_bits / CHAR_BIT);
 
   // Fill inputs with non-zero data
   stream.memsetAsync(d_a, static_cast<unsigned char>(0xAA), d_a.size());
@@ -244,9 +242,9 @@ int main(int argc, const char *argv[]) {
   }
   for (size_t bench = 0; bench < nr_benchmarks; bench++) {
     for (size_t idx = 0; idx < num_sizes; idx++) {
-      ccglib::mma::GEMM gemm(B, M[idx], N[idx], K[idx], nr_input_bits, device,
-                             stream, gemm_precision, gemm_variant,
-                             gemm_complex_axis_location);
+      ccglib::mma::GEMM gemm(
+          B, M[idx], N[idx], K[idx], gemm_precision.GetInputBits(), device,
+          stream, gemm_precision, gemm_variant, gemm_complex_axis_location);
 
       // Run once to get estimate of runtime per kernel
       cu::Event start;

@@ -1,4 +1,4 @@
-#if defined(__HIP_PLATFORM_AMD__) && (NBIT == 1)
+#if defined(__HIP_PLATFORM_AMD__) && (NBIT_IN == 1)
 #error "1-bit GEMM is only available for NVIDIA GPUs"
 #endif
 
@@ -28,12 +28,12 @@ using namespace nvcuda;
     "BATCH_SIZE, M_GLOBAL, N_GLOBAL, and K_GLOBAL values per block, warp, tensor core must be defined at compile time"
 #endif
 
-#if NBIT == 1
+#if NBIT_IN == 1
 using Tin = unsigned int;
 using Ttc = wmma::experimental::precision::b1;
 using Tout = int;
 #else
-#error NBIT must be 1
+#error NBIT_IN must be 1
 #endif
 
 // Memory layout of A must be row-major, B col-major
@@ -45,7 +45,7 @@ using Tout = int;
 #endif
 
 // Number of samples in one element of type Tin
-#define PACKING_FACTOR (sizeof(Tin) * CHAR_BIT / NBIT)
+#define PACKING_FACTOR (sizeof(Tin) * CHAR_BIT / NBIT_IN)
 
 // basic data layout
 using A_t = Tin[BATCH_SIZE][COMPLEX][M_GLOBAL][K_GLOBAL / PACKING_FACTOR];

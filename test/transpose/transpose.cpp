@@ -1,17 +1,19 @@
 #include <catch2/catch_test_macros.hpp>
 #include <cudawrappers/cu.hpp>
 #include <iostream>
-#include <limits.h>
-
-#include <ccglib/fp16.h>
-#include <ccglib/transpose/transpose.h>
+#include <limits>
 
 #include <xtensor/xadapt.hpp>
 #include <xtensor/xtensor.hpp>
 
+#include <ccglib/fp16.h>
+#include <ccglib/precision.h>
+#include <ccglib/transpose/transpose.h>
+
 namespace ccglib::test {
 
-template <typename T, size_t NrInputBits> class TransposeTestFixture {
+template <typename T, ccglib::ValueType InputPrecision>
+class TransposeTestFixture {
 public:
   TransposeTestFixture() {
     cu::init();
@@ -38,7 +40,9 @@ private:
   const size_t kMPerChunk = 64;
   const size_t kNPerChunk = 64; // must be a multiple of kPackingFactor
 
-  const size_t kPackingFactor = sizeof(T) * CHAR_BIT / NrInputBits;
+  const size_t kPackingFactor =
+      sizeof(T) * CHAR_BIT /
+      ccglib::ValuePrecision{InputPrecision}.GetBitWidth();
   const size_t kBytesA =
       sizeof(T) * kBatchSize * kComplex * kGlobalM * kGlobalN / kPackingFactor;
 
@@ -140,16 +144,19 @@ public:
     init_memory();
 
     ccglib::transpose::Transpose transpose_a(
-        kBatchSize, kGlobalM, kGlobalN, kMPerChunk, kNPerChunk, NrInputBits,
-        *device_, *stream_, complex_axis_location);
+        kBatchSize, kGlobalM, kGlobalN, kMPerChunk, kNPerChunk,
+        ccglib::ValuePrecision(InputPrecision).GetBitWidth(), *device_,
+        *stream_, complex_axis_location);
     transpose_a.Run(*d_a_, *d_a_trans_);
 
     verify_output(complex_axis_location);
   }
 };
 
-using TransposeTestFixtureFloat16 = TransposeTestFixture<half, 16>;
-using TransposeTestFixtureInt1 = TransposeTestFixture<unsigned int, 1>;
+using TransposeTestFixtureFloat16 =
+    TransposeTestFixture<half, ccglib::ValueType::float16>;
+using TransposeTestFixtureInt1 =
+    TransposeTestFixture<unsigned int, ccglib::ValueType::int1>;
 
 TEST_CASE_METHOD(TransposeTestFixtureFloat16, "Transpose Test - float16",
                  "[transpose-test-float16]") {

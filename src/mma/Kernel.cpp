@@ -4,7 +4,7 @@
 
 namespace ccglib::mma {
 
-Kernel::Kernel(Precision precision, Variant variant)
+Kernel::Kernel(Precision precision, const Variant &variant)
     : precision_(precision), variant_(variant) {
   SetParameters(precision);
 };
@@ -16,15 +16,15 @@ dim3 Kernel::GetThreads(cu::Device &device) const {
 }
 
 void Kernel::SetParameters(Precision precision) {
-  switch (precision) {
-  case ccglib::mma::Precision::float16:
-    parameters_ = Kernel::GetParameters<Precision::float16>();
+  switch (precision.input_type) {
+  case ValueType::float16:
+    parameters_ = Kernel::GetCompileParameters<ValueType::float16>();
     break;
-  case ccglib::mma::Precision::float32:
-    parameters_ = Kernel::GetParameters<Precision::float32>();
+  case ValueType::float32:
+    parameters_ = Kernel::GetCompileParameters<ValueType::float32>();
     break;
-  case ccglib::mma::Precision::int1:
-    parameters_ = Kernel::GetParameters<Precision::int1>();
+  case ValueType::int1:
+    parameters_ = Kernel::GetCompileParameters<ValueType::int1>();
     break;
   default:
     throw std::runtime_error(
@@ -34,13 +34,13 @@ void Kernel::SetParameters(Precision precision) {
 
 std::string Kernel::GetSource() const {
   // precision determines in which file the kernel resides
-  switch (precision_) {
-  case ccglib::mma::float16:
-    return Kernel::GetSource<Precision::float16>();
-  case ccglib::mma::float32:
-    return Kernel::GetSource<Precision::float32>();
-  case ccglib::mma::int1:
-    return Kernel::GetSource<Precision::int1>();
+  switch (precision_.input_type) {
+  case ValueType::float16:
+    return Kernel::GetSource<ValueType::float16>();
+  case ValueType::float32:
+    return Kernel::GetSource<ValueType::float32>();
+  case ValueType::int1:
+    return Kernel::GetSource<ValueType::int1>();
   default:
     throw std::runtime_error("Selected GEMM precision is not available");
   }

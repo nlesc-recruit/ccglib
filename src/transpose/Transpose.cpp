@@ -56,7 +56,7 @@ void Transpose::compile_kernel() {
     "-DBATCH_SIZE=" + std::to_string(B) + "UL",
     "-DM_GLOBAL=" + std::to_string(M) + "UL",
     "-DN_GLOBAL=" + std::to_string(N) + "UL",
-    "-DNBIT=" + std::to_string(nr_bits),
+    "-DNBIT_IN=" + std::to_string(nr_bits),
     "-DM_CHUNK=" + std::to_string(M_chunk),
     "-DN_CHUNK=" + std::to_string(N_chunk)
   };

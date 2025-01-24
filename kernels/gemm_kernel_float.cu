@@ -29,11 +29,10 @@ using namespace nvcuda;
     "BATCH_SIZE, M_GLOBAL, N_GLOBAL, and K_GLOBAL values per block, warp, tensor core must be defined at compile time"
 #endif
 
-#if NBIT == 16
+#if NBIT_IN == 16
 using Tin = half;
 using Ttc = half;
-using Tout = float;
-#elif NBIT == 32
+#elif NBIT_IN == 32
 using Tin = float;
 // Use FP32 on AMD and TF32 on NVIDIA
 #if defined(__HIP_PLATFORM_AMD__)
@@ -41,9 +40,29 @@ using Ttc = float;
 #else
 using Ttc = wmma::precision::tf32;
 #endif
+#else
+#error NBIT_IN must be 16 or 32
+#endif
+
+#if NBIT_OUT == 16
+#if NBIT_IN == 32
+// When NBIT_OUT is 16 and NBIT_IN is 16, we are dealing with a FP32 -> FP16
+// conversion, howoever, wmma does not support this, so we use 32 bit
+// intermediate precision. The user may downcast the result to FP16 afterwards
+// using the 'downcast_kernel'.
+#if defined(__HIP_PLATFORM_AMD__)
+using Ttc = float;
+#else
+using Ttc = wmma::precision::tf32;
+#endif
 using Tout = float;
 #else
-#error NBIT must be 16 or 32
+using Tout = half;
+#endif
+#elif NBIT_OUT == 32
+using Tout = float;
+#else
+#error NBIT_OUT must be 16 or 32
 #endif
 
 // Check memory layout of A and B matrix
@@ -144,7 +163,7 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
   for (size_t c = 0; c < COMPLEX; c++) {
     for (size_t m = 0; m < M_TILES; m++) {
       for (size_t n = 0; n < N_TILES; n++) {
-        wmma::fill_fragment(sum[c][m][n], .0f);
+        wmma::fill_fragment(sum[c][m][n], static_cast<Tout>(.0f));
       }
     }
   }
@@ -312,7 +331,7 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
   for (size_t c = 0; c < COMPLEX; c++) {
     for (size_t m = 0; m < M_TILES; m++) {
       for (size_t n = 0; n < N_TILES; n++) {
-        wmma::fill_fragment(sum[c][m][n], .0f);
+        wmma::fill_fragment(sum[c][m][n], static_cast<Tout>(.0f));
       }
     }
   }
@@ -501,4 +520,13 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
     }
   } // c
 #endif
+}
+
+// Downcast kernel: Converts float32 to float16
+extern "C" __global__ void downcast_kernel(const float *input, half *output,
+                                           size_t count) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < count) {
+    output[idx] = __float2half(input[idx]);
+  }
 }

@@ -1,3 +1,4 @@
+#include "ccglib/precision.h"
 #include <iostream>
 
 #include <ccglib/ccglib.hpp>
@@ -47,7 +48,7 @@ int main(int argc, char *argv[]) {
 
   ccglib::mma::GEMM gemm_mma(batch_size, global_m, global_n, global_k,
                              nr_input_bits, device, stream,
-                             ccglib::mma::float16, ccglib::mma::opt);
+                             ccglib::ValueType::float16, ccglib::mma::opt);
 
   // run the GEMM kernel
   cu::Event start, end;

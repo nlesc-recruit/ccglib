@@ -9,11 +9,14 @@
 #include <ccglib/gemm/reference.h>
 
 #include "fpequals.h"
+#include <ccglib/precision.h>
 
-template <typename Tin, typename Tout, size_t NrInputBits>
+template <typename Tin, typename Tout, ccglib::ValueType InputPrecision>
 void verify(const Tin *a, const Tin *b, const Tout *c, size_t B, size_t M,
             size_t N, size_t K, ccglib::mma::MemOrder output_mem_order) {
-  const size_t kPackingFactor = sizeof(Tin) * CHAR_BIT / NrInputBits;
+  const size_t kPackingFactor =
+      sizeof(Tin) * CHAR_BIT /
+      ccglib::ValuePrecision{InputPrecision}.GetBitWidth();
 
   const std::array<size_t, 4> a_shape = {B, 2, M, K / kPackingFactor};
   const std::array<size_t, 4> b_shape = {B, 2, N, K / kPackingFactor};
@@ -55,7 +58,7 @@ void verify(const Tin *a, const Tin *b, const Tout *c, size_t B, size_t M,
           ref = {c_ref(b, 0, n, m), c_ref(b, 1, n, m)};
           tst = {c_view(b, 0, n, m), c_view(b, 1, n, m)};
         }
-        ccglib::test::fpEquals(ref, tst, ccglib::test::getEpsilon<Tin>());
+        ccglib::test::fpEquals(ref, tst, K);
       }
     }
   }

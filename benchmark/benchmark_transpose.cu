@@ -1,3 +1,4 @@
+#include <ccglib/precision.h>
 #include <iostream>
 
 #include <ccglib/ccglib.hpp>
@@ -92,11 +93,11 @@ int main(int argc, const char *argv[]) {
   const unsigned device_id = cmdline["device"].as<unsigned>();
 
   // Select GEMM precision
-  std::map<std::string, ccglib::mma::Precision> map_gemm_precision{
-      {"float32", ccglib::mma::float32},
-      {"float16", ccglib::mma::float16},
-      {"int1", ccglib::mma::int1}};
-  ccglib::mma::Precision gemm_precision = map_gemm_precision[precision];
+  std::map<std::string, ccglib::ValueType> map_gemm_precision{
+      {"float32", ccglib::ValueType::float32},
+      {"float16", ccglib::ValueType::float16},
+      {"int1", ccglib::ValueType::int1}};
+  ccglib::ValueType gemm_precision = map_gemm_precision[precision];
 
   // Select GEMM variant
   std::map<std::string, ccglib::mma::Variant> map_gemm_variant{
@@ -111,11 +112,8 @@ int main(int argc, const char *argv[]) {
       map_complex_axis[complex_axis];
 
   // Select size of input / output types
-  std::map<std::string, size_t> map_input_bits{
-      {"float32", sizeof(float) * CHAR_BIT},
-      {"float16", sizeof(half) * CHAR_BIT},
-      {"int1", 1}};
-  const size_t nr_input_bits = map_input_bits[precision];
+  const size_t nr_input_bits =
+      ccglib::ValuePrecision{gemm_precision}.GetBitWidth();
 
   // If one of the input M, N arrays is size one and other is bigger,
   // repeat the single value

@@ -16,17 +16,17 @@
 #define IMAG 1
 #endif
 
-#if NBIT == 16
+#if NBIT_IN == 16
 using T = half;
-#elif NBIT == 32
+#elif NBIT_IN == 32
 using T = float;
-#elif NBIT == 1
+#elif NBIT_IN == 1
 using T = unsigned int;
 #else
-#error NBIT must be 1, 16, 32
+#error NBIT_IN must be 1, 16, 32
 #endif
 
-#define PACKING_FACTOR (sizeof(T) * CHAR_BIT / NBIT)
+#define PACKING_FACTOR (sizeof(T) * CHAR_BIT / NBIT_IN)
 
 #define M_IS_PADDED ((M_GLOBAL % M_CHUNK) != 0)
 #define N_IS_PADDED ((N_GLOBAL % N_CHUNK) != 0)
