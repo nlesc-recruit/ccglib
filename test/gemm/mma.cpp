@@ -330,9 +330,9 @@ struct GemmTestTraits<
   static constexpr size_t N_row_major = 60;
   static constexpr size_t K_row_major = 40;
 
-  static constexpr size_t M_col_major = 128;
-  static constexpr size_t N_col_major = 64;
-  static constexpr size_t K_col_major = 64;
+  static constexpr size_t M_col_major = 100;
+  static constexpr size_t N_col_major = 60;
+  static constexpr size_t K_col_major = 40;
 
   static constexpr size_t InputSize =
       sizeof(typename Fixture::InputType) * CHAR_BIT;

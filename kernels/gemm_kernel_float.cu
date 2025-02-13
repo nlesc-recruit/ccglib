@@ -293,7 +293,11 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
           size_t j = t % N_PER_WMMA;
           // store the submatrix, padded values are set to zero
           if (m_index + i < M_GLOBAL && n_index + j < N_GLOBAL) {
+#if defined(C_ROW_MAJOR)
             C[batch][c][m_index + i][n_index + j] = C_s[warpM][warpN][i][j];
+#else
+            C[batch][c][n_index + j][m_index + i] = C_s[warpM][warpN][i][j];
+#endif
           }
         }
         __syncwarp();
@@ -487,7 +491,11 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
           size_t j = t % N_PER_WMMA;
           // store the submatrix, padded values are set to zero
           if (m_index + i < M_GLOBAL && n_index + j < N_GLOBAL) {
+#if defined(C_ROW_MAJOR)
             C[batch][c][m_index + i][n_index + j] = C_s[warpM][warpN][i][j];
+#else
+            C[batch][c][n_index + j][m_index + i] = C_s[warpM][warpN][i][j];
+#endif
           }
         }
         __syncwarp();
@@ -512,7 +520,11 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
           size_t j = t % N_PER_WMMA;
           // store the submatrix, padded values are set to zero
           if (m_index + i < M_GLOBAL && n_index + j < N_GLOBAL) {
+#if defined(C_ROW_MAJOR)
             C[batch][m_index + i][n_index + j][c] = C_s[warpM][warpN][i][j];
+#else
+            C[batch][n_index + j][m_index + i][c] = C_s[warpM][warpN][i][j];
+#endif
           }
         }
         __syncwarp();
