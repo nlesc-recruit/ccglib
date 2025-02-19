@@ -226,9 +226,9 @@ int main(int argc, const char *argv[]) {
 
 #if defined(HAVE_PMT)
 #if defined(__HIP__)
-  auto sensor = pmt::Create("rocm", device_id);
+  auto sensor = pmt::Create("rocm", std::to_string(device_id));
 #else
-  auto sensor = pmt::Create("nvidia", device_id);
+  auto sensor = pmt::Create("nvidia", std::to_string(device_id));
 #endif
 #endif
 
