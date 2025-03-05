@@ -66,11 +66,6 @@ GEMM::Impl::Impl(size_t B_, size_t M_, size_t N_, size_t K_,
   const bool c_complex_axis_is_last =
       c_complex_axis_location == ComplexAxisLocation::complex_last;
 
-  if (precision_is_int1 && c_complex_axis_is_last) {
-    throw std::runtime_error(
-        "complex-last output is not supported in int1 precision");
-  }
-
   if (variant_is_basic && c_complex_axis_is_last) {
     throw std::runtime_error(
         "complex-last output is not supported in basic variant");

@@ -56,10 +56,18 @@ using A_opt_t = Tin[BATCH_SIZE][M_GLOBAL / M_PER_BLOCK][K_GLOBAL / K_PER_WMMA]
 using B_opt_t = Tin[BATCH_SIZE][N_GLOBAL / N_PER_BLOCK][K_GLOBAL / K_PER_WMMA]
                    [COMPLEX][N_PER_BLOCK][K_PER_WMMA / PACKING_FACTOR];
 
+#if defined(C_COMPLEX_MIDDLE)
 #ifdef C_ROW_MAJOR
 using C_t = Tout[BATCH_SIZE][COMPLEX][M_GLOBAL][N_GLOBAL];
 #else
 using C_t = Tout[BATCH_SIZE][COMPLEX][N_GLOBAL][M_GLOBAL];
+#endif
+#elif defined(C_COMPLEX_LAST)
+#ifdef C_ROW_MAJOR
+using C_t = Tout[BATCH_SIZE][M_GLOBAL][N_GLOBAL][COMPLEX];
+#else
+using C_t = Tout[BATCH_SIZE][N_GLOBAL][M_GLOBAL][COMPLEX];
+#endif
 #endif
 
 inline __device__ size_t global_idx_m(const size_t &blockM, const size_t &warpM,
@@ -284,10 +292,36 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
     }
   }
 
-  __shared__ Tin
-      A_s[NBUFFER][COMPLEX][M_PER_BLOCK][K_PER_WMMA / PACKING_FACTOR];
-  __shared__ Tin
-      B_s[NBUFFER][COMPLEX][N_PER_BLOCK][K_PER_WMMA / PACKING_FACTOR];
+  // shared memory buffers for partial A and B matrix. Several buffers
+  // to allow for async operations: copy next submatrix to shared memory while
+  // computing current submatrix
+  // To save shared memory, the C matrix reuses the same shared memory in
+  // case of complex-last output.
+  constexpr size_t A_s_size =
+      NBUFFER * COMPLEX * M_PER_BLOCK * K_PER_WMMA / PACKING_FACTOR;
+  constexpr size_t B_s_size =
+      NBUFFER * COMPLEX * N_PER_BLOCK * K_PER_WMMA / PACKING_FACTOR;
+#if defined(C_COMPLEX_LAST)
+  constexpr size_t C_s_size = (M_PER_BLOCK / M_PER_WARP) *
+                              (N_PER_BLOCK / N_PER_WARP) * M_PER_WMMA *
+                              N_PER_WMMA;
+#endif
+  __shared__ union {
+    Tin ab[A_s_size + B_s_size];
+#if defined(C_COMPLEX_LAST)
+    Tout c[C_s_size];
+#endif
+  } shmem;
+
+  using A_s_t = Tin[NBUFFER][COMPLEX][M_PER_BLOCK][K_PER_WMMA / PACKING_FACTOR];
+  using B_s_t = Tin[NBUFFER][COMPLEX][N_PER_BLOCK][K_PER_WMMA / PACKING_FACTOR];
+  A_s_t &A_s = *reinterpret_cast<A_s_t *>(shmem.ab);
+  B_s_t &B_s = *reinterpret_cast<B_s_t *>(&shmem.ab[A_s_size]);
+#if defined(C_COMPLEX_LAST)
+  using C_s_t = Tout[M_PER_BLOCK / M_PER_WARP][N_PER_BLOCK / N_PER_WARP]
+                    [M_PER_WMMA][N_PER_WMMA];
+  C_s_t &C_s = *reinterpret_cast<C_s_t *>(shmem.c);
+#endif
 
   cuda::pipeline<cuda::thread_scope_thread> pipe = cuda::make_pipeline();
 
@@ -390,5 +424,33 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
   }
 
   // store the result to global memory
+#if defined(C_COMPLEX_MIDDLE)
   store_matrix(sum, C, batch, blockM, warpM, blockN, warpN);
+#elif defined(C_COMPLEX_LAST)
+  for (size_t m = 0; m < M_TILES; m++) {
+    for (size_t n = 0; n < N_TILES; n++) {
+      for (size_t c = 0; c < COMPLEX; c++) {
+        wmma::store_matrix_sync(&C_s[warpM][warpN][0][0], sum[c][m][n],
+                                N_PER_WMMA, wmma::mem_row_major);
+        __syncwarp();
+        size_t m_index = global_idx_m(blockM, warpM, m);
+        size_t n_index = global_idx_n(blockN, warpN, n);
+        for (size_t t = threadIdx.x; t < M_PER_WMMA * N_PER_WMMA;
+             t += WARP_SIZE) {
+          size_t i = t / N_PER_WMMA;
+          size_t j = t % N_PER_WMMA;
+          // store the submatrix
+          if (m_index + i < M_GLOBAL && n_index + j < N_GLOBAL) {
+#ifdef C_ROW_MAJOR
+            C[batch][m_index + i][n_index + j][c] = C_s[warpM][warpN][i][j];
+#else
+            C[batch][n_index + j][m_index + i][c] = C_s[warpM][warpN][i][j];
+#endif
+          }
+        }
+        __syncwarp();
+      }
+    }
+  }
+#endif
 }

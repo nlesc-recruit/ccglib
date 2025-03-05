@@ -392,18 +392,28 @@ template <typename Fixture> struct GemmTestOpt : public Fixture {
       this->init(Traits::M_row_major, Traits::N_row_major, Traits::K_row_major);
       this->complex_gemm_opt(ccglib::mma::row_major);
     }
-    SECTION("opt-row-major - InputSize: " + std::to_string(Traits::InputSize) +
+    SECTION("opt-col-major - InputSize: " + std::to_string(Traits::InputSize) +
             "b, OutputSize: " + std::to_string(Traits::OutputSize) + "b") {
       this->init(Traits::M_col_major, Traits::N_col_major, Traits::K_col_major);
       this->complex_gemm_opt(ccglib::mma::col_major);
     }
 
-    if constexpr (std::is_same_v<typename Fixture::InputType, half>) {
-      SECTION("opt-row-major-complex-last - InputSize: " +
+    SECTION("opt-row-major-complex-last - InputSize: " +
+            std::to_string(Traits::InputSize) +
+            "b, OutputSize: " + std::to_string(Traits::OutputSize) + "b") {
+      this->init(Traits::M_row_major, Traits::N_row_major, Traits::K_row_major);
+      this->complex_gemm_opt(ccglib::mma::row_major, ccglib::mma::complex_last);
+    }
+
+    // no test for float16 GEMM with col-major complex-last as it is not yet
+    // supported
+    if constexpr (Traits::InputSize == 1) {
+      SECTION("opt-col-major-complex-last - InputSize: " +
               std::to_string(Traits::InputSize) +
               "b, OutputSize: " + std::to_string(Traits::OutputSize) + "b") {
-        this->init(100, 60, 40);
-        this->complex_gemm_opt(ccglib::mma::row_major,
+        this->init(Traits::M_col_major, Traits::N_col_major,
+                   Traits::K_col_major);
+        this->complex_gemm_opt(ccglib::mma::col_major,
                                ccglib::mma::complex_last);
       }
     }
