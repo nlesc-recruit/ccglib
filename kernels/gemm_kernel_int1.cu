@@ -9,30 +9,9 @@
 #include "async_copies.h"
 #include "wmma_extension.h"
 
-using namespace nvcuda;
+#include "type_selector.h"
 
-#ifndef COMPLEX
-#define COMPLEX 2
-#endif
-#ifndef REAL
-#define REAL 0
-#endif
-#ifndef IMAG
-#define IMAG 1
-#endif
-
-// All values related to data layout must be defined at compile time
-#if !defined BATCH_SIZE || !defined M_GLOBAL || !defined N_GLOBAL ||           \
-    !defined K_GLOBAL
-#error                                                                         \
-    "BATCH_SIZE, M_GLOBAL, N_GLOBAL, and K_GLOBAL values per block, warp, tensor core must be defined at compile time"
-#endif
-
-#if NBIT_IN == 1
-using Tin = unsigned int;
-using Ttc = wmma::experimental::precision::b1;
-using Tout = int;
-#else
+#if NBIT_IN != 1
 #error NBIT_IN must be 1
 #endif
 
@@ -44,17 +23,13 @@ using Tout = int;
 #error "B matrix must be col-major for 1-bit GEMM"
 #endif
 
-// Number of samples in one element of type Tin
-#define PACKING_FACTOR (sizeof(Tin) * CHAR_BIT / NBIT_IN)
-
-// basic data layout
-using A_t = Tin[BATCH_SIZE][COMPLEX][M_GLOBAL][K_GLOBAL / PACKING_FACTOR];
-using B_t = Tin[BATCH_SIZE][COMPLEX][N_GLOBAL][K_GLOBAL / PACKING_FACTOR];
 // data layout for optimal transfer to shared memory
-using A_opt_t = Tin[BATCH_SIZE][M_GLOBAL / M_PER_BLOCK][K_GLOBAL / K_PER_WMMA]
-                   [COMPLEX][M_PER_BLOCK][K_PER_WMMA / PACKING_FACTOR];
-using B_opt_t = Tin[BATCH_SIZE][N_GLOBAL / N_PER_BLOCK][K_GLOBAL / K_PER_WMMA]
-                   [COMPLEX][N_PER_BLOCK][K_PER_WMMA / PACKING_FACTOR];
+using A_opt_t =
+    Tin[BATCH_SIZE][M_GLOBAL / M_PER_BLOCK][K_GLOBAL / K_PER_WMMA][COMPLEX]
+       [M_PER_BLOCK][K_PER_WMMA / DeviceTraits::PACKING_FACTOR];
+using B_opt_t =
+    Tin[BATCH_SIZE][N_GLOBAL / N_PER_BLOCK][K_GLOBAL / K_PER_WMMA][COMPLEX]
+       [N_PER_BLOCK][K_PER_WMMA / DeviceTraits::PACKING_FACTOR];
 
 #if defined(C_COMPLEX_MIDDLE)
 #ifdef C_ROW_MAJOR
@@ -89,7 +64,7 @@ template <typename FragT> inline __device__ void negate(FragT &fragment) {
 
 inline __device__ void store_matrix(
     wmma::fragment<wmma::accumulator, M_PER_WMMA, N_PER_WMMA, K_PER_WMMA, Tout>
-        sum[COMPLEX][M_PER_WARP / M_PER_WMMA][N_PER_WARP / N_PER_WMMA],
+        accumulator[COMPLEX][M_PER_WARP / M_PER_WMMA][N_PER_WARP / N_PER_WMMA],
     C_t C, const size_t &batch, const size_t &blockM, const size_t &warpM,
     const size_t &blockN, const size_t &warpN) {
   for (size_t c = 0; c < COMPLEX; c++) {
@@ -98,11 +73,13 @@ inline __device__ void store_matrix(
         const size_t idx_m = global_idx_m(blockM, warpM, m);
         const size_t idx_n = global_idx_n(blockN, warpN, n);
 #ifdef C_ROW_MAJOR
-        wmma::store_matrix_sync(&(C[batch][c][idx_m][idx_n]), sum[c][m][n],
-                                N_GLOBAL, wmma::mem_row_major);
+        wmma::store_matrix_sync(&(C[batch][c][idx_m][idx_n]),
+                                accumulator[c][m][n], N_GLOBAL,
+                                wmma::mem_row_major);
 #else
-        wmma::store_matrix_sync(&(C[batch][c][idx_n][idx_m]), sum[c][m][n],
-                                M_GLOBAL, wmma::mem_col_major);
+        wmma::store_matrix_sync(&(C[batch][c][idx_n][idx_m]),
+                                accumulator[c][m][n], M_GLOBAL,
+                                wmma::mem_col_major);
 #endif
       }
     }
@@ -147,11 +124,11 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t &C, const A_t &A,
   constexpr size_t K_TILES = K_GLOBAL / K_PER_WMMA;
 
   wmma::fragment<wmma::accumulator, M_PER_WMMA, N_PER_WMMA, K_PER_WMMA, Tout>
-      sum[COMPLEX][M_TILES][N_TILES];
+      accumulator[COMPLEX][M_TILES][N_TILES];
   for (size_t c = 0; c < COMPLEX; c++) {
     for (size_t m = 0; m < M_TILES; m++) {
       for (size_t n = 0; n < N_TILES; n++) {
-        wmma::fill_fragment(sum[c][m][n], 0);
+        wmma::fill_fragment(accumulator[c][m][n], 0);
       }
     }
   }
@@ -168,19 +145,21 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t &C, const A_t &A,
     // load matrices from global memory
     for (size_t c = 0; c < COMPLEX; c++) {
       for (size_t m = 0; m < M_TILES; m++) {
-        wmma::load_matrix_sync(a[c][m],
-                               &(A[batch][c][global_idx_m(blockM, warpM, m)]
-                                  [k * K_PER_WMMA / PACKING_FACTOR]),
-                               K_GLOBAL);
+        wmma::load_matrix_sync(
+            a[c][m],
+            &(A[batch][c][global_idx_m(blockM, warpM, m)]
+               [k * K_PER_WMMA / DeviceTraits::PACKING_FACTOR]),
+            K_GLOBAL);
       }
     }
 
     for (size_t c = 0; c < COMPLEX; c++) {
       for (size_t n = 0; n < N_TILES; n++) {
-        wmma::load_matrix_sync(b[c][n],
-                               &(B[batch][c][global_idx_n(blockN, warpN, n)]
-                                  [k * K_PER_WMMA / PACKING_FACTOR]),
-                               K_GLOBAL);
+        wmma::load_matrix_sync(
+            b[c][n],
+            &(B[batch][c][global_idx_n(blockN, warpN, n)]
+               [k * K_PER_WMMA / DeviceTraits::PACKING_FACTOR]),
+            K_GLOBAL);
       }
     }
 
@@ -190,23 +169,27 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t &C, const A_t &A,
     // steps to do complex MMA with separate real and imaginary data
     // with x == x_r + x_i * i
     // a * b = (a_r * b_r - a_i * b_i) + (a_r * b_i + a_i * b_r) * i
-    // 1. sum[real] += a_r * b_r
-    // 2. sum[imag] += a_r * b_i
+    // 1. accumulator[real] += a_r * b_r
+    // 2. accumulator[imag] += a_r * b_i
     // 3. b_i = - b_i (because tensor cores cannot subtract)
-    // 4. sum[real] += a_i * b_i
-    // 5. sum[imag] += a_i * b_r
+    // 4. accumulator[real] += a_i * b_i
+    // 5. accumulator[imag] += a_i * b_r
 
     // step 1 and 2
     for (size_t m = 0; m < M_TILES; m++) {
       for (size_t n = 0; n < N_TILES; n++) {
 #if __CUDA_ARCH__ >= 900
-        bmma_sync_and(sum[REAL][m][n], a[REAL][m], b[REAL][n], sum[REAL][m][n]);
-        bmma_sync_and(sum[IMAG][m][n], a[REAL][m], b[IMAG][n], sum[IMAG][m][n]);
+        bmma_sync_and(accumulator[REAL][m][n], a[REAL][m], b[REAL][n],
+                      accumulator[REAL][m][n]);
+        bmma_sync_and(accumulator[IMAG][m][n], a[REAL][m], b[IMAG][n],
+                      accumulator[IMAG][m][n]);
 #else
-        wmma::bmma_sync(sum[REAL][m][n], a[REAL][m], b[REAL][n],
-                        sum[REAL][m][n], wmma::experimental::bmmaBitOpXOR);
-        wmma::bmma_sync(sum[IMAG][m][n], a[REAL][m], b[IMAG][n],
-                        sum[IMAG][m][n], wmma::experimental::bmmaBitOpXOR);
+        wmma::bmma_sync(accumulator[REAL][m][n], a[REAL][m], b[REAL][n],
+                        accumulator[REAL][m][n],
+                        wmma::experimental::bmmaBitOpXOR);
+        wmma::bmma_sync(accumulator[IMAG][m][n], a[REAL][m], b[IMAG][n],
+                        accumulator[IMAG][m][n],
+                        wmma::experimental::bmmaBitOpXOR);
 #endif
       }
     }
@@ -220,33 +203,37 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t &C, const A_t &A,
     for (size_t m = 0; m < M_TILES; m++) {
       for (size_t n = 0; n < N_TILES; n++) {
 #if __CUDA_ARCH__ >= 900
-        bmma_sync_and(sum[REAL][m][n], a[IMAG][m], b[IMAG][n], sum[REAL][m][n]);
-        bmma_sync_and(sum[IMAG][m][n], a[IMAG][m], b[REAL][n], sum[IMAG][m][n]);
+        bmma_sync_and(accumulator[REAL][m][n], a[IMAG][m], b[IMAG][n],
+                      accumulator[REAL][m][n]);
+        bmma_sync_and(accumulator[IMAG][m][n], a[IMAG][m], b[REAL][n],
+                      accumulator[IMAG][m][n]);
 #else
-        wmma::bmma_sync(sum[REAL][m][n], a[IMAG][m], b[IMAG][n],
-                        sum[REAL][m][n], wmma::experimental::bmmaBitOpXOR);
-        wmma::bmma_sync(sum[IMAG][m][n], a[IMAG][m], b[REAL][n],
-                        sum[IMAG][m][n], wmma::experimental::bmmaBitOpXOR);
+        wmma::bmma_sync(accumulator[REAL][m][n], a[IMAG][m], b[IMAG][n],
+                        accumulator[REAL][m][n],
+                        wmma::experimental::bmmaBitOpXOR);
+        wmma::bmma_sync(accumulator[IMAG][m][n], a[IMAG][m], b[REAL][n],
+                        accumulator[IMAG][m][n],
+                        wmma::experimental::bmmaBitOpXOR);
 #endif
       }
     }
   }
 
   // Fix result: a dot b = K - 2 * popc(a xor b)
-  // 2 K here because we do two TC operations per sum fragment, so 2 K values
-  // were added together should also take care of padding: extra samples are
-  // zero, interpreted as -1. For the REAL part of the output: first -1 * -1 is
-  // added, then -1 * 1 due to negation of bi. Effectively no correction needed
-  // for the IMAG part, -1 * -1 is added twice, so we need to subtract the
-  // amount of padding twice hence we end up with
-  // a dot b (real part) = 2 * (K - popc(a xor b))
-  // a dot b (imag part) = 2 * (K - K_PADDING - popc(a xor b))
+  // 2 K here because we do two TC operations per accumulator fragment, so 2 K
+  // values were added together should also take care of padding: extra samples
+  // are zero, interpreted as -1. For the REAL part of the output: first -1 * -1
+  // is added, then -1 * 1 due to negation of bi. Effectively no correction
+  // needed for the IMAG part, -1 * -1 is added twice, so we need to subtract
+  // the amount of padding twice hence we end up with a dot b (real part) = 2 *
+  // (K - popc(a xor b)) a dot b (imag part) = 2 * (K - K_PADDING - popc(a xor
+  // b))
   for (size_t c = 0; c < COMPLEX; c++) {
     size_t offset = c == REAL ? 0 : K_PADDING;
 
     for (size_t m = 0; m < M_TILES; m++) {
       for (size_t n = 0; n < N_TILES; n++) {
-        for (auto &element : sum[c][m][n].x) {
+        for (auto &element : accumulator[c][m][n].x) {
           // The normal XOR version of bmma_sync detects which bits in the input
           // are different, while the custom version with AND detects
           // which bits are the same. Hence, the output is flipped between these
@@ -262,7 +249,7 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t &C, const A_t &A,
   }
 
   // store the result to global memory
-  store_matrix(sum, C, batch, blockM, warpM, blockN, warpN);
+  store_matrix(accumulator, C, batch, blockM, warpM, blockN, warpN);
 }
 
 extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
@@ -283,11 +270,11 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
   constexpr size_t K_TILES = K_GLOBAL / K_PER_WMMA;
 
   wmma::fragment<wmma::accumulator, M_PER_WMMA, N_PER_WMMA, K_PER_WMMA, Tout>
-      sum[COMPLEX][M_TILES][N_TILES];
+      accumulator[COMPLEX][M_TILES][N_TILES];
   for (size_t c = 0; c < COMPLEX; c++) {
     for (size_t m = 0; m < M_TILES; m++) {
       for (size_t n = 0; n < N_TILES; n++) {
-        wmma::fill_fragment(sum[c][m][n], 0);
+        wmma::fill_fragment(accumulator[c][m][n], 0);
       }
     }
   }
@@ -297,10 +284,10 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
   // computing current submatrix
   // To save shared memory, the C matrix reuses the same shared memory in
   // case of complex-last output.
-  constexpr size_t A_s_size =
-      NBUFFER * COMPLEX * M_PER_BLOCK * K_PER_WMMA / PACKING_FACTOR;
-  constexpr size_t B_s_size =
-      NBUFFER * COMPLEX * N_PER_BLOCK * K_PER_WMMA / PACKING_FACTOR;
+  constexpr size_t A_s_size = NBUFFER * COMPLEX * M_PER_BLOCK * K_PER_WMMA /
+                              DeviceTraits::PACKING_FACTOR;
+  constexpr size_t B_s_size = NBUFFER * COMPLEX * N_PER_BLOCK * K_PER_WMMA /
+                              DeviceTraits::PACKING_FACTOR;
 #if defined(C_COMPLEX_LAST)
   constexpr size_t C_s_size = (M_PER_BLOCK / M_PER_WARP) *
                               (N_PER_BLOCK / N_PER_WARP) * M_PER_WMMA *
@@ -313,8 +300,10 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
 #endif
   } shmem;
 
-  using A_s_t = Tin[NBUFFER][COMPLEX][M_PER_BLOCK][K_PER_WMMA / PACKING_FACTOR];
-  using B_s_t = Tin[NBUFFER][COMPLEX][N_PER_BLOCK][K_PER_WMMA / PACKING_FACTOR];
+  using A_s_t = Tin[NBUFFER][COMPLEX][M_PER_BLOCK]
+                   [K_PER_WMMA / DeviceTraits::PACKING_FACTOR];
+  using B_s_t = Tin[NBUFFER][COMPLEX][N_PER_BLOCK]
+                   [K_PER_WMMA / DeviceTraits::PACKING_FACTOR];
   A_s_t &A_s = *reinterpret_cast<A_s_t *>(shmem.ab);
   B_s_t &B_s = *reinterpret_cast<B_s_t *>(&shmem.ab[A_s_size]);
 #if defined(C_COMPLEX_LAST)
@@ -372,13 +361,17 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
     for (size_t m = 0; m < M_TILES; m++) {
       for (size_t n = 0; n < N_TILES; n++) {
 #if __CUDA_ARCH__ >= 900
-        bmma_sync_and(sum[REAL][m][n], a[REAL][m], b[REAL][n], sum[REAL][m][n]);
-        bmma_sync_and(sum[IMAG][m][n], a[REAL][m], b[IMAG][n], sum[IMAG][m][n]);
+        bmma_sync_and(accumulator[REAL][m][n], a[REAL][m], b[REAL][n],
+                      accumulator[REAL][m][n]);
+        bmma_sync_and(accumulator[IMAG][m][n], a[REAL][m], b[IMAG][n],
+                      accumulator[IMAG][m][n]);
 #else
-        wmma::bmma_sync(sum[REAL][m][n], a[REAL][m], b[REAL][n],
-                        sum[REAL][m][n], wmma::experimental::bmmaBitOpXOR);
-        wmma::bmma_sync(sum[IMAG][m][n], a[REAL][m], b[IMAG][n],
-                        sum[IMAG][m][n], wmma::experimental::bmmaBitOpXOR);
+        wmma::bmma_sync(accumulator[REAL][m][n], a[REAL][m], b[REAL][n],
+                        accumulator[REAL][m][n],
+                        wmma::experimental::bmmaBitOpXOR);
+        wmma::bmma_sync(accumulator[IMAG][m][n], a[REAL][m], b[IMAG][n],
+                        accumulator[IMAG][m][n],
+                        wmma::experimental::bmmaBitOpXOR);
 #endif
       }
     }
@@ -390,13 +383,17 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
     for (size_t m = 0; m < M_TILES; m++) {
       for (size_t n = 0; n < N_TILES; n++) {
 #if __CUDA_ARCH__ >= 900
-        bmma_sync_and(sum[REAL][m][n], a[IMAG][m], b[IMAG][n], sum[REAL][m][n]);
-        bmma_sync_and(sum[IMAG][m][n], a[IMAG][m], b[REAL][n], sum[IMAG][m][n]);
+        bmma_sync_and(accumulator[REAL][m][n], a[IMAG][m], b[IMAG][n],
+                      accumulator[REAL][m][n]);
+        bmma_sync_and(accumulator[IMAG][m][n], a[IMAG][m], b[REAL][n],
+                      accumulator[IMAG][m][n]);
 #else
-        wmma::bmma_sync(sum[REAL][m][n], a[IMAG][m], b[IMAG][n],
-                        sum[REAL][m][n], wmma::experimental::bmmaBitOpXOR);
-        wmma::bmma_sync(sum[IMAG][m][n], a[IMAG][m], b[REAL][n],
-                        sum[IMAG][m][n], wmma::experimental::bmmaBitOpXOR);
+        wmma::bmma_sync(accumulator[REAL][m][n], a[IMAG][m], b[IMAG][n],
+                        accumulator[REAL][m][n],
+                        wmma::experimental::bmmaBitOpXOR);
+        wmma::bmma_sync(accumulator[IMAG][m][n], a[IMAG][m], b[REAL][n],
+                        accumulator[IMAG][m][n],
+                        wmma::experimental::bmmaBitOpXOR);
 #endif
       }
     }
@@ -412,7 +409,7 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
 
     for (size_t m = 0; m < M_TILES; m++) {
       for (size_t n = 0; n < N_TILES; n++) {
-        for (auto &element : sum[c][m][n].x) {
+        for (auto &element : accumulator[c][m][n].x) {
 #if __CUDA_ARCH__ >= 900
           element = 2 * (element - K_GLOBAL + offset);
 #else
@@ -425,12 +422,12 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
 
   // store the result to global memory
 #if defined(C_COMPLEX_MIDDLE)
-  store_matrix(sum, C, batch, blockM, warpM, blockN, warpN);
+  store_matrix(accumulator, C, batch, blockM, warpM, blockN, warpN);
 #elif defined(C_COMPLEX_LAST)
   for (size_t m = 0; m < M_TILES; m++) {
     for (size_t n = 0; n < N_TILES; n++) {
       for (size_t c = 0; c < COMPLEX; c++) {
-        wmma::store_matrix_sync(&C_s[warpM][warpN][0][0], sum[c][m][n],
+        wmma::store_matrix_sync(&C_s[warpM][warpN][0][0], accumulator[c][m][n],
                                 N_PER_WMMA, wmma::mem_row_major);
         __syncwarp();
         size_t m_index = global_idx_m(blockM, warpM, m);
