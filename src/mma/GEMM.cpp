@@ -44,7 +44,6 @@ private:
 
   std::unique_ptr<cu::Module> module_;
   std::unique_ptr<cu::Function> function_;
-  std::unique_ptr<cu::Function> downcast_function_;
 };
 
 GEMM::Impl::Impl(size_t B_, size_t M_, size_t N_, size_t K_,
@@ -93,51 +92,8 @@ void GEMM::Impl::Run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b,
   std::vector<const void *> parameters = {d_c.parameter(), d_a.parameter(),
                                           d_b.parameter()};
 
-  // A input type of float32 and output type of float16 requires special
-  // handling in order to downcast the 32 bit output to the 16 bit output.
-  if (precision.input_type == ValueType::float32 &&
-      precision.output_type == ValueType::float16) {
-    // If the downcast function has not been compiled, throw an error.
-    // This should never happen since the if-condition above ensures that
-    // the right conditions are met.
-    if (!downcast_function_) {
-      throw std::runtime_error("Unexpected error: downcast function is null");
-    }
-
-    // Create an temporary output buffer that is large enough to hold the 32
-    // bit output of the kernel. Then downcast the 32 bit output to the 16 bit
-    // output 'd_c'.
-    const size_t temp_buffer_size =
-        (d_c.size() + (precision.GetOutputBits() / CHAR_BIT) - 1) /
-        (precision.GetOutputBits() / CHAR_BIT) *
-        (precision.GetInputBits() / CHAR_BIT);
-
-    // Allocate the temporary buffer
-    cu::DeviceMemory d_temp = stream_.memAllocAsync(temp_buffer_size);
-
-    stream_.launchKernel(
-        *function_, grid_.x, grid_.y, grid_.z, threads_.x, threads_.y,
-        threads_.z, 0, {d_temp.parameter(), d_a.parameter(), d_b.parameter()});
-
-    // Determine the execution layout.
-    const size_t d_c_count =
-        d_c.size() / (precision.GetOutputBits() / CHAR_BIT);
-    const size_t threads = 256;
-    const size_t blocks = (d_c_count + threads - 1) / threads;
-
-    std::vector<const void *> downcast_parameters = {
-        {d_temp.parameter(), d_c.parameter(), &temp_buffer_size}};
-
-    // Copy the output from the temporary buffer to d_c.
-    stream_.launchKernel(*downcast_function_, threads, 1, 1, blocks, 1, 1, 0,
-                         downcast_parameters);
-
-    // Free the temporary buffer after it has been copied to d_c.
-    stream_.memFreeAsync(d_temp);
-  } else {
-    stream_.launchKernel(*function_, grid_.x, grid_.y, grid_.z, threads_.x,
-                         threads_.y, threads_.z, 0, parameters);
-  }
+  stream_.launchKernel(*function_, grid_.x, grid_.y, grid_.z, threads_.x,
+                       threads_.y, threads_.z, 0, parameters);
 }
 
 void GEMM::Impl::compile_kernel() {
@@ -216,14 +172,6 @@ void GEMM::Impl::compile_kernel() {
       static_cast<const void *>(program.getPTX().data()));
   function_ =
       std::make_unique<cu::Function>(*module_, kernel_.GetName().c_str());
-
-  try {
-    downcast_function_ =
-        std::make_unique<cu::Function>(*module_, "downcast_kernel");
-  } catch (cu::Error &) {
-    // Downcast kernel is not implemented for the int1 kernel, so don't throw.
-    downcast_function_ = nullptr;
-  }
 }
 
 GEMM::GEMM(const size_t B_, const size_t M_, const size_t N_, const size_t K_,

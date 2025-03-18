@@ -47,7 +47,10 @@ using namespace nvcuda;
 #define N_GLOBAL_PADDED ((N_GLOBAL / N_PER_BLOCK + N_IS_PADDED) * N_PER_BLOCK)
 #define K_GLOBAL_PADDED ((K_GLOBAL / K_PER_WMMA + K_IS_PADDED) * K_PER_WMMA)
 
-// The type selector is used to determine the data types used in the GEMM kernel
+// The TypeSelector struct is used to determine the size and type of data
+// structures used in the GEMM kernel. It relies on template deduction based on
+// the kernel input and output data types, and is specialized below for the
+// different supported input and output types.
 template <int IN, int OUT> struct TypeSelector {
   static_assert(IN == 1 || IN == 32 || IN == 16, "Unsupported input data type");
   static_assert(IN == 1 || OUT == 32 || OUT == 16,
@@ -57,25 +60,34 @@ template <int IN, int OUT> struct TypeSelector {
 template <> struct TypeSelector<1, 32> {
   using Tin = unsigned int;
   using Ttc = wmma::experimental::precision::b1;
+  using Tshared = int;
   using Tout = int;
 
-  static const unsigned int PACKING_FACTOR = (sizeof(Tin) * CHAR_BIT / NBIT_IN);
+  static constexpr unsigned PACKING_FACTOR = (sizeof(Tin) * CHAR_BIT / NBIT_IN);
+  static constexpr size_t OVERRIDE_K_PER_WMMA = 0;
+  static constexpr bool IS_DOWNCAST_OP = false;
 };
 
 template <> struct TypeSelector<16, 16> {
   using Tin = half;
   using Ttc = half;
+  using Tshared = half;
   using Tout = half;
 
-  static const unsigned int PACKING_FACTOR = 1;
+  static constexpr unsigned PACKING_FACTOR = 1;
+  static constexpr size_t OVERRIDE_K_PER_WMMA = 0;
+  static constexpr bool IS_DOWNCAST_OP = false;
 };
 
 template <> struct TypeSelector<16, 32> {
   using Tin = half;
   using Ttc = half;
+  using Tshared = float;
   using Tout = float;
 
-  static const unsigned int PACKING_FACTOR = 1;
+  static constexpr unsigned PACKING_FACTOR = 1;
+  static constexpr size_t OVERRIDE_K_PER_WMMA = 0;
+  static constexpr bool IS_DOWNCAST_OP = false;
 };
 
 template <> struct TypeSelector<32, 32> {
@@ -85,9 +97,12 @@ template <> struct TypeSelector<32, 32> {
 #else
   using Ttc = wmma::precision::tf32;
 #endif
+  using Tshared = float;
   using Tout = float;
 
-  static const unsigned int PACKING_FACTOR = 1;
+  static constexpr unsigned PACKING_FACTOR = 1;
+  static constexpr size_t OVERRIDE_K_PER_WMMA = 0;
+  static constexpr bool IS_DOWNCAST_OP = false;
 };
 
 template <> struct TypeSelector<32, 16> {
@@ -97,15 +112,20 @@ template <> struct TypeSelector<32, 16> {
 #else
   using Ttc = wmma::precision::tf32;
 #endif
-  using Tout = float;
+  using Tshared = float;
+  using Tout = half;
 
-  static const unsigned int PACKING_FACTOR = 1;
+  static constexpr unsigned PACKING_FACTOR = 1;
+  static constexpr size_t OVERRIDE_K_PER_WMMA = 8;
+  static constexpr bool IS_DOWNCAST_OP = true;
 };
 
+// Create aliases for the defined types
 using DeviceTraits = TypeSelector<NBIT_IN, NBIT_OUT>;
 
 using Tin = typename DeviceTraits::Tin;
 using Ttc = typename DeviceTraits::Ttc;
+using Tshared = typename DeviceTraits::Tshared;
 using Tout = typename DeviceTraits::Tout;
 
 // basic data layout
@@ -128,7 +148,31 @@ using C_t = Tout[BATCH_SIZE][N_GLOBAL][M_GLOBAL][COMPLEX];
 #endif
 #endif
 
-using Accumulator_t = typename wmma::fragment<wmma::accumulator, M_PER_WMMA,
-                                              N_PER_WMMA, K_PER_WMMA, Tout>;
+constexpr size_t A_s_size =
+    NBUFFER * COMPLEX * M_PER_BLOCK * K_PER_WMMA / DeviceTraits::PACKING_FACTOR;
+constexpr size_t B_s_size =
+    NBUFFER * COMPLEX * N_PER_BLOCK * K_PER_WMMA / DeviceTraits::PACKING_FACTOR;
+
+constexpr size_t C_s_size = (M_PER_BLOCK / M_PER_WARP) *
+                            (N_PER_BLOCK / N_PER_WARP) * M_PER_WMMA *
+                            N_PER_WMMA;
+static_assert((A_s_size + B_s_size) * sizeof(Tin) >= C_s_size * sizeof(Tout),
+              "A_s + B_s >= C_s");
+
+static constexpr size_t ACCUMULATOR_K_PER_WMMA =
+    (DeviceTraits::OVERRIDE_K_PER_WMMA > 0) ? DeviceTraits::OVERRIDE_K_PER_WMMA
+                                            : K_PER_WMMA;
+
+using Accumulator_t =
+    typename wmma::fragment<wmma::accumulator, M_PER_WMMA, N_PER_WMMA,
+                            ACCUMULATOR_K_PER_WMMA, Tshared>;
+
+#if NBIT_OUT < NBIT_IN
+#define REQUIRES_DOWNCAST 1
+#else
+#define REQUIRES_DOWNCAST 0
+#endif
+
+#define REQUIRES_SHARED_MEMORY (M_IS_PADDED || N_IS_PADDED || REQUIRES_DOWNCAST)
 
 #endif // TYPE_SELECTOR_H_

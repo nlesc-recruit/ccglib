@@ -11,6 +11,7 @@ using namespace nvcuda;
 #endif
 
 #include "ccglib/fp16.h"
+#include "matrix_operations.h"
 #include "type_selector.h"
 
 // Check memory layout of A and B matrix
@@ -29,44 +30,6 @@ using B_opt_t =
     Tin[BATCH_SIZE][N_GLOBAL_PADDED / N_PER_BLOCK][K_GLOBAL_PADDED / K_PER_WMMA]
        [COMPLEX][N_PER_BLOCK][K_PER_WMMA];
 
-inline __device__ size_t global_idx_m(const size_t &blockM, const size_t &warpM,
-                                      const size_t &m) {
-  return blockM * M_PER_BLOCK + warpM * M_PER_WARP + m * M_PER_WMMA;
-}
-
-inline __device__ size_t global_idx_n(const size_t &blockN, const size_t &warpN,
-                                      const size_t &n) {
-  return blockN * N_PER_BLOCK + warpN * N_PER_WARP + n * N_PER_WMMA;
-}
-
-inline __device__ void
-store_matrix(Accumulator_t accumulator[COMPLEX][M_PER_WARP / M_PER_WMMA]
-                                      [N_PER_WARP / N_PER_WMMA],
-             C_t C, const size_t &batch, const size_t &blockM,
-             const size_t &warpM, const size_t &blockN, const size_t &warpN) {
-  for (size_t c = 0; c < COMPLEX; c++) {
-    for (size_t m = 0; m < (M_PER_WARP / M_PER_WMMA); m++) {
-      for (size_t n = 0; n < (N_PER_WARP / N_PER_WMMA); n++) {
-        const size_t idx_m = global_idx_m(blockM, warpM, m);
-        const size_t idx_n = global_idx_n(blockN, warpN, n);
-#ifdef C_ROW_MAJOR
-        wmma::store_matrix_sync(&(C[batch][c][idx_m][idx_n]),
-                                accumulator[c][m][n], N_GLOBAL,
-                                wmma::mem_row_major);
-#else
-        wmma::store_matrix_sync(&(C[batch][c][idx_n][idx_m]),
-                                accumulator[c][m][n], M_GLOBAL,
-                                wmma::mem_col_major);
-#endif
-      }
-    }
-  }
-}
-
-#if defined(__HIP_PLATFORM_AMD__)
-inline __device__ void __syncwarp(){};
-#endif
-
 extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
                                                    const B_t B) {
   const size_t batch = blockIdx.z;
@@ -75,16 +38,15 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
   const size_t warpN = threadIdx.y;
   const size_t warpM = threadIdx.z;
 
-  // number of tiles processed by each warp
   constexpr size_t M_TILES = M_PER_WARP / M_PER_WMMA;
   constexpr size_t N_TILES = N_PER_WARP / N_PER_WMMA;
-  constexpr size_t K_TILES = K_GLOBAL_PADDED / K_PER_WMMA;
+  constexpr size_t K_TILES = K_GLOBAL_PADDED / ACCUMULATOR_K_PER_WMMA;
 
-  Accumulator_t accumulator[COMPLEX][M_TILES][N_TILES];
+  Accumulator_t sum[COMPLEX][M_TILES][N_TILES];
   for (size_t c = 0; c < COMPLEX; c++) {
     for (size_t m = 0; m < M_TILES; m++) {
       for (size_t n = 0; n < N_TILES; n++) {
-        wmma::fill_fragment(accumulator[c][m][n], static_cast<Tout>(.0f));
+        wmma::fill_fragment(sum[c][m][n], static_cast<Tout>(.0f));
       }
     }
   }
@@ -97,9 +59,10 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
   __shared__ Tin B_s[M_PER_BLOCK / M_PER_WARP][N_PER_BLOCK / N_PER_WARP]
                     [N_PER_WMMA][K_PER_WMMA];
 #endif
-#if M_IS_PADDED || N_IS_PADDED
-  __shared__ Tout C_s[M_PER_BLOCK / M_PER_WARP][N_PER_BLOCK / N_PER_WARP]
-                     [M_PER_WMMA][N_PER_WMMA];
+
+#if REQUIRES_SHARED_MEMORY
+  __shared__ Tshared C_s[M_PER_BLOCK / M_PER_WARP][N_PER_BLOCK / N_PER_WARP]
+                        [M_PER_WMMA][N_PER_WMMA];
 #endif
 
   for (size_t k = 0; k < K_TILES; k++) {
@@ -171,10 +134,10 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
     // step 1 and 2
     for (size_t m = 0; m < M_TILES; m++) {
       for (size_t n = 0; n < N_TILES; n++) {
-        wmma::mma_sync(accumulator[REAL][m][n], a[REAL][m], b[REAL][n],
-                       accumulator[REAL][m][n]);
-        wmma::mma_sync(accumulator[IMAG][m][n], a[REAL][m], b[IMAG][n],
-                       accumulator[IMAG][m][n]);
+        wmma::mma_sync(sum[REAL][m][n], a[REAL][m], b[REAL][n],
+                       sum[REAL][m][n]);
+        wmma::mma_sync(sum[IMAG][m][n], a[REAL][m], b[IMAG][n],
+                       sum[IMAG][m][n]);
       }
     }
 
@@ -190,43 +153,20 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
     // step 4 and 5
     for (size_t m = 0; m < M_TILES; m++) {
       for (size_t n = 0; n < N_TILES; n++) {
-        wmma::mma_sync(accumulator[REAL][m][n], a[IMAG][m], b[IMAG][n],
-                       accumulator[REAL][m][n]);
-        wmma::mma_sync(accumulator[IMAG][m][n], a[IMAG][m], b[REAL][n],
-                       accumulator[IMAG][m][n]);
+        wmma::mma_sync(sum[REAL][m][n], a[IMAG][m], b[IMAG][n],
+                       sum[REAL][m][n]);
+        wmma::mma_sync(sum[IMAG][m][n], a[IMAG][m], b[REAL][n],
+                       sum[IMAG][m][n]);
       }
     }
   } // k
 
-  // store the result to global memory
-#if M_IS_PADDED || N_IS_PADDED
-  for (size_t c = 0; c < COMPLEX; c++) {
-    for (size_t m = 0; m < M_TILES; m++) {
-      for (size_t n = 0; n < N_TILES; n++) {
-        wmma::store_matrix_sync(&C_s[warpM][warpN][0][0], accumulator[c][m][n],
-                                N_PER_WMMA, wmma::mem_row_major);
-        __syncwarp();
-        size_t m_index = global_idx_m(blockM, warpM, m);
-        size_t n_index = global_idx_n(blockN, warpN, n);
-        for (size_t t = threadIdx.x; t < M_PER_WMMA * N_PER_WMMA;
-             t += WARP_SIZE) {
-          size_t i = t / N_PER_WMMA;
-          size_t j = t % N_PER_WMMA;
-          // store the submatrix, padded values are set to zero
-          if (m_index + i < M_GLOBAL && n_index + j < N_GLOBAL) {
-#if defined(C_ROW_MAJOR)
-            C[batch][c][m_index + i][n_index + j] = C_s[warpM][warpN][i][j];
+// store the result to global memory
+#if REQUIRES_SHARED_MEMORY
+  store_matrix_padded(sum, C, C_s, batch, blockM, warpM, blockN, warpN, M_TILES,
+                      N_TILES);
 #else
-            C[batch][c][n_index + j][m_index + i] = C_s[warpM][warpN][i][j];
-#endif
-          }
-        }
-        __syncwarp();
-      }
-    }
-  } // c
-#else
-  store_matrix(accumulator, C, batch, blockM, warpM, blockN, warpN);
+  store_matrix(sum, C, batch, blockM, warpM, blockN, warpN);
 #endif
 }
 
@@ -250,13 +190,12 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
   constexpr size_t N_TILES = N_PER_WARP / N_PER_WMMA;
   constexpr size_t K_TILES = K_GLOBAL_PADDED / K_PER_WMMA;
 
-  // initialize accumulator fragments to zero
-  wmma::fragment<wmma::accumulator, M_PER_WMMA, N_PER_WMMA, K_PER_WMMA, Tout>
-      accumulator[COMPLEX][M_TILES][N_TILES];
+  // initialize sum fragments to zero
+  Accumulator_t sum[COMPLEX][M_TILES][N_TILES];
   for (size_t c = 0; c < COMPLEX; c++) {
     for (size_t m = 0; m < M_TILES; m++) {
       for (size_t n = 0; n < N_TILES; n++) {
-        wmma::fill_fragment(accumulator[c][m][n], static_cast<Tout>(.0f));
+        wmma::fill_fragment(sum[c][m][n], static_cast<Tout>(.0f));
       }
     }
   }
@@ -275,13 +214,8 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
                      [K_PER_WMMA];
   A_s_t A_s = reinterpret_cast<A_s_t>(&shmem[0]);
   B_s_t B_s = reinterpret_cast<B_s_t>(&shmem[A_s_size]);
-#if defined(C_COMPLEX_LAST) || M_IS_PADDED || N_IS_PADDED
-  constexpr size_t C_s_size = (M_PER_BLOCK / M_PER_WARP) *
-                              (N_PER_BLOCK / N_PER_WARP) * M_PER_WMMA *
-                              N_PER_WMMA;
-  static_assert((A_s_size + B_s_size) * sizeof(Tin) >= C_s_size * sizeof(Tout),
-                "A_s + B_s >= C_s");
-  typedef Tout(*C_s_t)[N_PER_BLOCK / N_PER_WARP][M_PER_WMMA][N_PER_WMMA];
+  typedef Tshared(*C_s_t)[N_PER_BLOCK / N_PER_WARP][M_PER_WMMA][N_PER_WMMA];
+#if REQUIRES_SHARED_MEMORY
   C_s_t C_s = reinterpret_cast<C_s_t>(&shmem[0]);
 #endif
 
@@ -362,10 +296,10 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
     // steps 1 and 2
     for (size_t m = 0; m < M_TILES; m++) {
       for (size_t n = 0; n < N_TILES; n++) {
-        wmma::mma_sync(accumulator[REAL][m][n], a[REAL][m], b[REAL][n],
-                       accumulator[REAL][m][n]);
-        wmma::mma_sync(accumulator[IMAG][m][n], a[REAL][m], b[IMAG][n],
-                       accumulator[IMAG][m][n]);
+        wmma::mma_sync(sum[REAL][m][n], a[REAL][m], b[REAL][n],
+                       sum[REAL][m][n]);
+        wmma::mma_sync(sum[IMAG][m][n], a[REAL][m], b[IMAG][n],
+                       sum[IMAG][m][n]);
       }
     }
 
@@ -381,10 +315,10 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
     // step 4 and 5
     for (size_t m = 0; m < M_TILES; m++) {
       for (size_t n = 0; n < N_TILES; n++) {
-        wmma::mma_sync(accumulator[REAL][m][n], a[IMAG][m], b[IMAG][n],
-                       accumulator[REAL][m][n]);
-        wmma::mma_sync(accumulator[IMAG][m][n], a[IMAG][m], b[REAL][n],
-                       accumulator[IMAG][m][n]);
+        wmma::mma_sync(sum[REAL][m][n], a[IMAG][m], b[IMAG][n],
+                       sum[REAL][m][n]);
+        wmma::mma_sync(sum[IMAG][m][n], a[IMAG][m], b[REAL][n],
+                       sum[IMAG][m][n]);
       }
     }
 
@@ -395,71 +329,11 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
     __syncthreads();
   } // k
 
-  // store the result to global memory
-#if defined(C_COMPLEX_MIDDLE)
-#if M_IS_PADDED || N_IS_PADDED
-  for (size_t c = 0; c < COMPLEX; c++) {
-    for (size_t m = 0; m < M_TILES; m++) {
-      for (size_t n = 0; n < N_TILES; n++) {
-        wmma::store_matrix_sync(&C_s[warpM][warpN][0][0], accumulator[c][m][n],
-                                N_PER_WMMA, wmma::mem_row_major);
-        __syncwarp();
-        size_t m_index = global_idx_m(blockM, warpM, m);
-        size_t n_index = global_idx_n(blockN, warpN, n);
-        for (size_t t = threadIdx.x; t < M_PER_WMMA * N_PER_WMMA;
-             t += WARP_SIZE) {
-          size_t i = t / N_PER_WMMA;
-          size_t j = t % N_PER_WMMA;
-          // store the submatrix, padded values are set to zero
-          if (m_index + i < M_GLOBAL && n_index + j < N_GLOBAL) {
-#if defined(C_ROW_MAJOR)
-            C[batch][c][m_index + i][n_index + j] = C_s[warpM][warpN][i][j];
+// store the result to global memory
+#if REQUIRES_SHARED_MEMORY
+  store_matrix_padded(sum, C, C_s, batch, blockM, warpM, blockN, warpN, M_TILES,
+                      N_TILES);
 #else
-            C[batch][c][n_index + j][m_index + i] = C_s[warpM][warpN][i][j];
+  store_matrix(sum, C, batch, blockM, warpM, blockN, warpN);
 #endif
-          }
-        }
-        __syncwarp();
-      }
-    }
-  } // c
-#else
-  store_matrix(accumulator, C, batch, blockM, warpM, blockN, warpN);
-#endif
-#elif defined(C_COMPLEX_LAST)
-  for (size_t m = 0; m < M_TILES; m++) {
-    for (size_t n = 0; n < N_TILES; n++) {
-      for (size_t c = 0; c < COMPLEX; c++) {
-        wmma::store_matrix_sync(&C_s[warpM][warpN][0][0], accumulator[c][m][n],
-                                N_PER_WMMA, wmma::mem_row_major);
-        __syncwarp();
-        size_t m_index = global_idx_m(blockM, warpM, m);
-        size_t n_index = global_idx_n(blockN, warpN, n);
-        for (size_t t = threadIdx.x; t < M_PER_WMMA * N_PER_WMMA;
-             t += WARP_SIZE) {
-          size_t i = t / N_PER_WMMA;
-          size_t j = t % N_PER_WMMA;
-          // store the submatrix, padded values are set to zero
-          if (m_index + i < M_GLOBAL && n_index + j < N_GLOBAL) {
-#if defined(C_ROW_MAJOR)
-            C[batch][m_index + i][n_index + j][c] = C_s[warpM][warpN][i][j];
-#else
-            C[batch][n_index + j][m_index + i][c] = C_s[warpM][warpN][i][j];
-#endif
-          }
-        }
-        __syncwarp();
-      }
-    }
-  } // c
-#endif
-}
-
-// Downcast kernel: Converts float32 to float16
-extern "C" __global__ void downcast_kernel(const float *input, half *output,
-                                           size_t count) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx < count) {
-    output[idx] = __float2half(input[idx]);
-  }
 }
