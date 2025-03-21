@@ -9,8 +9,10 @@
 #include "async_copies.h"
 #include "wmma_extension.h"
 
-#include "matrix_operations.h"
+// clang-format off
 #include "type_selector.h"
+#include "matrix_operations.h"
+// clang-format on
 
 #if NBIT_IN != 1
 #error NBIT_IN must be 1

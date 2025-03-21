@@ -2,9 +2,9 @@
 #define TYPE_SELECTOR_H_
 
 #if defined(__HIP_PLATFORM_AMD__)
+#include <limits.h>
 #include <rocwmma/rocwmma.hpp>
 namespace wmma = rocwmma;
-#include "sync_copies.h"
 #else
 #include <cuda/pipeline>
 #include <mma.h>
@@ -36,6 +36,10 @@ using namespace nvcuda;
 #error "float GEMM does not currently support row-major B matrix"
 #endif
 
+#if defined(__HIP_PLATFORM_AMD__) && (NBIT_IN == 1)
+#error "1-bit GEMM is only available for NVIDIA GPUs"
+#endif
+
 // The kernel assumes the dimensions of the input matrices are a multiple
 // of M_PER_BLOCK and/or N_PER_BLOCK and/or K_PER_WMMA. The *_GLOBAL_PADDED
 // constants are padded to be multiples.
@@ -59,7 +63,11 @@ template <int IN, int OUT> struct TypeSelector {
 
 template <> struct TypeSelector<1, 32> {
   using Tin = unsigned int;
+#ifdef __HIP_PLATFORM_AMD__
+  using Ttc = void;
+#else
   using Ttc = wmma::experimental::precision::b1;
+#endif
   using Tshared = int;
   using Tout = int;
 

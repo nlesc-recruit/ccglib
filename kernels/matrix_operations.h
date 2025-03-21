@@ -2,16 +2,19 @@
 #define MATRIX_OPERATIONS_H_
 
 #if defined(__HIP_PLATFORM_AMD__)
+#include <limits.h>
 #include <rocwmma/rocwmma.hpp>
 namespace wmma = rocwmma;
-#include "sync_copies.h"
 #else
 #include <cuda/pipeline>
 #include <mma.h>
 using namespace nvcuda;
 #endif
 
-#include "type_selector.h"
+// The following is a workaround for the lack of __syncwarp() in HIP
+#if defined(__HIP_PLATFORM_AMD__)
+inline __device__ void __syncwarp(){};
+#endif
 
 inline __device__ size_t global_idx_m(const size_t &blockM, const size_t &warpM,
                                       const size_t &m) {

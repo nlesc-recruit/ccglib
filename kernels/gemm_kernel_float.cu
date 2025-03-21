@@ -11,8 +11,11 @@ using namespace nvcuda;
 #endif
 
 #include "ccglib/fp16.h"
-#include "matrix_operations.h"
+
+// clang-format off
 #include "type_selector.h"
+#include "matrix_operations.h"
+// clang-format on
 
 // Check memory layout of A and B matrix
 #ifdef A_COL_MAJOR
@@ -46,7 +49,7 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
   for (size_t c = 0; c < COMPLEX; c++) {
     for (size_t m = 0; m < M_TILES; m++) {
       for (size_t n = 0; n < N_TILES; n++) {
-        wmma::fill_fragment(sum[c][m][n], static_cast<Tout>(.0f));
+        wmma::fill_fragment(sum[c][m][n], static_cast<Tshared>(.0f));
       }
     }
   }
