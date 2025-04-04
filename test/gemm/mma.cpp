@@ -323,16 +323,21 @@ struct IsTypeInTuple<T, std::tuple<Types...>>
 template <typename T, typename Tuple>
 constexpr bool IsTypeInTuple_v = IsTypeInTuple<T, Tuple>::value;
 
+struct TestDimensions {
+  size_t aligned;
+  size_t unaligned;
+};
+
 template <typename Fixture>
 struct GemmTestTraits<
     Fixture, std::enable_if_t<IsTypeInTuple_v<Fixture, TestTypesComplexGemm>>> {
-  static constexpr size_t M_row_major = 100;
-  static constexpr size_t N_row_major = 60;
-  static constexpr size_t K_row_major = 40;
+  static constexpr TestDimensions M_row_major = {128, 100};
+  static constexpr TestDimensions N_row_major = {256, 60};
+  static constexpr TestDimensions K_row_major = {64, 40};
 
-  static constexpr size_t M_col_major = 100;
-  static constexpr size_t N_col_major = 60;
-  static constexpr size_t K_col_major = 40;
+  static constexpr TestDimensions M_col_major = {128, 100};
+  static constexpr TestDimensions N_col_major = {256, 60};
+  static constexpr TestDimensions K_col_major = {64, 40};
 
   static constexpr size_t InputSize =
       sizeof(typename Fixture::InputType) * CHAR_BIT;
@@ -350,13 +355,15 @@ template <typename Fixture>
 struct GemmTestTraits<
     Fixture,
     std::enable_if_t<std::is_same_v<Fixture, ComplexGemmTestFixtureInt1>>> {
-  static constexpr size_t M_row_major = 64;
-  static constexpr size_t N_row_major = 64;
-  static constexpr size_t K_row_major = 256;
+  // Unaligned GEMM is not supported for int1, therefore the
+  // parameters are kept the same as for the aligned case
+  static constexpr TestDimensions M_row_major = {64, 64};
+  static constexpr TestDimensions N_row_major = {64, 64};
+  static constexpr TestDimensions K_row_major = {256, 256};
 
-  static constexpr size_t M_col_major = 64;
-  static constexpr size_t N_col_major = 64;
-  static constexpr size_t K_col_major = 256;
+  static constexpr TestDimensions M_col_major = {64, 64};
+  static constexpr TestDimensions N_col_major = {64, 64};
+  static constexpr TestDimensions K_col_major = {256, 256};
 
   static constexpr size_t InputSize = 1;
   static constexpr size_t OutputSize =
@@ -371,14 +378,24 @@ template <typename Fixture> struct GemmTestBasic : public Fixture {
     SECTION(
         "basic-row-major - InputSize: " + std::to_string(Traits::InputSize) +
         "b, OutputSize: " + std::to_string(Traits::OutputSize) + "b") {
-      this->init(Traits::M_row_major, Traits::N_row_major, Traits::K_row_major);
+      this->init(Traits::M_row_major.aligned, Traits::N_row_major.aligned,
+                 Traits::K_row_major.aligned);
+      this->complex_gemm_basic(ccglib::mma::row_major);
+
+      this->init(Traits::M_row_major.unaligned, Traits::N_row_major.unaligned,
+                 Traits::K_row_major.unaligned);
       this->complex_gemm_basic(ccglib::mma::row_major);
     }
     SECTION(
         "basic-col-major - InputSize: " + std::to_string(Traits::InputSize) +
         "b. OutputSize: " + std::to_string(Traits::OutputSize) + "b") {
-      this->init(Traits::M_col_major, Traits::N_col_major, Traits::K_col_major);
+      this->init(Traits::M_col_major.aligned, Traits::N_col_major.aligned,
+                 Traits::K_col_major.aligned);
       this->complex_gemm_basic(ccglib::mma::col_major);
+
+      this->init(Traits::M_row_major.unaligned, Traits::N_row_major.unaligned,
+                 Traits::K_row_major.unaligned);
+      this->complex_gemm_basic(ccglib::mma::row_major);
     }
   }
 };
@@ -389,33 +406,47 @@ template <typename Fixture> struct GemmTestOpt : public Fixture {
 
     SECTION("opt-row-major - InputSize: " + std::to_string(Traits::InputSize) +
             "b, OutputSize: " + std::to_string(Traits::OutputSize) + "b") {
-      this->init(Traits::M_row_major, Traits::N_row_major, Traits::K_row_major);
+      this->init(Traits::M_row_major.aligned, Traits::N_row_major.aligned,
+                 Traits::K_row_major.aligned);
       this->complex_gemm_opt(ccglib::mma::row_major);
+
+      this->init(Traits::M_row_major.unaligned, Traits::N_row_major.unaligned,
+                 Traits::K_row_major.unaligned);
+      this->complex_gemm_basic(ccglib::mma::row_major);
     }
     SECTION("opt-col-major - InputSize: " + std::to_string(Traits::InputSize) +
             "b, OutputSize: " + std::to_string(Traits::OutputSize) + "b") {
-      this->init(Traits::M_col_major, Traits::N_col_major, Traits::K_col_major);
+      this->init(Traits::M_col_major.aligned, Traits::N_col_major.aligned,
+                 Traits::K_col_major.aligned);
+      this->complex_gemm_opt(ccglib::mma::col_major);
+
+      this->init(Traits::M_col_major.unaligned, Traits::N_col_major.unaligned,
+                 Traits::K_col_major.unaligned);
       this->complex_gemm_opt(ccglib::mma::col_major);
     }
 
     SECTION("opt-row-major-complex-last - InputSize: " +
             std::to_string(Traits::InputSize) +
             "b, OutputSize: " + std::to_string(Traits::OutputSize) + "b") {
-      this->init(Traits::M_row_major, Traits::N_row_major, Traits::K_row_major);
+      this->init(Traits::M_row_major.aligned, Traits::N_row_major.aligned,
+                 Traits::K_row_major.aligned);
+      this->complex_gemm_opt(ccglib::mma::row_major, ccglib::mma::complex_last);
+
+      this->init(Traits::M_row_major.unaligned, Traits::N_row_major.unaligned,
+                 Traits::K_row_major.unaligned);
       this->complex_gemm_opt(ccglib::mma::row_major, ccglib::mma::complex_last);
     }
 
-    // no test for float16 GEMM with col-major complex-last as it is not yet
-    // supported
-    if constexpr (Traits::InputSize == 1) {
-      SECTION("opt-col-major-complex-last - InputSize: " +
-              std::to_string(Traits::InputSize) +
-              "b, OutputSize: " + std::to_string(Traits::OutputSize) + "b") {
-        this->init(Traits::M_col_major, Traits::N_col_major,
-                   Traits::K_col_major);
-        this->complex_gemm_opt(ccglib::mma::col_major,
-                               ccglib::mma::complex_last);
-      }
+    SECTION("opt-col-major-complex-last - InputSize: " +
+            std::to_string(Traits::InputSize) +
+            "b, OutputSize: " + std::to_string(Traits::OutputSize) + "b") {
+      this->init(Traits::M_col_major.aligned, Traits::N_col_major.aligned,
+                 Traits::K_col_major.aligned);
+      this->complex_gemm_opt(ccglib::mma::col_major, ccglib::mma::complex_last);
+
+      this->init(Traits::M_col_major.unaligned, Traits::N_col_major.unaligned,
+                 Traits::K_col_major.unaligned);
+      this->complex_gemm_opt(ccglib::mma::col_major, ccglib::mma::complex_last);
     }
   }
 };

@@ -33,33 +33,17 @@ store_matrix(Accumulator_t sum[COMPLEX][M_PER_WARP / M_PER_WMMA]
              C_t C, const size_t &batch, const size_t &blockM,
              const size_t &warpM, const size_t &blockN, const size_t &warpN) {
 
-#if defined(C_COMPLEX_MIDDLE)
   for (size_t c = 0; c < COMPLEX; c++) {
     for (size_t m = 0; m < (M_PER_WARP / M_PER_WMMA); m++) {
       for (size_t n = 0; n < (N_PER_WARP / N_PER_WMMA); n++) {
-#else
-  for (size_t m = 0; m < (M_PER_WARP / M_PER_WMMA); m++) {
-    for (size_t n = 0; n < (N_PER_WARP / N_PER_WMMA); n++) {
-      for (size_t c = 0; c < COMPLEX; c++) {
-#endif
         const size_t idx_m = global_idx_m(blockM, warpM, m);
         const size_t idx_n = global_idx_n(blockN, warpN, n);
 #if defined(C_ROW_MAJOR)
-#if defined(C_COMPLEX_MIDDLE)
         wmma::store_matrix_sync(&(C[batch][c][idx_m][idx_n]), sum[c][m][n],
                                 N_GLOBAL, wmma::mem_row_major);
 #else
-        wmma::store_matrix_sync(&(C[batch][idx_m][idx_n][c]), sum[c][m][n],
-                                N_GLOBAL, wmma::mem_row_major);
-#endif
-#else
-#if defined(C_COMPLEX_MIDDLE)
         wmma::store_matrix_sync(&(C[batch][c][idx_n][idx_m]), sum[c][m][n],
                                 M_GLOBAL, wmma::mem_col_major);
-#else
-        wmma::store_matrix_sync(&(C[batch][idx_n][idx_m][c]), sum[c][m][n],
-                                M_GLOBAL, wmma::mem_col_major);
-#endif
 #endif
       }
     }

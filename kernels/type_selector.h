@@ -181,6 +181,7 @@ using Accumulator_t =
 #define REQUIRES_DOWNCAST 0
 #endif
 
-#define REQUIRES_SHARED_MEMORY (M_IS_PADDED || N_IS_PADDED || REQUIRES_DOWNCAST)
+#define REQUIRES_SHARED_MEMORY                                                 \
+  (M_IS_PADDED || N_IS_PADDED || C_COMPLEX_LAST || REQUIRES_DOWNCAST)
 
 #endif // TYPE_SELECTOR_H_
