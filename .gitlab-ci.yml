@@ -1,5 +1,5 @@
 variables:
-  DAS6_MODULES: "spack/12.2.0 cmake cuda"
+  DAS6_MODULES: "spack/20250109 cmake cuda"
 
 stages:
   - linting
