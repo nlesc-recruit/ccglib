@@ -20,8 +20,9 @@ void Run(const Tin *a, const Tin *b, Tout *c, size_t M, size_t N, size_t K,
 // done using 'half' type. This is because the required operators, `__half&
 // operator+(const __half& x)` and `__half& operator*(const __half& x)`, are
 // missing. According to the HIP documentation, they should be available. A bug
-// report has been submitted: https://github.com/ROCm/HIP/issues/3690 but the
-// fix has not yet been upstreamed.
+// report has been submitted: https://github.com/ROCm/HIP/issues/3690.
+// This seems to have been fixed in the (currently upcoming) ROCm 6.4 release.
+// N.B. this problem is not present in the bfloat16 header.
 #if defined(__HIP_PLATFORM_AMD__)
   using ComputeType =
       typename std::conditional<std::is_same<Tin, half>::value ||
@@ -55,10 +56,10 @@ void Run(const Tin *a, const Tin *b, Tout *c, size_t M, size_t N, size_t K,
       ComputeType sum_imag = 0;
 
       for (size_t k = 0; k < K; ++k) {
-        const ComputeType a_real = a_view(0, m, k);
-        const ComputeType a_imag = a_view(1, m, k);
-        const ComputeType b_real = b_view(0, n, k);
-        const ComputeType b_imag = b_view(1, n, k);
+        const ComputeType a_real = static_cast<ComputeType>(a_view(0, m, k));
+        const ComputeType a_imag = static_cast<ComputeType>(a_view(1, m, k));
+        const ComputeType b_real = static_cast<ComputeType>(b_view(0, n, k));
+        const ComputeType b_imag = static_cast<ComputeType>(b_view(1, n, k));
 
         ComputeType term_real = a_real * b_real - a_imag * b_imag;
         ComputeType term_imag = a_real * b_imag + a_imag * b_real;
@@ -210,6 +211,21 @@ void GEMM::Run(const half *a, const half *b, float *c, size_t M, size_t N,
 void GEMM::Run(const float *a, const float *b, half *c, size_t M, size_t N,
                size_t K, ccglib::mma::MemOrder output_mem_order) {
   ::Run<float, half>(a, b, c, M, N, K, output_mem_order);
+}
+
+void GEMM::Run(const bf16 *a, const bf16 *b, bf16 *c, size_t M, size_t N,
+               size_t K, ccglib::mma::MemOrder output_mem_order) {
+  ::Run<bf16, bf16>(a, b, c, M, N, K, output_mem_order);
+}
+
+void GEMM::Run(const bf16 *a, const bf16 *b, float *c, size_t M, size_t N,
+               size_t K, ccglib::mma::MemOrder output_mem_order) {
+  ::Run<bf16, float>(a, b, c, M, N, K, output_mem_order);
+}
+
+void GEMM::Run(const float *a, const float *b, bf16 *c, size_t M, size_t N,
+               size_t K, ccglib::mma::MemOrder output_mem_order) {
+  ::Run<float, bf16>(a, b, c, M, N, K, output_mem_order);
 }
 
 void GEMM::Run(const float *a, const float *b, float *c, size_t M, size_t N,
