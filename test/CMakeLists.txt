@@ -39,6 +39,25 @@ target_link_libraries(test-transpose PRIVATE ccglib cudawrappers::cu
 
 set(TESTS test-helper test-reference test-mma test-packing test-transpose)
 
+# cuda-specific tests
+if(${CCGLIB_BACKEND_CUDA})
+  add_executable(test-mma-cuda cuda/mma.cpp)
+  target_include_directories(test-mma-cuda
+                             PRIVATE "${PROJECT_SOURCE_DIR}/test/gemm")
+  target_link_libraries(test-mma-cuda PRIVATE ccglib Catch2::Catch2WithMain
+                                              CUDA::cudart)
+  list(APPEND TESTS test-mma-cuda)
+endif()
+
+# hip-specific tests
+if(${CCGLIB_BACKEND_HIP})
+  add_executable(test-mma-hip hip/mma.cpp)
+  target_include_directories(test-mma-hip
+                             PRIVATE "${PROJECT_SOURCE_DIR}/test/gemm")
+  target_link_libraries(test-mma-hip PRIVATE ccglib Catch2::Catch2WithMain)
+  list(APPEND TESTS test-mma-hip)
+endif()
+
 foreach(test IN ITEMS ${TESTS})
   add_test(NAME ${test} COMMAND ${test})
   if(${CCGLIB_BACKEND_HIP})

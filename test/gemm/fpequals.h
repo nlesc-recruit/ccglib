@@ -1,6 +1,7 @@
 #ifndef FPEQUALS_H_
 #define FPEQUALS_H_
 
+#include <complex>
 #include <iostream>
 #include <limits>
 
@@ -20,7 +21,7 @@ template <typename T> constexpr float getEpsilon() {
   return std::numeric_limits<T>::epsilon();
 }
 
-template <typename T> void fpEquals(T x, T y, size_t K) {
+template <typename T> void fpEquals(T x, T y, size_t K = 1) {
   constexpr float epsilon = getEpsilon<T>();
 
   if constexpr (std::is_same_v<T, half>) {
@@ -39,7 +40,7 @@ template <typename T> void fpEquals(T x, T y, size_t K) {
 }
 
 template <typename T>
-void fpEquals(std::complex<T> x, std::complex<T> y, size_t K) {
+void fpEquals(std::complex<T> x, std::complex<T> y, size_t K = 1) {
   fpEquals(x.real(), y.real(), K);
   fpEquals(x.imag(), y.imag(), K);
 }

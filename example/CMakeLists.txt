@@ -10,6 +10,7 @@ if(${USE_HIP})
   set(CCGLIB_BACKEND "HIP")
 else()
   find_package(CUDAToolkit REQUIRED)
+  enable_language(CUDA)
 endif()
 
 include(FetchContent)
@@ -35,5 +36,14 @@ target_link_libraries(${PROJECT_NAME} ccglib cudawrappers::cu
                       cudawrappers::nvrtc)
 
 if(${USE_HIP})
+  # hip-specific example
+  add_executable(${PROJECT_NAME}_hip example.hip)
+  target_link_libraries(${PROJECT_NAME}_hip ccglib)
+
+  # ensure generic example is compiled with hip
   set_source_files_properties(example.cpp PROPERTIES LANGUAGE HIP)
+else()
+  # cuda-specific example
+  add_executable(${PROJECT_NAME}_cuda example.cu)
+  target_link_libraries(${PROJECT_NAME}_cuda ccglib)
 endif()

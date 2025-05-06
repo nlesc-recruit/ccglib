@@ -2,6 +2,7 @@
 #include <cmath>
 #include <iostream>
 
+#include <cudawrappers/cu.hpp>
 #include <cudawrappers/nvrtc.hpp>
 
 #include <ccglib/gemm/mma.h>
@@ -175,19 +176,39 @@ void GEMM::Impl::compile_kernel() {
 }
 
 GEMM::GEMM(const size_t B_, const size_t M_, const size_t N_, const size_t K_,
-           const size_t, cu::Device &device_, cu::Stream &stream_,
+           const size_t, cu::Device &device, cu::Stream &stream,
            const Precision precision, const Variant variant,
            const ComplexAxisLocation c_complex_axis_location,
            const MemOrder c_mem_order, const MemOrder a_mem_order,
            const MemOrder b_mem_order)
-    : impl_(std::make_unique<Impl>(B_, M_, N_, K_, device_, stream_, precision,
+    : impl_(std::make_unique<Impl>(B_, M_, N_, K_, device, stream, precision,
                                    variant, c_complex_axis_location,
                                    a_mem_order, b_mem_order, c_mem_order)){};
+
+GEMM::GEMM(const size_t B_, const size_t M_, const size_t N_, const size_t K_,
+           const size_t, CUdevice &device, CUstream &stream,
+           const Precision precision, const Variant variant,
+           const ComplexAxisLocation c_complex_axis_location,
+           const MemOrder c_mem_order, const MemOrder a_mem_order,
+           const MemOrder b_mem_order)
+    : device_(new cu::Device(device)), stream_(new cu::Stream(stream)) {
+  impl_ = std::make_unique<Impl>(B_, M_, N_, K_, *device_, *stream_, precision,
+                                 variant, c_complex_axis_location, a_mem_order,
+                                 b_mem_order, c_mem_order);
+}
+
 GEMM::~GEMM() = default;
 
 void GEMM::Run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b,
                cu::DeviceMemory &d_c) {
   impl_->Run(d_a, d_b, d_c);
+}
+
+void GEMM::Run(CUdeviceptr d_a, CUdeviceptr d_b, CUdeviceptr d_c) {
+  cu::DeviceMemory d_a_(d_a);
+  cu::DeviceMemory d_b_(d_b);
+  cu::DeviceMemory d_c_(d_c);
+  impl_->Run(d_a_, d_b_, d_c_);
 }
 
 dim3 GEMM::GetDimensions(Precision precision, Variant variant) {
