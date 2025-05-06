@@ -3,12 +3,13 @@
 
 // Only include header in host compilation pass
 #if !(defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__))
+#include <ccglib/bf16.h>
 #include <ccglib/fp16.h>
 #endif
 
 namespace ccglib {
 
-enum ValueType { int1, int32, float16, float32 };
+enum ValueType { int1, int32, bfloat16, float16, float32 };
 
 constexpr size_t __host__ __device__ CalculateBitWidth(ValueType type) {
   switch (type) {
@@ -16,6 +17,8 @@ constexpr size_t __host__ __device__ CalculateBitWidth(ValueType type) {
     return 1;
   case ValueType::int32:
     return CHAR_BIT * sizeof(unsigned);
+  case ValueType::bfloat16:
+    return CHAR_BIT * sizeof(bf16);
   case ValueType::float16:
     return CHAR_BIT * sizeof(half);
   case ValueType::float32:
