@@ -17,6 +17,10 @@ template <typename T> constexpr float getEpsilon() {
     // tf32 uses the same mantissa as the half-precision math
     // the precision for normal numbers is therefore 2^-10
     return 0.000976562;
+  } else if constexpr (std::is_same_v<T, bf16>) {
+    // bfloat16 uses an 8-bit mantissa (of which 7 bits are stored)
+    // the precision for normal numbers is therefore 2^-7
+    return 0.0078125;
   }
   return std::numeric_limits<T>::epsilon();
 }
