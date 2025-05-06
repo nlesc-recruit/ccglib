@@ -4,6 +4,7 @@
 #include <cudawrappers/cu.hpp>
 #include <cudawrappers/nvrtc.hpp>
 
+#include <ccglib/bf16.h>
 #include <ccglib/common/helper.h>
 #include <ccglib/fp16.h>
 #include <ccglib/gemm/mma.h>
@@ -126,6 +127,16 @@ private:
       for (int idx = 0; idx < bytes_b_ / sizeof(T); idx++) {
         b[idx] = __float2half(static_cast<float>(rand_r(&seed)) /
                               static_cast<float>(RAND_MAX));
+      }
+    } else if constexpr (std::is_same_v<T, bf16>) {
+      unsigned int seed = 0;
+      for (int idx = 0; idx < bytes_a_ / sizeof(T); idx++) {
+        a[idx] = __float2bfloat16(static_cast<float>(rand_r(&seed)) /
+                                  static_cast<float>(RAND_MAX));
+      }
+      for (int idx = 0; idx < bytes_b_ / sizeof(T); idx++) {
+        b[idx] = __float2bfloat16(static_cast<float>(rand_r(&seed)) /
+                                  static_cast<float>(RAND_MAX));
       }
     } else if constexpr (std::is_same_v<T, float>) {
       unsigned int seed = 0;
@@ -297,6 +308,12 @@ using TestTypesComplexGemm =
                ComplexGemmTestFixture<float, half, ccglib::ValueType::float32,
                                       ccglib::ValueType::float16>,
                ComplexGemmTestFixture<half, float, ccglib::ValueType::float16,
+                                      ccglib::ValueType::float32>,
+               ComplexGemmTestFixture<bf16, bf16, ccglib::ValueType::bfloat16,
+                                      ccglib::ValueType::bfloat16>,
+               ComplexGemmTestFixture<float, bf16, ccglib::ValueType::float32,
+                                      ccglib::ValueType::bfloat16>,
+               ComplexGemmTestFixture<bf16, float, ccglib::ValueType::bfloat16,
                                       ccglib::ValueType::float32>,
                ComplexGemmTestFixture<float, float, ccglib::ValueType::float32,
                                       ccglib::ValueType::float32>>;
