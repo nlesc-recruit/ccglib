@@ -20,6 +20,9 @@ void Kernel::SetParameters(Precision precision) {
   case ValueType::float16:
     parameters_ = Kernel::GetCompileParameters<ValueType::float16>();
     break;
+  case ValueType::bfloat16:
+    parameters_ = Kernel::GetCompileParameters<ValueType::bfloat16>();
+    break;
   case ValueType::float32:
     parameters_ = Kernel::GetCompileParameters<ValueType::float32>();
     break;
@@ -37,6 +40,8 @@ std::string Kernel::GetSource() const {
   switch (precision_.input_type) {
   case ValueType::float16:
     return Kernel::GetSource<ValueType::float16>();
+  case ValueType::bfloat16:
+    return Kernel::GetSource<ValueType::bfloat16>();
   case ValueType::float32:
     return Kernel::GetSource<ValueType::float32>();
   case ValueType::int1:
