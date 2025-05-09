@@ -29,21 +29,6 @@ find_package(OpenMP REQUIRED)
 
 set(CUDAWRAPPERS_BACKEND ${CCGLIB_BACKEND})
 if(${CCGLIB_BACKEND_HIP})
-  # Workaround missing omp.h for compilation of sources with language property
-  # HIP by adding the OpenMP include directory of the host compiler to the
-  # OpenMP target.
-  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    get_filename_component(OpenMP_LIB_DIR ${OpenMP_gomp_LIBRARY} DIRECTORY)
-    find_path(
-      OpenMP_INCLUDE_DIR omp.h
-      PATHS ${OpenMP_LIB_DIR} "${OpenMP_LIB_DIR}/.."
-      PATH_SUFFIXES
-        "include"
-        "lib/gcc/x86_64-pc-linux-gnu/${CMAKE_CXX_COMPILER_VERSION}/include")
-    target_include_directories(OpenMP::OpenMP_CXX SYSTEM
-                               INTERFACE ${OpenMP_INCLUDE_DIR})
-  endif()
-
   enable_language(HIP)
   set(LINK_gpu_runtime hip::host)
 elseif(${CCGLIB_BACKEND_CUDA})

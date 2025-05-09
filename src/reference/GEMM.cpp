@@ -1,7 +1,6 @@
 #include <atomic>
 #include <limits>
 #include <mutex>
-#include <omp.h>
 #include <stdexcept>
 #include <type_traits>
 #include <xtensor/xadapt.hpp>
