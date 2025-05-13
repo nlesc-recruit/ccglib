@@ -46,7 +46,12 @@ if(${CCGLIB_BACKEND_CUDA})
                              PRIVATE "${PROJECT_SOURCE_DIR}/test/gemm")
   target_link_libraries(test-mma-cuda PRIVATE ccglib Catch2::Catch2WithMain
                                               CUDA::cudart)
-  list(APPEND TESTS test-mma-cuda)
+
+  add_executable(test-packing-cuda cuda/packing.cpp)
+  target_link_libraries(test-packing-cuda PRIVATE ccglib Catch2::Catch2WithMain
+                                                  CUDA::cudart)
+
+  list(APPEND TESTS test-mma-cuda test-packing-cuda)
 endif()
 
 # hip-specific tests
@@ -55,7 +60,11 @@ if(${CCGLIB_BACKEND_HIP})
   target_include_directories(test-mma-hip
                              PRIVATE "${PROJECT_SOURCE_DIR}/test/gemm")
   target_link_libraries(test-mma-hip PRIVATE ccglib Catch2::Catch2WithMain)
-  list(APPEND TESTS test-mma-hip)
+
+  add_executable(test-packing-hip hip/packing.cpp)
+  target_link_libraries(test-packing-hip PRIVATE ccglib Catch2::Catch2WithMain)
+
+  list(APPEND TESTS test-mma-hip test-packing-hip)
 endif()
 
 foreach(test IN ITEMS ${TESTS})

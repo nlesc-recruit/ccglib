@@ -1,5 +1,7 @@
-#if defined(__HIP__) && !defined(__HIP_PLATFORM_NVIDIA__)
-#error "Packing kernel is only available for NVIDIA GPUs"
+#if defined(__HIP__)
+#include <limits.h>
+#else
+#include <cuda/std/limits>
 #endif
 
 extern "C" __global__ void pack_bits(unsigned *output,
@@ -20,10 +22,31 @@ extern "C" __global__ void pack_bits(unsigned *output,
     }
   }
 
+#if WARP_SIZE == 32
   unsigned output_value = __ballot_sync(__activemask(), input[input_index]);
-  if (tid % 32 == 0) {
-    output[tid / 32] = output_value;
+  if (tid % WARP_SIZE == 0) {
+    // ensure to keep only warp_size bits as HIP always returns a 64-bit value
+    output[tid / WARP_SIZE] = output_value & 0xFFFFFFFF;
   }
+#elif WARP_SIZE == 64
+  unsigned long output_value =
+      __ballot_sync(__activemask(), input[input_index]);
+  if (tid % WARP_SIZE == 0) {
+    // because output is 32-bit type, the last thread might try to write 32 bits
+    // beyond the end of the memory allocation if we write per 64 bits. Avoid
+    // this by explicitly checking and only writing the lower 32 bits in this
+    // case.
+    const size_t index = 2 * (tid / WARP_SIZE);
+    const unsigned nr_bits = sizeof(unsigned) * CHAR_BIT;
+    if (index == (N / nr_bits - 1)) {
+      output[index] = output_value & 0xFFFFFFFF;
+    } else {
+      reinterpret_cast<unsigned long *>(output)[tid / WARP_SIZE] = output_value;
+    }
+  }
+#else
+#error WARP_SIZE must be 32 or 64
+#endif
 }
 
 extern "C" __global__ void unpack_bits(unsigned char *output,
@@ -33,6 +56,8 @@ extern "C" __global__ void unpack_bits(unsigned char *output,
     return;
   }
 
-  unsigned value = input[tid / 32];
-  output[tid] = (value >> (tid % 32)) & 1;
+  const unsigned nr_bits = sizeof(unsigned) * CHAR_BIT;
+
+  unsigned value = input[tid / nr_bits];
+  output[tid] = (value >> (tid % nr_bits)) & 1;
 }

@@ -3,24 +3,25 @@
 #include <limits.h>
 #include <random>
 
+#include <cudawrappers/cu.hpp>
+
 #include <ccglib/packing/packing.h>
+
+// Packing kernels do not run on AMD GPUs with ROCM < 6.2
+inline void skip_if_old_rocm() {
+#ifdef __HIP_PLATFORM_AMD__
+  const int hip_version = HIP_VERSION_MAJOR * 10 + HIP_VERSION_MINOR;
+  if (hip_version < 62) {
+    SKIP("Packing kernels require ROCm 6.2+");
+  }
+#endif
+}
 
 namespace ccglib::test {
 
-// Packing kernel is not supported on AMD GPUs
-#if defined(__HIP_PLATFORM_AMD__)
-TEST_CASE("Unsupported") {
-  const size_t N = 2048;
-  cu::init();
-  cu::Device device(0);
-  cu::Context context(CU_CTX_BLOCKING_SYNC, device);
-  cu::Stream stream;
-
-  CHECK_THROWS(ccglib::packing::Packing(N, device, stream));
-}
-
-#else
 TEST_CASE("Packing") {
+  skip_if_old_rocm();
+
   const size_t N = 2048;
   const size_t bytes_in = sizeof(unsigned char) * N;
   const size_t packing_factor =
@@ -63,6 +64,8 @@ TEST_CASE("Packing") {
 }
 
 TEST_CASE("Unpacking") {
+  skip_if_old_rocm();
+
   const size_t N = 2048;
   const size_t bytes_out = sizeof(unsigned char) * N;
   const size_t packing_factor =
@@ -105,6 +108,8 @@ TEST_CASE("Unpacking") {
 }
 
 TEST_CASE("Pack - unpack") {
+  skip_if_old_rocm();
+
   const size_t N = 2048;
   const size_t bytes_unpacked = sizeof(unsigned char) * N;
   const size_t packing_factor =
@@ -147,6 +152,8 @@ TEST_CASE("Pack - unpack") {
 }
 
 TEST_CASE("Packing - complex-last") {
+  skip_if_old_rocm();
+
   const size_t N = 2048;
   const size_t bytes_in = sizeof(unsigned char) * N;
   const size_t packing_factor =
@@ -194,6 +201,5 @@ TEST_CASE("Packing - complex-last") {
     REQUIRE(input_value == output_value);
   }
 }
-#endif
 
 } // namespace ccglib::test

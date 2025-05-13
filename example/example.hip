@@ -99,7 +99,7 @@ int main() {
   hip_check(hipFree(d_b));
   hip_check(hipFree(d_c));
 
-  hip_check(hipFreeHost(h_a));
-  hip_check(hipFreeHost(h_b));
-  hip_check(hipFreeHost(h_c));
+  hip_check(hipHostFree(h_a));
+  hip_check(hipHostFree(h_b));
+  hip_check(hipHostFree(h_c));
 }
