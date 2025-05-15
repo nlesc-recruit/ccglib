@@ -1,5 +1,6 @@
 #include <iostream>
 
+#include <cudawrappers/cu.hpp>
 #include <cudawrappers/nvrtc.hpp>
 
 #include <ccglib/helper.h>
@@ -10,24 +11,52 @@ extern const char _binary_kernels_transpose_kernel_cu_start,
 
 namespace ccglib::transpose {
 
-Transpose::Transpose(size_t B, size_t M, size_t N, size_t M_chunk,
-                     size_t N_chunk, size_t nr_bits, cu::Device &device,
-                     cu::Stream &stream,
-                     ComplexAxisLocation input_complex_axis_location)
+class Transpose::Impl {
+public:
+  Impl(size_t B, size_t M, size_t N, size_t M_chunk, size_t N_chunk,
+       size_t nr_bits, cu::Device &device, cu::Stream &stream,
+       ComplexAxisLocation input_complex_axis_location);
+  void Run(cu::HostMemory &h_input, cu::DeviceMemory &d_output);
+  void Run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output);
+
+private:
+  size_t B;
+  size_t M;
+  size_t N;
+  size_t M_chunk;
+  size_t N_chunk;
+
+  size_t nr_bits;
+  ComplexAxisLocation input_complex_axis_location_;
+
+  cu::Device &device_;
+  cu::Stream &stream_;
+
+  void compile_kernel();
+
+  std::shared_ptr<cu::Module> module;
+  std::shared_ptr<cu::Function> function;
+};
+
+Transpose::Impl::Impl(size_t B, size_t M, size_t N, size_t M_chunk,
+                      size_t N_chunk, size_t nr_bits, cu::Device &device,
+                      cu::Stream &stream,
+                      ComplexAxisLocation input_complex_axis_location)
     : B(B), M(M), N(N), M_chunk(M_chunk), N_chunk(N_chunk), nr_bits(nr_bits),
       device_(device), stream_(stream),
       input_complex_axis_location_(input_complex_axis_location) {
   compile_kernel();
 }
 
-void Transpose::Run(cu::HostMemory &h_input, cu::DeviceMemory &d_output) {
+void Transpose::Impl::Run(cu::HostMemory &h_input, cu::DeviceMemory &d_output) {
   cu::DeviceMemory d_input = stream_.memAllocAsync(h_input.size());
   stream_.memcpyHtoDAsync(d_input, h_input, h_input.size());
   Run(d_input, d_output);
   stream_.memFreeAsync(d_input);
 }
 
-void Transpose::Run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output) {
+void Transpose::Impl::Run(cu::DeviceMemory &d_input,
+                          cu::DeviceMemory &d_output) {
   const unsigned warp_size =
       device_.getAttribute(CU_DEVICE_ATTRIBUTE_WARP_SIZE);
   dim3 threads(warp_size, 1024 / warp_size);
@@ -40,7 +69,7 @@ void Transpose::Run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output) {
                        threads.z, 0, parameters);
 }
 
-void Transpose::compile_kernel() {
+void Transpose::Impl::compile_kernel() {
   const std::string cuda_include_path = nvrtc::findIncludePath();
 
   const std::string arch = device_.getArch();
@@ -84,4 +113,23 @@ void Transpose::compile_kernel() {
       static_cast<const void *>(program.getPTX().data()));
   function = std::make_unique<cu::Function>(*module, "transpose");
 }
+
+Transpose::Transpose(size_t B, size_t M, size_t N, size_t M_chunk,
+                     size_t N_chunk, size_t nr_bits, cu::Device &device,
+                     cu::Stream &stream,
+                     ComplexAxisLocation input_complex_axis_location) {
+  impl_ = std::make_unique<Impl>(B, M, N, M_chunk, N_chunk, nr_bits, device,
+                                 stream, input_complex_axis_location);
+}
+
+void Transpose::Run(cu::HostMemory &h_input, cu::DeviceMemory &d_output) {
+  impl_->Run(h_input, d_output);
+}
+
+void Transpose::Run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output) {
+  impl_->Run(d_input, d_output);
+}
+
+Transpose::~Transpose() = default;
+
 } // end namespace ccglib::transpose
