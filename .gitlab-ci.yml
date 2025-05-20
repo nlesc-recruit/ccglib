@@ -16,7 +16,7 @@ format:
   script:
     - pre-commit run -a
 
-build-das6:
+build-das6-cuda:
   stage: build
   tags:
     - das6-gpu
@@ -24,6 +24,16 @@ build-das6:
     - module load ${DAS6_MODULES}
   script:
     - cmake -S . -B build
+    - make -j -C build
+
+build-das6-hip:
+  stage: build
+  tags:
+    - das6-gpu
+  before_script:
+    - module load ${DAS6_MODULES}
+  script:
+    - cmake -S . -B build -DCCGLIB_BACKEND=HIP
     - make -j -C build
 
 test-das6:
