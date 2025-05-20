@@ -198,7 +198,7 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
   for (size_t c = 0; c < COMPLEX; c++) {
     for (size_t m = 0; m < M_TILES; m++) {
       for (size_t n = 0; n < N_TILES; n++) {
-        wmma::fill_fragment(sum[c][m][n], static_cast<Tout>(.0f));
+        wmma::fill_fragment(sum[c][m][n], static_cast<Tshared>(.0f));
       }
     }
   }
