@@ -51,7 +51,12 @@ if(${CCGLIB_BACKEND_CUDA})
   target_link_libraries(test-packing-cuda PRIVATE ccglib Catch2::Catch2WithMain
                                                   CUDA::cudart)
 
-  list(APPEND TESTS test-mma-cuda test-packing-cuda)
+  add_executable(test-transpose-cuda cuda/transpose.cpp)
+  target_link_libraries(
+    test-transpose-cuda PRIVATE ccglib Catch2::Catch2WithMain CUDA::cudart
+                                xtensor)
+
+  list(APPEND TESTS test-mma-cuda test-packing-cuda test-transpose-cuda)
 endif()
 
 # hip-specific tests
@@ -64,7 +69,11 @@ if(${CCGLIB_BACKEND_HIP})
   add_executable(test-packing-hip hip/packing.cpp)
   target_link_libraries(test-packing-hip PRIVATE ccglib Catch2::Catch2WithMain)
 
-  list(APPEND TESTS test-mma-hip test-packing-hip)
+  add_executable(test-transpose-hip hip/transpose.cpp)
+  target_link_libraries(test-transpose-hip
+                        PRIVATE ccglib Catch2::Catch2WithMain xtensor)
+
+  list(APPEND TESTS test-mma-hip test-packing-hip test-transpose-hip)
 endif()
 
 foreach(test IN ITEMS ${TESTS})

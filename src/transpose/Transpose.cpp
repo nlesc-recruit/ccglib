@@ -20,13 +20,13 @@ public:
   void Run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output);
 
 private:
-  size_t B;
-  size_t M;
-  size_t N;
-  size_t M_chunk;
-  size_t N_chunk;
+  size_t B_;
+  size_t M_;
+  size_t N_;
+  size_t M_chunk_;
+  size_t N_chunk_;
 
-  size_t nr_bits;
+  size_t nr_bits_;
   ComplexAxisLocation input_complex_axis_location_;
 
   cu::Device &device_;
@@ -42,8 +42,8 @@ Transpose::Impl::Impl(size_t B, size_t M, size_t N, size_t M_chunk,
                       size_t N_chunk, size_t nr_bits, cu::Device &device,
                       cu::Stream &stream,
                       ComplexAxisLocation input_complex_axis_location)
-    : B(B), M(M), N(N), M_chunk(M_chunk), N_chunk(N_chunk), nr_bits(nr_bits),
-      device_(device), stream_(stream),
+    : B_(B), M_(M), N_(N), M_chunk_(M_chunk), N_chunk_(N_chunk),
+      nr_bits_(nr_bits), device_(device), stream_(stream),
       input_complex_axis_location_(input_complex_axis_location) {
   compile_kernel();
 }
@@ -60,7 +60,7 @@ void Transpose::Impl::Run(cu::DeviceMemory &d_input,
   const unsigned warp_size =
       device_.getAttribute(CU_DEVICE_ATTRIBUTE_WARP_SIZE);
   dim3 threads(warp_size, 1024 / warp_size);
-  dim3 grid(helper::ceildiv(N, threads.x), helper::ceildiv(M, threads.y), B);
+  dim3 grid(helper::ceildiv(N_, threads.x), helper::ceildiv(M_, threads.y), B_);
 
   std::vector<const void *> parameters = {d_output.parameter(),
                                           d_input.parameter()};
@@ -82,12 +82,12 @@ void Transpose::Impl::compile_kernel() {
     "-arch=" + arch,
 #endif
     "-I" + cuda_include_path,
-    "-DBATCH_SIZE=" + std::to_string(B) + "UL",
-    "-DM_GLOBAL=" + std::to_string(M) + "UL",
-    "-DN_GLOBAL=" + std::to_string(N) + "UL",
-    "-DNBIT_IN=" + std::to_string(nr_bits),
-    "-DM_CHUNK=" + std::to_string(M_chunk),
-    "-DN_CHUNK=" + std::to_string(N_chunk)
+    "-DBATCH_SIZE=" + std::to_string(B_) + "UL",
+    "-DM_GLOBAL=" + std::to_string(M_) + "UL",
+    "-DN_GLOBAL=" + std::to_string(N_) + "UL",
+    "-DNBIT_IN=" + std::to_string(nr_bits_),
+    "-DM_CHUNK=" + std::to_string(M_chunk_),
+    "-DN_CHUNK=" + std::to_string(N_chunk_)
   };
 
   if (input_complex_axis_location_ == ComplexAxisLocation::complex_middle) {
@@ -122,12 +122,39 @@ Transpose::Transpose(size_t B, size_t M, size_t N, size_t M_chunk,
                                  stream, input_complex_axis_location);
 }
 
+Transpose::Transpose(size_t B, size_t M, size_t N, size_t M_chunk,
+                     size_t N_chunk, size_t nr_bits, CUdevice &device,
+                     CUstream &stream,
+                     ComplexAxisLocation input_complex_axis_location)
+    : B_(B), M_(M), N_(N), M_chunk_(M_chunk), N_chunk_(N_chunk),
+      nr_bits_(nr_bits), device_(std::make_unique<cu::Device>(device)),
+      stream_(std::make_unique<cu::Stream>(stream)) {
+
+  impl_ = std::make_unique<Impl>(B, M, N, M_chunk, N_chunk, nr_bits, *device_,
+                                 *stream_, input_complex_axis_location);
+};
+
 void Transpose::Run(cu::HostMemory &h_input, cu::DeviceMemory &d_output) {
   impl_->Run(h_input, d_output);
 }
 
+void Transpose::Run(const void *h_input, CUdeviceptr d_output) {
+  const size_t kComplex = 2;
+  // This is only correct for input that is 1-bit, or a multiple of one byte.
+  const size_t kPackingFactor = (nr_bits_ == 1) ? 32 : 1;
+  const size_t N = B_ * kComplex * M_ * N_ / kPackingFactor;
+  cu::HostMemory h_input_(const_cast<void *>(h_input), N);
+  cu::DeviceMemory d_output_(d_output);
+}
+
 void Transpose::Run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output) {
   impl_->Run(d_input, d_output);
+}
+
+void Transpose::Run(CUdeviceptr d_input, CUdeviceptr d_output) {
+  cu::DeviceMemory d_input_(d_input);
+  cu::DeviceMemory d_output_(d_output);
+  impl_->Run(d_input_, d_output_);
 }
 
 Transpose::~Transpose() = default;
