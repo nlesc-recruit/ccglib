@@ -15,9 +15,9 @@ jobs:
           fetch-depth: 0
 
       - name: Install CUDA
-        uses: Jimver/cuda-toolkit@v0.2
+        uses: Jimver/cuda-toolkit@v0.2.23
         with:
-          cuda: 12.9
+          cuda: 12.8.1
           method: network
           sub-packages: '["runtime", "nvcc", "nvrtc-dev"]'
           linux-local-args: '["--toolkit"]'

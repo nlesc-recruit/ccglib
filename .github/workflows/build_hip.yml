@@ -18,6 +18,7 @@ jobs:
         uses: loostrum/rocm-installer@main
         with:
           version: 6.4.0
+          packages: rocm-hip-runtime-dev hipfft-dev
 
       - name: Build
         run: |
