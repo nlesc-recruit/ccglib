@@ -1,5 +1,6 @@
 # ccglib
-![CI status](https://git.astron.nl/RD/recruit/ccglib/badges/main/pipeline.svg)
+[![CI status cuda](https://img.shields.io/github/actions/workflow/status/nlesc-recruit/ccglib/build_cuda.yml?label=build%20CUDA)](https://github.com/nlesc-recruit/ccglib/actions/workflows/build_cuda.yml)
+[![CI status hip](https://img.shields.io/github/actions/workflow/status/nlesc-recruit/ccglib/build_hip.yml?label=build%20HIP)](https://github.com/nlesc-recruit/ccglib/actions/workflows/build_hip.yml)
 
 The Complex Common GEMM Library (ccglib) provides a simple C++ interface for complex-valued matrix multiplication on GPU tensor and matrix cores, supporting both CUDA and HIP.
 

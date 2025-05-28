@@ -1,0 +1,28 @@
+name: Build in CUDA mode
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build_cuda:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out a copy of the repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install CUDA
+        uses: Jimver/cuda-toolkit@v0.2.23
+        with:
+          cuda: 12.8.1
+          method: network
+          sub-packages: '["runtime", "nvcc", "nvrtc-dev"]'
+          linux-local-args: '["--toolkit"]'
+
+      - name: Build
+        run: |
+          cmake -S . -B build -DCCGLIB_BACKEND=CUDA -DCCGLIB_BUILD_TESTING=1 -DCCGLIB_BUILD_BENCHMARK=1
+          make -C build -j
