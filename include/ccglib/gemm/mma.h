@@ -25,7 +25,7 @@ namespace ccglib::mma {
 
 class GEMM {
 public:
-  GEMM(size_t B_, size_t M_, size_t N_, size_t K_, size_t, cu::Device &device,
+  GEMM(size_t B_, size_t M_, size_t N_, size_t K_, cu::Device &device,
        cu::Stream &stream, Precision precision, Variant Variant = Variant::opt,
        ComplexAxisLocation c_complex_axis_location =
            ComplexAxisLocation::complex_middle,
@@ -37,7 +37,7 @@ public:
   static dim3 GetDimensions(Precision precision,
                             Variant variant = Variant::opt);
 #ifdef __HIP__
-  GEMM(size_t B_, size_t M_, size_t N_, size_t K_, size_t, hipDevice_t &device,
+  GEMM(size_t B_, size_t M_, size_t N_, size_t K_, hipDevice_t &device,
        hipStream_t &stream, Precision precision, Variant Variant = Variant::opt,
        ComplexAxisLocation c_complex_axis_location =
            ComplexAxisLocation::complex_middle,
@@ -46,7 +46,7 @@ public:
        MemOrder b_mem_order = MemOrder::col_major);
   void Run(hipDeviceptr_t d_a, hipDeviceptr_t d_b, hipDeviceptr_t d_c);
 #else
-  GEMM(size_t B_, size_t M_, size_t N_, size_t K_, size_t, CUdevice &device,
+  GEMM(size_t B_, size_t M_, size_t N_, size_t K_, CUdevice &device,
        CUstream &stream, Precision precision, Variant Variant = Variant::opt,
        ComplexAxisLocation c_complex_axis_location =
            ComplexAxisLocation::complex_middle,

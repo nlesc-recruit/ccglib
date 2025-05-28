@@ -197,9 +197,8 @@ public:
     initialize_memory();
 
     ccglib::mma::GEMM gemm_mma(
-        kBatchSize, global_m_, global_n_, global_k_,
-        ccglib::ValuePrecision{InputPrecision}.GetBitWidth(), *device_,
-        *stream_, {InputPrecision, OutputPrecision}, ccglib::mma::basic,
+        kBatchSize, global_m_, global_n_, global_k_, *device_, *stream_,
+        {InputPrecision, OutputPrecision}, ccglib::mma::basic,
         ccglib::mma::complex_middle, output_mem_order);
 
     gemm_mma.Run(*d_a_, *d_b_, *d_c_);
@@ -229,8 +228,8 @@ public:
     transpose_b.Run(*h_b_, d_b_trans);
 
     ccglib::mma::GEMM gemm_mma(
-        kBatchSize, global_m_, global_n_, global_k_, InputPrecision, *device_,
-        *stream_, {InputPrecision, OutputPrecision}, ccglib::mma::opt,
+        kBatchSize, global_m_, global_n_, global_k_, *device_, *stream_,
+        {InputPrecision, OutputPrecision}, ccglib::mma::opt,
         ccglib::mma::complex_middle, output_mem_order);
 
     gemm_mma.Run(d_a_trans, d_b_trans, *d_c_);
@@ -262,8 +261,8 @@ public:
     transpose_b.Run(*h_b_, d_b_trans);
 
     ccglib::mma::GEMM gemm_mma(
-        kBatchSize, global_m_, global_n_, global_k_, InputPrecision, *device_,
-        *stream_, {InputPrecision, OutputPrecision}, ccglib::mma::opt,
+        kBatchSize, global_m_, global_n_, global_k_, *device_, *stream_,
+        {InputPrecision, OutputPrecision}, ccglib::mma::opt,
         complex_axis_location, output_mem_order);
 
     gemm_mma.Run(d_a_trans, d_b_trans, *d_c_);
@@ -519,7 +518,7 @@ TEST_CASE("Unsupported matrix layout") {
   // float16 could support different layouts, but not currently implemented
   // A must be row-major, B col-major
   SECTION("float16") {
-    CHECK_THROWS_WITH(ccglib::mma::GEMM(batch_size, m, n, k, 16, device, stream,
+    CHECK_THROWS_WITH(ccglib::mma::GEMM(batch_size, m, n, k, device, stream,
                                         ccglib::ValueType::float16,
                                         ccglib::mma::basic,
                                         ccglib::mma::complex_middle, layout_c,
@@ -531,7 +530,7 @@ TEST_CASE("Unsupported matrix layout") {
   // 1-bit requires A row-major, B col-major
   SECTION("int1") {
     CHECK_THROWS_WITH(
-        ccglib::mma::GEMM(batch_size, m, n, k, 1, device, stream,
+        ccglib::mma::GEMM(batch_size, m, n, k, device, stream,
                           {ccglib::ValueType::int1, ccglib::ValueType::int32},
                           ccglib::mma::basic, ccglib::mma::complex_middle,
                           layout_c, layout_a, layout_b),

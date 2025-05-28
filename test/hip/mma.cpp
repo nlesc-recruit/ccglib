@@ -29,11 +29,9 @@ TEST_CASE("HIP mma") {
   using Tin = half;
   using Tout = float;
 
-  const size_t nr_input_bits = sizeof(Tin) * 8;
-
-  ccglib::mma::GEMM gemm(batch_size, global_m, global_n, global_k,
-                         nr_input_bits, device, stream,
-                         ccglib::ValueType::float16, ccglib::mma::basic);
+  ccglib::mma::GEMM gemm(batch_size, global_m, global_n, global_k, device,
+                         stream, ccglib::ValueType::float16,
+                         ccglib::mma::basic);
 
   const size_t bytes_a =
       sizeof(Tin) * batch_size * COMPLEX * global_m * global_k;

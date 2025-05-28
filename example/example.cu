@@ -42,8 +42,6 @@ int main() {
   using Tin = half;
   using Tout = float;
 
-  const size_t nr_input_bits = sizeof(Tin) * 8;
-
   const size_t bytes_a =
       sizeof(Tin) * batch_size * COMPLEX * global_m * global_k;
   const size_t bytes_b =
@@ -84,9 +82,9 @@ int main() {
   cuda_check(cudaMalloc(&d_c, bytes_c));
   cuda_check(cudaMemset(d_c, 0, bytes_c));
 
-  ccglib::mma::GEMM gemm_mma(batch_size, global_m, global_n, global_k,
-                             nr_input_bits, device, stream,
-                             ccglib::ValueType::float16, ccglib::mma::opt);
+  ccglib::mma::GEMM gemm_mma(batch_size, global_m, global_n, global_k, device,
+                             stream, ccglib::ValueType::float16,
+                             ccglib::mma::opt);
 
   // Run the GEMM kernel
   cudaEvent_t start, end;

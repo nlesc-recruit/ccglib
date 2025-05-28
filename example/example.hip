@@ -27,8 +27,6 @@ int main() {
   using Tin = half;
   using Tout = float;
 
-  const size_t nr_input_bits = sizeof(Tin) * 8;
-
   const size_t bytes_a =
       sizeof(Tin) * batch_size * COMPLEX * global_m * global_k;
   const size_t bytes_b =
@@ -70,7 +68,7 @@ int main() {
   hip_check(hipMemset(d_c, 0, bytes_c));
 
   ccglib::mma::GEMM gemm_mma(batch_size, global_m, global_n, global_k,
-                             nr_input_bits, device, stream,
+                             device, stream,
                              ccglib::ValueType::float16, ccglib::mma::opt);
 
   // Run the GEMM kernel

@@ -176,8 +176,8 @@ void GEMM::Impl::compile_kernel() {
 }
 
 GEMM::GEMM(const size_t B_, const size_t M_, const size_t N_, const size_t K_,
-           const size_t, cu::Device &device, cu::Stream &stream,
-           const Precision precision, const Variant variant,
+           cu::Device &device, cu::Stream &stream, const Precision precision,
+           const Variant variant,
            const ComplexAxisLocation c_complex_axis_location,
            const MemOrder c_mem_order, const MemOrder a_mem_order,
            const MemOrder b_mem_order)
@@ -186,8 +186,8 @@ GEMM::GEMM(const size_t B_, const size_t M_, const size_t N_, const size_t K_,
                                    a_mem_order, b_mem_order, c_mem_order)){};
 
 GEMM::GEMM(const size_t B_, const size_t M_, const size_t N_, const size_t K_,
-           const size_t, CUdevice &device, CUstream &stream,
-           const Precision precision, const Variant variant,
+           CUdevice &device, CUstream &stream, const Precision precision,
+           const Variant variant,
            const ComplexAxisLocation c_complex_axis_location,
            const MemOrder c_mem_order, const MemOrder a_mem_order,
            const MemOrder b_mem_order)
