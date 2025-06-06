@@ -1,0 +1,28 @@
+name: linting
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  linting:
+    name: linting
+    runs-on: [ubuntu-latest]
+    steps:
+      - name: Check out a copy of the repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install linting tool
+        run: |
+          pip install pre-commit
+          pre-commit install
+          
+      - name: Run linters
+        run: pre-commit run -a
