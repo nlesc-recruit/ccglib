@@ -17,6 +17,7 @@ jobs:
 
       - name: Install linting tool
         run: |
+          python -m ensurepip
           pip install pre-commit
           pre-commit install
           
