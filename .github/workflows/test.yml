@@ -1,0 +1,37 @@
+name: test
+on:
+  push:
+jobs:
+  test-a4000:
+    name: NVIDIA A4000
+    runs-on: [slurm]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astron-rd/slurm-action@v1.1
+        with:
+          partition: defq
+          gres: gpu:A4000
+          time: "00:10:00"
+          commands: |
+            module load spack/20250403
+            module load cuda
+            cmake -S . -B build -DCCGLIB_BUILD_TESTING=1
+            make -C build -j
+            cd build
+            ctest --output-on-failure
+  test-w7700:
+    name: AMD W7700
+    runs-on: [slurm]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astron-rd/slurm-action@v1.1
+        with:
+          partition: defq
+          gres: gpu:W7700
+          time: "00:10:00"
+          commands: |
+            # HIP is installed locally
+            cmake -S . -B build -DCCGLIB_BUILD_TESTING=1 -DCCGLIB_BACKEND=HIP
+            make -C build -j
+            cd build
+            ctest --output-on-failure
