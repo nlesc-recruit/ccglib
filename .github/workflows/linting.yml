@@ -17,7 +17,8 @@ jobs:
 
       - name: Install linting tool
         run: |
-          python -m ensurepip
+          apt-get update -qq
+          apt-get install -y -qq git python3-pip
           pip install pre-commit
           pre-commit install
           
