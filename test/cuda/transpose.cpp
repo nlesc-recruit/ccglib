@@ -103,7 +103,7 @@ private:
     cu_check(cuMemsetD8Async(d_a_trans_, 0, kBytesA, stream_));
   }
 
-  void verify_output(transpose::ComplexAxisLocation complex_axis_location) {
+  void verify_output(ccglib::ComplexAxisLocation complex_axis_location) {
     // copy output to host
     cu_check(cuMemcpyDtoHAsync(h_a_trans_, d_a_trans_, kBytesA, stream_));
     cu_check(cuStreamSynchronize(stream_));
@@ -116,8 +116,7 @@ private:
     // ints.) In complex-last mode, complex is the last axis.
 
     std::array<size_t, 4> shape_input;
-    if (complex_axis_location ==
-        transpose::ComplexAxisLocation::complex_middle) {
+    if (complex_axis_location == ccglib::ComplexAxisLocation::complex_planar) {
       shape_input = {kBatchSize, kComplex, kGlobalM, kGlobalN / kPackingFactor};
     } else {
       shape_input = {kBatchSize, kGlobalM, kGlobalN / kPackingFactor, kComplex};
@@ -147,7 +146,7 @@ private:
 
             float in;
             if (complex_axis_location ==
-                transpose::ComplexAxisLocation::complex_middle) {
+                ccglib::ComplexAxisLocation::complex_planar) {
               in = static_cast<float>(input(b, c, m, n));
             } else {
               in = static_cast<float>(input(b, m, n, c));
@@ -164,7 +163,7 @@ private:
   }
 
 public:
-  void transpose(transpose::ComplexAxisLocation complex_axis_location) {
+  void transpose(ccglib::ComplexAxisLocation complex_axis_location) {
     init_memory();
 
     ccglib::transpose::Transpose transpose_a(
@@ -185,17 +184,17 @@ using TransposeTestFixtureInt1 =
 
 TEST_CASE_METHOD(TransposeTestFixtureFloat16, "Transpose Test - float16",
                  "[transpose-test-float16]") {
-  SECTION("complex-middle") {
-    transpose(transpose::ComplexAxisLocation::complex_middle);
+  SECTION("complex-planar") {
+    transpose(ccglib::ComplexAxisLocation::complex_planar);
   }
-  SECTION("complex-last") {
-    transpose(transpose::ComplexAxisLocation::complex_last);
+  SECTION("complex-interleaved") {
+    transpose(ccglib::ComplexAxisLocation::complex_interleaved);
   }
 }
 
 TEST_CASE_METHOD(TransposeTestFixtureInt1, "Transpose Test - int1",
                  "[transpose-test-int1]") {
-  transpose(transpose::ComplexAxisLocation::complex_middle);
+  transpose(ccglib::ComplexAxisLocation::complex_planar);
 }
 
 } // namespace ccglib::test

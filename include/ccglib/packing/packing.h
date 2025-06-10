@@ -19,7 +19,7 @@ class Stream;
 
 namespace ccglib::packing {
 enum Direction { pack, unpack };
-enum ComplexAxisLocation { complex_first, complex_last };
+enum ComplexAxisLocation { complex_first, complex_interleaved };
 
 class Packing {
 public:

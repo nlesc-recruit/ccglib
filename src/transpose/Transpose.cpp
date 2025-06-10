@@ -90,10 +90,10 @@ void Transpose::Impl::compile_kernel() {
     "-DN_CHUNK=" + std::to_string(N_chunk_)
   };
 
-  if (input_complex_axis_location_ == ComplexAxisLocation::complex_middle) {
+  if (input_complex_axis_location_ == ComplexAxisLocation::complex_planar) {
     options.push_back("-DINPUT_COMPLEX_MIDDLE");
   } else if (input_complex_axis_location_ ==
-             ComplexAxisLocation::complex_last) {
+             ComplexAxisLocation::complex_interleaved) {
     options.push_back("-DINPUT_COMPLEX_LAST");
   }
 

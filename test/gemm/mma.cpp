@@ -199,7 +199,7 @@ public:
     ccglib::mma::GEMM gemm_mma(
         kBatchSize, global_m_, global_n_, global_k_, *device_, *stream_,
         {InputPrecision, OutputPrecision}, ccglib::mma::basic,
-        ccglib::mma::complex_middle, output_mem_order);
+        ccglib::complex_planar, output_mem_order);
 
     gemm_mma.Run(*d_a_, *d_b_, *d_c_);
 
@@ -230,16 +230,15 @@ public:
     ccglib::mma::GEMM gemm_mma(
         kBatchSize, global_m_, global_n_, global_k_, *device_, *stream_,
         {InputPrecision, OutputPrecision}, ccglib::mma::opt,
-        ccglib::mma::complex_middle, output_mem_order);
+        ccglib::complex_planar, output_mem_order);
 
     gemm_mma.Run(d_a_trans, d_b_trans, *d_c_);
 
     verify_output(output_mem_order);
   }
 
-  void
-  complex_gemm_opt(ccglib::mma::MemOrder output_mem_order,
-                   ccglib::mma::ComplexAxisLocation complex_axis_location) {
+  void complex_gemm_opt(ccglib::mma::MemOrder output_mem_order,
+                        ccglib::ComplexAxisLocation complex_axis_location) {
     initialize_memory();
 
     // Allocate device memory for transposed input data
@@ -269,7 +268,7 @@ public:
 
     // convert the output from complex-last to to complex-middle layout and
     // reuse the verify function that expects complex-middle layout
-    if (complex_axis_location == ccglib::mma::complex_last) {
+    if (complex_axis_location == ccglib::complex_interleaved) {
       // copy C to host
       stream_->memcpyDtoHAsync(*h_c_, *d_c_, bytes_c_);
       stream_->synchronize();
@@ -429,11 +428,13 @@ template <typename Fixture> struct GemmTestOpt : public Fixture {
             "b, OutputSize: " + std::to_string(Traits::OutputSize) + "b") {
       this->init(Traits::M_row_major.aligned, Traits::N_row_major.aligned,
                  Traits::K_row_major.aligned);
-      this->complex_gemm_opt(ccglib::mma::row_major, ccglib::mma::complex_last);
+      this->complex_gemm_opt(ccglib::mma::row_major,
+                             ccglib::complex_interleaved);
 
       this->init(Traits::M_row_major.unaligned, Traits::N_row_major.unaligned,
                  Traits::K_row_major.unaligned);
-      this->complex_gemm_opt(ccglib::mma::row_major, ccglib::mma::complex_last);
+      this->complex_gemm_opt(ccglib::mma::row_major,
+                             ccglib::complex_interleaved);
     }
 
     SECTION("opt-col-major-complex-last - InputSize: " +
@@ -441,11 +442,13 @@ template <typename Fixture> struct GemmTestOpt : public Fixture {
             "b, OutputSize: " + std::to_string(Traits::OutputSize) + "b") {
       this->init(Traits::M_col_major.aligned, Traits::N_col_major.aligned,
                  Traits::K_col_major.aligned);
-      this->complex_gemm_opt(ccglib::mma::col_major, ccglib::mma::complex_last);
+      this->complex_gemm_opt(ccglib::mma::col_major,
+                             ccglib::complex_interleaved);
 
       this->init(Traits::M_col_major.unaligned, Traits::N_col_major.unaligned,
                  Traits::K_col_major.unaligned);
-      this->complex_gemm_opt(ccglib::mma::col_major, ccglib::mma::complex_last);
+      this->complex_gemm_opt(ccglib::mma::col_major,
+                             ccglib::complex_interleaved);
     }
   }
 };
@@ -518,12 +521,11 @@ TEST_CASE("Unsupported matrix layout") {
   // float16 could support different layouts, but not currently implemented
   // A must be row-major, B col-major
   SECTION("float16") {
-    CHECK_THROWS_WITH(ccglib::mma::GEMM(batch_size, m, n, k, device, stream,
-                                        ccglib::ValueType::float16,
-                                        ccglib::mma::basic,
-                                        ccglib::mma::complex_middle, layout_c,
-                                        layout_a, layout_b),
-                      Catch::Matchers::ContainsSubstring(error_name));
+    CHECK_THROWS_WITH(
+        ccglib::mma::GEMM(batch_size, m, n, k, device, stream,
+                          ccglib::ValueType::float16, ccglib::mma::basic,
+                          ccglib::complex_planar, layout_c, layout_a, layout_b),
+        Catch::Matchers::ContainsSubstring(error_name));
   }
 
 #if !defined(__HIP_PLATFORM_AMD__)
@@ -532,8 +534,8 @@ TEST_CASE("Unsupported matrix layout") {
     CHECK_THROWS_WITH(
         ccglib::mma::GEMM(batch_size, m, n, k, device, stream,
                           {ccglib::ValueType::int1, ccglib::ValueType::int32},
-                          ccglib::mma::basic, ccglib::mma::complex_middle,
-                          layout_c, layout_a, layout_b),
+                          ccglib::mma::basic, ccglib::complex_planar, layout_c,
+                          layout_a, layout_b),
         Catch::Matchers::ContainsSubstring(error_name));
   }
 #endif

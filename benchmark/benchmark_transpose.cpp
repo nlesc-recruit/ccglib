@@ -106,10 +106,10 @@ int main(int argc, const char *argv[]) {
   ccglib::mma::Variant gemm_variant = map_gemm_variant[variant];
 
   // Select complex axis location
-  std::map<std::string, ccglib::transpose::ComplexAxisLocation>
-      map_complex_axis{{"middle", ccglib::transpose::complex_middle},
-                       {"last", ccglib::transpose::complex_last}};
-  ccglib::transpose::ComplexAxisLocation complex_axis_location =
+  std::map<std::string, ccglib::ccglib::ComplexAxisLocation> map_complex_axis{
+      {"middle", ccglib::complex_planar},
+      {"last", ccglib::complex_interleaved}};
+  ccglib::ccglib::ComplexAxisLocation complex_axis_location =
       map_complex_axis[complex_axis];
 
   // Select size of input / output types

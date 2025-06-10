@@ -1,7 +1,7 @@
 #ifndef TRANSPOSE_H_
 #define TRANSPOSE_H_
 
-#include <ccglib/transpose/complex_order.h>
+#include <ccglib/common/complex_order.h>
 
 // Forward declaration of cudawrappers types
 namespace cu {
@@ -16,7 +16,7 @@ public:
   Transpose(size_t B, size_t M, size_t N, size_t M_chunk, size_t N_chunk,
             size_t nr_bits, cu::Device &device, cu::Stream &stream,
             ComplexAxisLocation input_complex_axis_location =
-                ComplexAxisLocation::complex_middle);
+                ComplexAxisLocation::complex_planar);
   ~Transpose();
   void Run(cu::HostMemory &h_input, cu::DeviceMemory &d_output);
   void Run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output);
@@ -25,14 +25,14 @@ public:
   Transpose(size_t B, size_t M, size_t N, size_t M_chunk, size_t N_chunk,
             size_t nr_bits, hipDevice_t &device, hipStream_t &stream,
             ComplexAxisLocation input_complex_axis_location =
-                ComplexAxisLocation::complex_middle);
+                ComplexAxisLocation::complex_planar);
   void Run(const void *h_input, hipDeviceptr_t d_output);
   void Run(hipDeviceptr_t d_input, hipDeviceptr_t d_output);
 #else
   Transpose(size_t B, size_t M, size_t N, size_t M_chunk, size_t N_chunk,
             size_t nr_bits, CUdevice &device, CUstream &stream,
             ComplexAxisLocation input_complex_axis_location =
-                ComplexAxisLocation::complex_middle);
+                ComplexAxisLocation::complex_planar);
   void Run(const void *h_input, CUdeviceptr d_output);
   void Run(CUdeviceptr d_input, CUdeviceptr d_output);
 #endif

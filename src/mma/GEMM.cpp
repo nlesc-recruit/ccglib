@@ -64,7 +64,7 @@ GEMM::Impl::Impl(size_t B_, size_t M_, size_t N_, size_t K_,
   const bool precision_is_int1 = (precision.input_type == ValueType::int1);
   const bool variant_is_basic = variant == Variant::basic;
   const bool c_complex_axis_is_last =
-      c_complex_axis_location == ComplexAxisLocation::complex_last;
+      c_complex_axis_location == ComplexAxisLocation::complex_interleaved;
 
   if (variant_is_basic && c_complex_axis_is_last) {
     throw std::runtime_error(
@@ -136,9 +136,10 @@ void GEMM::Impl::compile_kernel() {
     "-DNBUFFER=" + std::to_string(parameters.nbuffer)
   };
 
-  if (c_complex_axis_location_ == ComplexAxisLocation::complex_middle) {
+  if (c_complex_axis_location_ == ComplexAxisLocation::complex_planar) {
     options.push_back("-DC_COMPLEX_MIDDLE");
-  } else if (c_complex_axis_location_ == ComplexAxisLocation::complex_last) {
+  } else if (c_complex_axis_location_ ==
+             ComplexAxisLocation::complex_interleaved) {
     options.push_back("-DC_COMPLEX_LAST");
   }
 

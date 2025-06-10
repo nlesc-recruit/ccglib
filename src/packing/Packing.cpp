@@ -63,7 +63,7 @@ void Packing::Impl::Run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output,
   dim3 grid(helper::ceildiv(N_, threads.x));
 
   bool complex_axis_is_last =
-      input_complex_axis_location == ComplexAxisLocation::complex_last;
+      input_complex_axis_location == ComplexAxisLocation::complex_interleaved;
 
   std::vector<const void *> parameters = {d_output.parameter(),
                                           d_input.parameter()};

@@ -118,8 +118,8 @@ int main(int argc, const char *argv[]) {
 
   // Select complex axis location
   const std::map<const std::string, const ccglib::mma::ComplexAxisLocation>
-      map_gemm_complex_axis{{"middle", ccglib::mma::complex_middle},
-                            {"last", ccglib::mma::complex_last}};
+      map_gemm_complex_axis{{"middle", ccglib::complex_planar},
+                            {"last", ccglib::complex_interleaved}};
   const ccglib::mma::ComplexAxisLocation &gemm_complex_axis_location =
       map_gemm_complex_axis.at(complex_axis);
 
