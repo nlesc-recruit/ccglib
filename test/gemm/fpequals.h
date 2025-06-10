@@ -6,6 +6,7 @@
 #include <limits>
 
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include <ccglib/bf16.h>
 #include <ccglib/fp16.h>
 
 namespace ccglib::test {
@@ -28,7 +29,16 @@ template <typename T> constexpr float getEpsilon() {
 template <typename T> void fpEquals(T x, T y, size_t K = 1) {
   constexpr float epsilon = getEpsilon<T>();
 
-  if constexpr (std::is_same_v<T, half>) {
+  if constexpr (std::is_same_v<T, bf16>) {
+    // We need to upcast since Catch2 cannot print bfloat16 types in case of
+    // test failure.
+    const float x_conv = __bfloat162float(x);
+    const float y_conv = __bfloat162float(y);
+
+    // We are more lenient in WithinAbs since we use a less precise type.
+    REQUIRE_THAT(y_conv, Catch::Matchers::WithinAbs(x_conv, epsilon * K) ||
+                             Catch::Matchers::WithinRel(x_conv, epsilon * 100));
+  } else if constexpr (std::is_same_v<T, half>) {
     // We need to upcast since Catch2 cannot print float16/half types in case of
     // test failure.
     const float x_conv = __half2float(x);

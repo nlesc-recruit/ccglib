@@ -20,11 +20,10 @@ public:
     const size_t N = 2;
     const size_t K = 2;
     const size_t COMPLEX = 2;
-    // TODO: Avoid warnings about greater conversion rank when converting double
-    // to bf16 Matrix a row-major a(2,M,K)
+    // Matrix a row-major a(2,M,K)
     const InputType a[COMPLEX * M * K] = {1., 2., 3., 4., 5., 6.,
                                           6., 5., 4., 3., 2., 1.};
-    // Matrix a column-major a(2,M,K)
+    // Matrix b column-major b(2,N,K)
     const InputType b[COMPLEX * N * K] = {1., 2., 3., 4., 4., 3., 2., 1.};
     // Matrix c=a*b row-major c(2,M,N)
     const std::array<float, COMPLEX * M * N> c_ref_row_major = {
