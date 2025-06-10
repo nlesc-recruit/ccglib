@@ -76,7 +76,7 @@ int main(int argc, const char *argv[]) {
 
   // Select packing direction
   std::map<std::string, ccglib::packing::Direction> map_packing_direction{
-      {"pack", ccglib::packing::pack}, {"unpack", ccglib::packing::unpack}};
+      {"pack", ccglib::forward}, {"unpack", ccglib::backward}};
   ccglib::packing::Direction packing_direction =
       map_packing_direction[direction];
 

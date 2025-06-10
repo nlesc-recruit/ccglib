@@ -70,12 +70,12 @@ void Packing::Impl::Run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output,
 
   std::shared_ptr<cu::Function> function;
   switch (direction) {
-  case Direction::pack:
+  case Direction::forward:
     function = function_pack_;
     // complex-last is only supported in the packing kernel
     parameters.push_back(static_cast<const void *>(&complex_axis_is_last));
     break;
-  case Direction::unpack:
+  case Direction::backward:
     function = function_unpack_;
     // complex-last is not supported in the unpacking kernel
     if (complex_axis_is_last) {

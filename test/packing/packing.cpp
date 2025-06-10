@@ -46,7 +46,7 @@ TEST_CASE("Packing") {
   d_out.zero(bytes_out);
 
   ccglib::packing::Packing packing(N, device, stream);
-  packing.Run(d_in, d_out, ccglib::packing::pack);
+  packing.Run(d_in, d_out, ccglib::forward);
 
   // copy output to host
   stream.memcpyDtoHAsync(h_out, d_out, bytes_out);
@@ -90,7 +90,7 @@ TEST_CASE("Unpacking") {
   d_out.zero(bytes_out);
 
   ccglib::packing::Packing packing(N, device, stream);
-  packing.Run(d_in, d_out, ccglib::packing::unpack);
+  packing.Run(d_in, d_out, ccglib::backward);
 
   // copy output to host
   stream.memcpyDtoHAsync(h_out, d_out, bytes_out);
@@ -138,8 +138,8 @@ TEST_CASE("Pack - unpack") {
 
   ccglib::packing::Packing packing(N, device, stream);
 
-  packing.Run(d_in, d_packed, ccglib::packing::pack);
-  packing.Run(d_packed, d_out, ccglib::packing::unpack);
+  packing.Run(d_in, d_packed, ccglib::forward);
+  packing.Run(d_packed, d_out, ccglib::backward);
 
   // copy output to host
   stream.memcpyDtoHAsync(h_out, d_out, bytes_unpacked);
@@ -178,7 +178,7 @@ TEST_CASE("Packing - complex-interleaved") {
   d_out.zero(bytes_out);
 
   ccglib::packing::Packing packing(N, device, stream);
-  packing.Run(d_in, d_out, ccglib::packing::pack,
+  packing.Run(d_in, d_out, ccglib::forward,
               ccglib::complex_interleaved);
 
   // copy output to host

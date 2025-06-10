@@ -10,6 +10,7 @@
 #endif
 
 #include <ccglib/common/complex_order.h>
+#include <ccglib/common/direction.h>
 
 // Forward declaration of cudawrappers types
 namespace cu {
@@ -20,7 +21,6 @@ class Stream;
 } // namespace cu
 
 namespace ccglib::packing {
-enum Direction { pack, unpack };
 
 class Packing {
 public:
