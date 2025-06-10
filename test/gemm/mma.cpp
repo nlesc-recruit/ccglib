@@ -266,8 +266,8 @@ public:
 
     gemm_mma.Run(d_a_trans, d_b_trans, *d_c_);
 
-    // convert the output from complex-interleaved to to complex-planar layout and
-    // reuse the verify function that expects complex-planar layout
+    // convert the output from complex-interleaved to to complex-planar layout
+    // and reuse the verify function that expects complex-planar layout
     if (complex_axis_location == ccglib::complex_interleaved) {
       // copy C to host
       stream_->memcpyDtoHAsync(*h_c_, *d_c_, bytes_c_);
