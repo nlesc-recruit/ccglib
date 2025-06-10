@@ -179,7 +179,7 @@ TEST_CASE("Packing - complex-interleaved") {
 
   ccglib::packing::Packing packing(N, device, stream);
   packing.Run(d_in, d_out, ccglib::packing::pack,
-              ccglib::packing::complex_interleaved);
+              ccglib::complex_interleaved);
 
   // copy output to host
   stream.memcpyDtoHAsync(h_out, d_out, bytes_out);
