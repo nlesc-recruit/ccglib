@@ -151,7 +151,7 @@ TEST_CASE("Pack - unpack") {
   }
 }
 
-TEST_CASE("Packing - complex-last") {
+TEST_CASE("Packing - complex-interleaved") {
   skip_if_old_rocm();
 
   const size_t N = 2048;

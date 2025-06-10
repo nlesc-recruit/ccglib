@@ -266,8 +266,8 @@ public:
 
     gemm_mma.Run(d_a_trans, d_b_trans, *d_c_);
 
-    // convert the output from complex-last to to complex-middle layout and
-    // reuse the verify function that expects complex-middle layout
+    // convert the output from complex-interleaved to to complex-planar layout and
+    // reuse the verify function that expects complex-planar layout
     if (complex_axis_location == ccglib::complex_interleaved) {
       // copy C to host
       stream_->memcpyDtoHAsync(*h_c_, *d_c_, bytes_c_);
@@ -423,7 +423,7 @@ template <typename Fixture> struct GemmTestOpt : public Fixture {
       this->complex_gemm_opt(ccglib::mma::col_major);
     }
 
-    SECTION("opt-row-major-complex-last - InputSize: " +
+    SECTION("opt-row-major-complex-interleaved - InputSize: " +
             std::to_string(Traits::InputSize) +
             "b, OutputSize: " + std::to_string(Traits::OutputSize) + "b") {
       this->init(Traits::M_row_major.aligned, Traits::N_row_major.aligned,
@@ -437,7 +437,7 @@ template <typename Fixture> struct GemmTestOpt : public Fixture {
                              ccglib::complex_interleaved);
     }
 
-    SECTION("opt-col-major-complex-last - InputSize: " +
+    SECTION("opt-col-major-complex-interleaved - InputSize: " +
             std::to_string(Traits::InputSize) +
             "b, OutputSize: " + std::to_string(Traits::OutputSize) + "b") {
       this->init(Traits::M_col_major.aligned, Traits::N_col_major.aligned,

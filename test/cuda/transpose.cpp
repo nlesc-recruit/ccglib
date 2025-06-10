@@ -111,9 +111,9 @@ private:
     // verification
     // data is transposed from shape [batch][complex][m][n / packing_factor] to
     // [batch][m/m_per_chunk][n/n_per_chunk][complex][m_per_chunk][n_per_chunk /
-    // packing_factor] in complex-middle mode, where packing_factor is the
+    // packing_factor] in complex-planar mode, where packing_factor is the
     // number of samples per item (e.g. 32 for 1-bit samples packed into 32-bit
-    // ints.) In complex-last mode, complex is the last axis.
+    // ints.) In complex-interleaved mode, complex is the last axis.
 
     std::array<size_t, 4> shape_input;
     if (complex_axis_location == ccglib::ComplexAxisLocation::complex_planar) {

@@ -68,7 +68,7 @@ GEMM::Impl::Impl(size_t B_, size_t M_, size_t N_, size_t K_,
 
   if (variant_is_basic && c_complex_axis_is_last) {
     throw std::runtime_error(
-        "complex-last output is not supported in basic variant");
+        "complex-interleaved output is not supported in basic variant");
   }
 
 #if defined(DEBUG)

@@ -230,7 +230,7 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
   // to allow for async operations: copy next submatrix to shared memory while
   // computing current submatrix
   // To save shared memory, the C matrix reuses the same shared memory in
-  // case of complex-last output.
+  // case of complex-interleaved output.
   __shared__ union {
     Tin ab[A_s_size + B_s_size];
 #if defined(C_COMPLEX_LAST)
