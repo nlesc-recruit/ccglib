@@ -1,11 +1,11 @@
 #include <iostream>
 
 #include <ccglib/ccglib.hpp>
-#include <ccglib/helper.h>
+#include <ccglib/common/helper.h>
 #include <cudawrappers/cu.hpp>
 #include <cxxopts.hpp>
 
-#include <ccglib/precision.h>
+#include <ccglib/common/precision.h>
 
 #if defined(HAVE_PMT)
 #include <pmt.h>

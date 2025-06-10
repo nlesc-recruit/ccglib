@@ -3,10 +3,10 @@
 
 #include <memory>
 
+#include <ccglib/common/precision.h>
 #include <ccglib/gemm/complex_order.h>
 #include <ccglib/gemm/mem_order.h>
 #include <ccglib/gemm/variant.h>
-#include <ccglib/precision.h>
 
 #ifdef __HIP__
 #include <hip/hip_runtime.h>

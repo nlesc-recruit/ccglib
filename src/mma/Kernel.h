@@ -9,8 +9,8 @@
 
 #include <string>
 
+#include <ccglib/common/precision.h>
 #include <ccglib/gemm/variant.h>
-#include <ccglib/precision.h>
 #include <cudawrappers/cu.hpp>
 
 namespace ccglib::mma {

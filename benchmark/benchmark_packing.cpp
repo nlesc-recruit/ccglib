@@ -1,7 +1,7 @@
 #include <iostream>
 
 #include <ccglib/ccglib.hpp>
-#include <ccglib/helper.h>
+#include <ccglib/common/helper.h>
 #include <cudawrappers/cu.hpp>
 #include <cxxopts.hpp>
 

@@ -4,10 +4,10 @@
 #include <cudawrappers/cu.hpp>
 #include <cudawrappers/nvrtc.hpp>
 
+#include <ccglib/common/helper.h>
 #include <ccglib/fp16.h>
 #include <ccglib/gemm/mma.h>
 #include <ccglib/gemm/reference.h>
-#include <ccglib/helper.h>
 #include <ccglib/transpose/transpose.h>
 
 #include <catch2/catch_template_test_macros.hpp>
@@ -20,7 +20,7 @@
 
 #include "arch.h"
 #include "verify.h"
-#include <ccglib/precision.h>
+#include <ccglib/common/precision.h>
 #ifndef COMPLEX
 #define COMPLEX 2
 #endif

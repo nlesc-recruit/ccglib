@@ -9,7 +9,7 @@
 #include <ccglib/gemm/reference.h>
 
 #include "fpequals.h"
-#include <ccglib/precision.h>
+#include <ccglib/common/precision.h>
 
 template <typename Tin, typename Tout, ccglib::ValueType InputPrecision>
 void verify(const Tin *a, const Tin *b, const Tout *c, size_t B, size_t M,

@@ -1,8 +1,8 @@
-#include <ccglib/precision.h>
+#include <ccglib/common/precision.h>
 #include <iostream>
 
 #include <ccglib/ccglib.hpp>
-#include <ccglib/helper.h>
+#include <ccglib/common/helper.h>
 #include <cudawrappers/cu.hpp>
 #include <cxxopts.hpp>
 

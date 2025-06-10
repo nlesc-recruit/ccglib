@@ -5,9 +5,9 @@
 #include <cudawrappers/cu.hpp>
 #include <cudawrappers/nvrtc.hpp>
 
+#include <ccglib/common/helper.h>
+#include <ccglib/common/precision.h>
 #include <ccglib/gemm/mma.h>
-#include <ccglib/helper.h>
-#include <ccglib/precision.h>
 
 #include "Kernel.h"
 

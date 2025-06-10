@@ -7,8 +7,8 @@
 #include <xtensor/xadapt.hpp>
 #include <xtensor/xtensor.hpp>
 
+#include <ccglib/common/precision.h>
 #include <ccglib/fp16.h>
-#include <ccglib/precision.h>
 #include <ccglib/transpose/transpose.h>
 
 namespace ccglib::test {

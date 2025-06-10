@@ -3,7 +3,7 @@
 #include <cudawrappers/cu.hpp>
 #include <cudawrappers/nvrtc.hpp>
 
-#include <ccglib/helper.h>
+#include <ccglib/common/helper.h>
 #include <ccglib/packing/packing.h>
 
 extern const char _binary_kernels_packing_kernel_cu_start,
