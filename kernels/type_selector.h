@@ -11,6 +11,8 @@ namespace wmma = rocwmma;
 using namespace nvcuda;
 #endif
 
+#include "ccglib/common/value_type.h"
+
 #ifndef COMPLEX
 #define COMPLEX 2
 #endif
