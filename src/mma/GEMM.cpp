@@ -123,8 +123,12 @@ void GEMM::Impl::compile_kernel() {
     "-DK_GLOBAL=" + std::to_string(K_) + "UL",
     "-DK_PADDING=" + std::to_string(0) +
         "UL", // will be required when K is not a multiple of K_PER_WMMA
-    "-DTYPE_IN=" + std::to_string(kernel_.GetPrecision().input_type),
-    "-DTYPE_OUT=" + std::to_string(kernel_.GetPrecision().output_type),
+    "-DTYPE_IN=" + std::to_string(static_cast<ValueType>(
+                       kernel_.GetPrecision().input_type)),
+    "-DTYPE_OUT=" + std::to_string(static_cast<ValueType>(
+                        kernel_.GetPrecision().output_type)),
+    "-DNBIT_IN=" + std::to_string((kernel_.GetPrecision().GetInputBits())),
+    "-DNBIT_OUT=" + std::to_string((kernel_.GetPrecision().GetOutputBits())),
     "-DWARP_SIZE=" + std::to_string(warp_size),
     "-DM_PER_BLOCK=" + std::to_string(parameters.m_per_block),
     "-DM_PER_WARP=" + std::to_string(parameters.m_per_warp),

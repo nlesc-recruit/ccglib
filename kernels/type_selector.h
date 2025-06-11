@@ -11,6 +11,9 @@ namespace wmma = rocwmma;
 using namespace nvcuda;
 #endif
 
+#include "value_type.h"
+using ccglib::ValueType;
+
 #ifndef COMPLEX
 #define COMPLEX 2
 #endif
@@ -20,21 +23,6 @@ using namespace nvcuda;
 #ifndef IMAG
 #define IMAG 1
 #endif
-
-#define VALUE_TYPE_INT1 0
-#define VALUE_TYPE_INT32 1
-#define VALUE_TYPE_FLOAT16 2
-#define VALUE_TYPE_FLOAT32 3
-
-#define GET_NBITS(type)                                                        \
-  ((type) == VALUE_TYPE_INT1      ? 1                                          \
-   : (type) == VALUE_TYPE_INT32   ? 32                                         \
-   : (type) == VALUE_TYPE_FLOAT16 ? 16                                         \
-   : (type) == VALUE_TYPE_FLOAT32 ? 32                                         \
-                                  : 0)
-
-#define NBIT_IN GET_NBITS(TYPE_IN)
-#define NBIT_OUT GET_NBITS(TYPE_OUT)
 
 // All values related to data layout must be defined at compile time
 #if !defined BATCH_SIZE || !defined M_GLOBAL || !defined N_GLOBAL ||           \
@@ -70,13 +58,14 @@ using namespace nvcuda;
 // structures used in the GEMM kernel. It relies on template deduction based on
 // the kernel input and output data types, and is specialized below for the
 // different supported input and output types.
-template <int IN, int OUT> struct TypeSelector {
-  static_assert(IN == 1 || IN == 32 || IN == 16, "Unsupported input data type");
-  static_assert(IN == 1 || OUT == 32 || OUT == 16,
-                "Unsupported output data type");
+template <ValueType IN, ValueType OUT> struct TypeSelector {
+  static_assert((IN == ValueType::int1 && OUT == ValueType::int32) ||
+                    (IN == ValueType::float16 || IN == ValueType::float32) &&
+                        (OUT == ValueType::float16 || ValueType::float32),
+                "Unsupported combination of input/output data types");
 };
 
-template <> struct TypeSelector<1, 32> {
+template <> struct TypeSelector<ValueType::int1, ValueType::float32> {
   using Tin = unsigned int;
 #ifdef __HIP_PLATFORM_AMD__
   using Ttc = void;
@@ -91,7 +80,7 @@ template <> struct TypeSelector<1, 32> {
   static constexpr bool IS_DOWNCAST_OP = false;
 };
 
-template <> struct TypeSelector<16, 16> {
+template <> struct TypeSelector<ValueType::float16, ValueType::float16> {
   using Tin = half;
   using Ttc = half;
   using Tshared = half;
@@ -102,7 +91,7 @@ template <> struct TypeSelector<16, 16> {
   static constexpr bool IS_DOWNCAST_OP = false;
 };
 
-template <> struct TypeSelector<16, 32> {
+template <> struct TypeSelector<ValueType::float16, ValueType::float32> {
   using Tin = half;
   using Ttc = half;
   using Tshared = float;
@@ -113,7 +102,7 @@ template <> struct TypeSelector<16, 32> {
   static constexpr bool IS_DOWNCAST_OP = false;
 };
 
-template <> struct TypeSelector<32, 32> {
+template <> struct TypeSelector<ValueType::float32, ValueType::float32> {
   using Tin = float;
 #ifdef __HIP_PLATFORM_AMD__
   using Ttc = float;
@@ -128,7 +117,7 @@ template <> struct TypeSelector<32, 32> {
   static constexpr bool IS_DOWNCAST_OP = false;
 };
 
-template <> struct TypeSelector<32, 16> {
+template <> struct TypeSelector<ValueType::float32, ValueType::float16> {
   using Tin = float;
 #ifdef __HIP_PLATFORM_AMD__
   using Ttc = float;
@@ -144,7 +133,8 @@ template <> struct TypeSelector<32, 16> {
 };
 
 // Create aliases for the defined types
-using DeviceTraits = TypeSelector<NBIT_IN, NBIT_OUT>;
+using DeviceTraits = TypeSelector<static_cast<ValueType>(TYPE_IN),
+                                  static_cast<ValueType>(TYPE_OUT)>;
 
 using Tin = typename DeviceTraits::Tin;
 using Ttc = typename DeviceTraits::Ttc;
