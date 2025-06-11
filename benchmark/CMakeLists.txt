@@ -18,7 +18,7 @@ FetchContent_MakeAvailable(cxxopts)
 set(BENCHMARKS gemm packing transpose)
 foreach(benchmark ${BENCHMARKS})
   set(TARGET benchmark_${benchmark})
-  set(SOURCE benchmark_${benchmark}.cu)
+  set(SOURCE benchmark_${benchmark}.cpp)
   add_executable(${TARGET} ${SOURCE})
 
   target_link_libraries(${TARGET} ccglib cudawrappers::cu cudawrappers::nvrtc
@@ -28,9 +28,5 @@ foreach(benchmark ${BENCHMARKS})
   endif()
 
   target_include_directories(${TARGET} PRIVATE "${PROJECT_SOURCE_DIR}/include")
-
-  if(${CCGLIB_BACKEND_HIP})
-    set_source_files_properties(${SOURCE} PROPERTIES LANGUAGE HIP)
-  endif()
 
 endforeach()

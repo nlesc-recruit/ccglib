@@ -244,9 +244,9 @@ int main(int argc, const char *argv[]) {
   }
   for (size_t bench = 0; bench < nr_benchmarks; bench++) {
     for (size_t idx = 0; idx < num_sizes; idx++) {
-      ccglib::mma::GEMM gemm(
-          B, M[idx], N[idx], K[idx], gemm_precision.GetInputBits(), device,
-          stream, gemm_precision, gemm_variant, gemm_complex_axis_location);
+      ccglib::mma::GEMM gemm(B, M[idx], N[idx], K[idx], device, stream,
+                             gemm_precision, gemm_variant,
+                             gemm_complex_axis_location);
 
       // Run once to get estimate of runtime per kernel
       cu::Event start;
