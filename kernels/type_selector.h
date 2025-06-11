@@ -65,7 +65,7 @@ template <ValueType IN, ValueType OUT> struct TypeSelector {
                 "Unsupported combination of input/output data types");
 };
 
-template <> struct TypeSelector<ValueType::int1, ValueType::float32> {
+template <> struct TypeSelector<ValueType::int1, ValueType::int32> {
   using Tin = unsigned int;
 #ifdef __HIP_PLATFORM_AMD__
   using Ttc = void;
