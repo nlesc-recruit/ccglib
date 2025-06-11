@@ -91,10 +91,10 @@ void Transpose::Impl::compile_kernel() {
   };
 
   if (input_complex_axis_location_ == ComplexAxisLocation::complex_planar) {
-    options.push_back("-DINPUT_COMPLEX_MIDDLE");
+    options.push_back("-DINPUT_COMPLEX_PLANAR");
   } else if (input_complex_axis_location_ ==
              ComplexAxisLocation::complex_interleaved) {
-    options.push_back("-DINPUT_COMPLEX_LAST");
+    options.push_back("-DINPUT_COMPLEX_INTERLEAVED");
   }
 
   const std::string kernel(&_binary_kernels_transpose_kernel_cu_start,

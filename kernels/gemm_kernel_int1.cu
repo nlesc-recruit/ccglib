@@ -233,7 +233,7 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
   // case of complex-interleaved output.
   __shared__ union {
     Tin ab[A_s_size + B_s_size];
-#if defined(C_COMPLEX_LAST)
+#if defined(C_COMPLEX_INTERLEAVED)
     Tout c[C_s_size];
 #endif
   } shmem;
@@ -244,7 +244,7 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
                    [K_PER_WMMA / DeviceTraits::PACKING_FACTOR];
   A_s_t &A_s = *reinterpret_cast<A_s_t *>(shmem.ab);
   B_s_t &B_s = *reinterpret_cast<B_s_t *>(&shmem.ab[A_s_size]);
-#if defined(C_COMPLEX_LAST)
+#if defined(C_COMPLEX_INTERLEAVED)
   using C_s_t = Tout[M_PER_BLOCK / M_PER_WARP][N_PER_BLOCK / N_PER_WARP]
                     [M_PER_WMMA][N_PER_WMMA];
   C_s_t &C_s = *reinterpret_cast<C_s_t *>(shmem.c);
@@ -351,9 +351,9 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
   }
 
   // store the result to global memory
-#if defined(C_COMPLEX_MIDDLE)
+#if defined(C_COMPLEX_PLANAR)
   store_matrix(sum, C, batch, blockM, warpM, blockN, warpN);
-#elif defined(C_COMPLEX_LAST)
+#elif defined(C_COMPLEX_INTERLEAVED)
   store_matrix_padded(sum, C, C_s, batch, blockM, warpM, blockN, warpN, M_TILES,
                       N_TILES);
 #endif

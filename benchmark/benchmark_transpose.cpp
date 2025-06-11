@@ -30,8 +30,8 @@ cxxopts::Options create_commandline_parser(const char *argv[]) {
       cxxopts::value<std::string>())(
       "variant", "GEMM kernel variant (basic or opt)",
       cxxopts::value<std::string>()->default_value("opt"))(
-      "complex_axis", "Location of complex axis (middle or last)",
-      cxxopts::value<std::string>()->default_value("middle"))(
+      "complex_axis", "Location of complex axis (planar or interleaved)",
+      cxxopts::value<std::string>()->default_value("planar"))(
 
 #ifdef HAVE_PMT
       "measure_power", "Measure power usage",
@@ -107,8 +107,8 @@ int main(int argc, const char *argv[]) {
 
   // Select complex axis location
   std::map<std::string, ccglib::ccglib::ComplexAxisLocation> map_complex_axis{
-      {"middle", ccglib::complex_planar},
-      {"last", ccglib::complex_interleaved}};
+      {"planar", ccglib::complex_planar},
+      {"interleaved", ccglib::complex_interleaved}};
   ccglib::ccglib::ComplexAxisLocation complex_axis_location =
       map_complex_axis[complex_axis];
 

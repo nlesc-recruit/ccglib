@@ -147,13 +147,13 @@ using A_t =
 using B_t =
     Tin[BATCH_SIZE][COMPLEX][N_GLOBAL][K_GLOBAL / DeviceTraits::PACKING_FACTOR];
 
-#if defined(C_COMPLEX_MIDDLE)
+#if defined(C_COMPLEX_PLANAR)
 #ifdef C_ROW_MAJOR
 using C_t = Tout[BATCH_SIZE][COMPLEX][M_GLOBAL][N_GLOBAL];
 #else
 using C_t = Tout[BATCH_SIZE][COMPLEX][N_GLOBAL][M_GLOBAL];
 #endif
-#elif defined(C_COMPLEX_LAST)
+#elif defined(C_COMPLEX_INTERLEAVED)
 #ifdef C_ROW_MAJOR
 using C_t = Tout[BATCH_SIZE][M_GLOBAL][N_GLOBAL][COMPLEX];
 #else
@@ -187,6 +187,6 @@ using Accumulator_t =
 #endif
 
 #define REQUIRES_SHARED_MEMORY                                                 \
-  (M_IS_PADDED || N_IS_PADDED || C_COMPLEX_LAST || REQUIRES_DOWNCAST)
+  (M_IS_PADDED || N_IS_PADDED || C_COMPLEX_INTERLEAVED || REQUIRES_DOWNCAST)
 
 #endif // TYPE_SELECTOR_H_

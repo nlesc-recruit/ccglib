@@ -141,10 +141,10 @@ void GEMM::Impl::compile_kernel() {
   };
 
   if (c_complex_axis_location_ == ComplexAxisLocation::complex_planar) {
-    options.push_back("-DC_COMPLEX_MIDDLE");
+    options.push_back("-DC_COMPLEX_PLANAR");
   } else if (c_complex_axis_location_ ==
              ComplexAxisLocation::complex_interleaved) {
-    options.push_back("-DC_COMPLEX_LAST");
+    options.push_back("-DC_COMPLEX_INTERLEAVED");
   }
 
   if (a_mem_order_ == MemOrder::row_major) {
