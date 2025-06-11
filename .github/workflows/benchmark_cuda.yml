@@ -1,0 +1,25 @@
+name: benchmark-cuda
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test-a4000:
+    name: NVIDIA A4000
+    runs-on: [slurm]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astron-rd/slurm-action@v1.1
+        with:
+          partition: defq
+          gres: gpu:A4000
+          time: "00:10:00"
+          commands: |
+            module load spack/20250403
+            module load cuda
+            cmake -S . -B build -DCCGLIB_BUILD_BENCHMARK=1
+            make -C build -j
+            ./build/benchmark/benchmark_gemm -m 1024 -n 1024 -k 64 --precision_in float16
+            ./build/benchmark/benchmark_packing -n 1024
+            ./build/benchmark/benchmark_transpose -m 1024 -n 1024 --precision float16
