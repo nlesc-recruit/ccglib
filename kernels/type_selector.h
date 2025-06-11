@@ -11,8 +11,6 @@ namespace wmma = rocwmma;
 using namespace nvcuda;
 #endif
 
-#include "ccglib/common/value_type.h"
-
 #ifndef COMPLEX
 #define COMPLEX 2
 #endif
@@ -22,6 +20,21 @@ using namespace nvcuda;
 #ifndef IMAG
 #define IMAG 1
 #endif
+
+#define VALUE_TYPE_INT1 0
+#define VALUE_TYPE_INT32 1
+#define VALUE_TYPE_FLOAT16 2
+#define VALUE_TYPE_FLOAT32 3
+
+#define GET_NBITS(type)                                                        \
+  ((type) == VALUE_TYPE_INT1      ? 1                                          \
+   : (type) == VALUE_TYPE_INT32   ? 32                                         \
+   : (type) == VALUE_TYPE_FLOAT16 ? 16                                         \
+   : (type) == VALUE_TYPE_FLOAT32 ? 32                                         \
+                                  : 0)
+
+#define NBIT_IN GET_NBITS(TYPE_IN)
+#define NBIT_OUT GET_NBITS(TYPE_OUT)
 
 // All values related to data layout must be defined at compile time
 #if !defined BATCH_SIZE || !defined M_GLOBAL || !defined N_GLOBAL ||           \
