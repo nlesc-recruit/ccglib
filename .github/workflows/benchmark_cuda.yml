@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  test-a4000:
+  benchmark-a4000:
     name: NVIDIA A4000
     runs-on: [slurm]
     steps:
