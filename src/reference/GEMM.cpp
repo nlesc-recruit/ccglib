@@ -16,22 +16,12 @@ template <typename Tin, typename Tout>
 void Run(const Tin *a, const Tin *b, Tout *c, size_t M, size_t N, size_t K,
          ccglib::mma::MemOrder output_mem_order) {
 
-// FIXME: When using 'half' output type on an AMD GPU, the computation cannot be
-// done using 'half' type. This is because the required operators, `__half&
-// operator+(const __half& x)` and `__half& operator*(const __half& x)`, are
-// missing. According to the HIP documentation, they should be available. A bug
-// report has been submitted: https://github.com/ROCm/HIP/issues/3690.
-// This seems to have been fixed in the (currently upcoming) ROCm 6.4 release.
-// N.B. this problem is not present in the bfloat16 header.
-#if defined(__HIP_PLATFORM_AMD__)
+  // Use the output type as compute type, unless the output is a narrow type
+  // because tensor core multiply-add still happens in the wider type
   using ComputeType =
-      typename std::conditional<std::is_same<Tin, half>::value ||
-                                    std::is_same<Tout, half>::value,
+      typename std::conditional<std::is_same<Tout, half>::value ||
+                                    std::is_same<Tout, bf16>::value,
                                 float, Tout>::type;
-#else
-  using ComputeType = Tout;
-#endif
-
   const std::array<size_t, 3> a_shape = {2, M, K};
   const std::array<size_t, 3> b_shape = {2, N, K};
   std::array<size_t, 3> c_shape;
