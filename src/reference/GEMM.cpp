@@ -52,8 +52,8 @@ void Run(const Tin *a, const Tin *b, Tout *c, size_t M, size_t N, size_t K,
 #pragma omp parallel for collapse(2)
   for (size_t m = 0; m < M; ++m) {
     for (size_t n = 0; n < N; ++n) {
-      ComputeType sum_real = 0;
-      ComputeType sum_imag = 0;
+      ComputeType sum_real{0};
+      ComputeType sum_imag{0};
 
       for (size_t k = 0; k < K; ++k) {
         const ComputeType a_real = static_cast<ComputeType>(a_view(0, m, k));
