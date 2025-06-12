@@ -303,17 +303,17 @@ public:
 };
 
 using TestTypesComplexGemm =
-    std::tuple<ComplexGemmTestFixture<half, half, ccglib::ValueType::float16,
-                                      ccglib::ValueType::float16>,
-               ComplexGemmTestFixture<float, half, ccglib::ValueType::float32,
-                                      ccglib::ValueType::float16>,
-               ComplexGemmTestFixture<half, float, ccglib::ValueType::float16,
-                                      ccglib::ValueType::float32>,
-               ComplexGemmTestFixture<bf16, bf16, ccglib::ValueType::bfloat16,
+    std::tuple<ComplexGemmTestFixture<bf16, bf16, ccglib::ValueType::bfloat16,
                                       ccglib::ValueType::bfloat16>,
                ComplexGemmTestFixture<float, bf16, ccglib::ValueType::float32,
                                       ccglib::ValueType::bfloat16>,
                ComplexGemmTestFixture<bf16, float, ccglib::ValueType::bfloat16,
+                                      ccglib::ValueType::float32>,
+               ComplexGemmTestFixture<half, half, ccglib::ValueType::float16,
+                                      ccglib::ValueType::float16>,
+               ComplexGemmTestFixture<float, half, ccglib::ValueType::float32,
+                                      ccglib::ValueType::float16>,
+               ComplexGemmTestFixture<half, float, ccglib::ValueType::float16,
                                       ccglib::ValueType::float32>,
                ComplexGemmTestFixture<float, float, ccglib::ValueType::float32,
                                       ccglib::ValueType::float32>>;
