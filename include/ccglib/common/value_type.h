@@ -1,8 +1,11 @@
 #ifndef VALUE_TYPE_H_
 #define VALUE_TYPE_H_
 
-// Only include header in host compilation pass
-#if !(defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__))
+// Ensure headers are inlined by including them locally in device compilation
+// pass
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+#include "ccglib/fp16.h"
+#else
 #include <ccglib/fp16.h>
 #endif
 

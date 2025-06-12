@@ -60,8 +60,8 @@ using ccglib::ValueType;
 // different supported input and output types.
 template <ValueType IN, ValueType OUT> struct TypeSelector {
   static_assert((IN == ValueType::int1 && OUT == ValueType::int32) ||
-                    (IN == ValueType::float16 || IN == ValueType::float32) &&
-                        (OUT == ValueType::float16 || ValueType::float32),
+                    ((IN == ValueType::float16 || IN == ValueType::float32) &&
+                     (OUT == ValueType::float16 || ValueType::float32)),
                 "Unsupported combination of input/output data types");
 };
 
