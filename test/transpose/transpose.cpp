@@ -176,11 +176,11 @@ TEST_CASE_METHOD(TransposeTestFixtureBfloat16, "Transpose Test - bfloat16",
                  "[transpose-test-bfloat16]") {
   SECTION("complex-middle") {
     TransposeTestFixtureBfloat16::transpose(
-        transpose::ComplexAxisLocation::complex_middle);
+        ccglib::ComplexAxisLocation::complex_planar);
   }
   SECTION("complex-last") {
     TransposeTestFixtureBfloat16::transpose(
-        transpose::ComplexAxisLocation::complex_last);
+        ccglib::ComplexAxisLocation::complex_interleaved);
   }
 }
 

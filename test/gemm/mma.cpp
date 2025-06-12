@@ -6,6 +6,7 @@
 
 #include <ccglib/bf16.h>
 #include <ccglib/common/helper.h>
+#include <ccglib/common/precision.h>
 #include <ccglib/fp16.h>
 #include <ccglib/gemm/mma.h>
 #include <ccglib/gemm/reference.h>
@@ -21,7 +22,7 @@
 
 #include "arch.h"
 #include "verify.h"
-#include <ccglib/common/precision.h>
+
 #ifndef COMPLEX
 #define COMPLEX 2
 #endif
@@ -131,12 +132,12 @@ private:
     } else if constexpr (std::is_same_v<T, bf16>) {
       unsigned int seed = 0;
       for (int idx = 0; idx < bytes_a_ / sizeof(T); idx++) {
-        a[idx] = __float2bfloat16(static_cast<float>(rand_r(&seed)) /
-                                  static_cast<float>(RAND_MAX));
+        a[idx] = static_cast<bf16>(static_cast<float>(rand_r(&seed)) /
+                                   static_cast<float>(RAND_MAX));
       }
       for (int idx = 0; idx < bytes_b_ / sizeof(T); idx++) {
-        b[idx] = __float2bfloat16(static_cast<float>(rand_r(&seed)) /
-                                  static_cast<float>(RAND_MAX));
+        b[idx] = static_cast<bf16>(static_cast<float>(rand_r(&seed)) /
+                                   static_cast<float>(RAND_MAX));
       }
     } else if constexpr (std::is_same_v<T, float>) {
       unsigned int seed = 0;

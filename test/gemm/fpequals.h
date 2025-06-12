@@ -32,8 +32,8 @@ template <typename T> void fpEquals(T x, T y, size_t K = 1) {
   if constexpr (std::is_same_v<T, bf16>) {
     // We need to upcast since Catch2 cannot print bfloat16 types in case of
     // test failure.
-    const float x_conv = __bfloat162float(x);
-    const float y_conv = __bfloat162float(y);
+    const float x_conv = static_cast<float>(x);
+    const float y_conv = static_cast<float>(y);
 
     // We are more lenient in WithinAbs since we use a less precise type.
     REQUIRE_THAT(y_conv, Catch::Matchers::WithinAbs(x_conv, epsilon * K) ||
