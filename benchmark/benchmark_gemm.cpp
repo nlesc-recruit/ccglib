@@ -117,10 +117,10 @@ int main(int argc, const char *argv[]) {
   const ccglib::mma::Variant &gemm_variant = map_gemm_variant.at(variant);
 
   // Select complex axis location
-  const std::map<const std::string, const ccglib::mma::ComplexAxisLocation>
+  const std::map<const std::string, const ccglib::ComplexAxisLocation>
       map_gemm_complex_axis{{"planar", ccglib::complex_planar},
                             {"interleaved", ccglib::complex_interleaved}};
-  const ccglib::mma::ComplexAxisLocation &gemm_complex_axis_location =
+  const ccglib::ComplexAxisLocation &gemm_complex_axis_location =
       map_gemm_complex_axis.at(complex_axis);
 
   // If one of the input M, N, K arrays is size one and others are bigger,
