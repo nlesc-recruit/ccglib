@@ -273,17 +273,18 @@ public:
       stream_->memcpyDtoHAsync(*h_c_, *d_c_, bytes_c_);
       stream_->synchronize();
 
-      // move complex axis to middle
+      // move complex axis to planar
       const std::array<size_t, 3> shape{kBatchSize, global_m_ * global_n_,
                                         COMPLEX};
-      auto h_c_complex_last = xt::adapt(static_cast<Tout *>(*h_c_), shape);
-      xt::xtensor<Tout, 3> h_c_complex_middle =
-          xt::transpose(h_c_complex_last, {0, 2, 1});
+      auto h_c_complex_interleaved =
+          xt::adapt(static_cast<Tout *>(*h_c_), shape);
+      xt::xtensor<Tout, 3> h_c_complex_planar =
+          xt::transpose(h_c_complex_interleaved, {0, 2, 1});
 
       // verify output
       verify<Tin, Tout, InputPrecision>(
           static_cast<const Tin *>(*h_a_), static_cast<const Tin *>(*h_b_),
-          static_cast<Tout *>(h_c_complex_middle.data()), kBatchSize, global_m_,
+          static_cast<Tout *>(h_c_complex_planar.data()), kBatchSize, global_m_,
           global_n_, global_k_, output_mem_order);
     } else {
       verify_output(output_mem_order);
