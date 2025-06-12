@@ -75,10 +75,9 @@ int main(int argc, const char *argv[]) {
   const unsigned device_id = cmdline["device"].as<unsigned>();
 
   // Select packing direction
-  std::map<std::string, ccglib::packing::Direction> map_packing_direction{
+  std::map<std::string, ccglib::Direction> map_packing_direction{
       {"pack", ccglib::forward}, {"unpack", ccglib::backward}};
-  ccglib::packing::Direction packing_direction =
-      map_packing_direction[direction];
+  ccglib::Direction packing_direction = map_packing_direction[direction];
 
   const size_t num_sizes = N.size();
 
