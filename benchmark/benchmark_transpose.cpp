@@ -1,8 +1,8 @@
-#include <ccglib/precision.h>
+#include <ccglib/common/precision.h>
 #include <iostream>
 
 #include <ccglib/ccglib.hpp>
-#include <ccglib/helper.h>
+#include <ccglib/common/helper.h>
 #include <cudawrappers/cu.hpp>
 #include <cxxopts.hpp>
 
@@ -30,8 +30,8 @@ cxxopts::Options create_commandline_parser(const char *argv[]) {
       cxxopts::value<std::string>())(
       "variant", "GEMM kernel variant (basic or opt)",
       cxxopts::value<std::string>()->default_value("opt"))(
-      "complex_axis", "Location of complex axis (middle or last)",
-      cxxopts::value<std::string>()->default_value("middle"))(
+      "complex_axis", "Location of complex axis (planar or interleaved)",
+      cxxopts::value<std::string>()->default_value("planar"))(
 
 #ifdef HAVE_PMT
       "measure_power", "Measure power usage",
@@ -106,10 +106,10 @@ int main(int argc, const char *argv[]) {
   ccglib::mma::Variant gemm_variant = map_gemm_variant[variant];
 
   // Select complex axis location
-  std::map<std::string, ccglib::transpose::ComplexAxisLocation>
-      map_complex_axis{{"middle", ccglib::transpose::complex_middle},
-                       {"last", ccglib::transpose::complex_last}};
-  ccglib::transpose::ComplexAxisLocation complex_axis_location =
+  std::map<std::string, ccglib::ComplexAxisLocation> map_complex_axis{
+      {"planar", ccglib::complex_planar},
+      {"interleaved", ccglib::complex_interleaved}};
+  ccglib::ComplexAxisLocation complex_axis_location =
       map_complex_axis[complex_axis];
 
   // Select size of input / output types

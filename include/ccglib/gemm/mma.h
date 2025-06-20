@@ -3,10 +3,10 @@
 
 #include <memory>
 
-#include <ccglib/gemm/complex_order.h>
+#include <ccglib/common/complex_order.h>
+#include <ccglib/common/precision.h>
 #include <ccglib/gemm/mem_order.h>
 #include <ccglib/gemm/variant.h>
-#include <ccglib/precision.h>
 
 #ifdef __HIP__
 #include <hip/hip_runtime.h>
@@ -28,7 +28,7 @@ public:
   GEMM(size_t B_, size_t M_, size_t N_, size_t K_, cu::Device &device,
        cu::Stream &stream, Precision precision, Variant Variant = Variant::opt,
        ComplexAxisLocation c_complex_axis_location =
-           ComplexAxisLocation::complex_middle,
+           ComplexAxisLocation::complex_planar,
        MemOrder c_mem_order = MemOrder::row_major,
        MemOrder a_mem_order = MemOrder::row_major,
        MemOrder b_mem_order = MemOrder::col_major);
@@ -40,7 +40,7 @@ public:
   GEMM(size_t B_, size_t M_, size_t N_, size_t K_, hipDevice_t &device,
        hipStream_t &stream, Precision precision, Variant Variant = Variant::opt,
        ComplexAxisLocation c_complex_axis_location =
-           ComplexAxisLocation::complex_middle,
+           ComplexAxisLocation::complex_planar,
        MemOrder c_mem_order = MemOrder::row_major,
        MemOrder a_mem_order = MemOrder::row_major,
        MemOrder b_mem_order = MemOrder::col_major);
@@ -49,7 +49,7 @@ public:
   GEMM(size_t B_, size_t M_, size_t N_, size_t K_, CUdevice &device,
        CUstream &stream, Precision precision, Variant Variant = Variant::opt,
        ComplexAxisLocation c_complex_axis_location =
-           ComplexAxisLocation::complex_middle,
+           ComplexAxisLocation::complex_planar,
        MemOrder c_mem_order = MemOrder::row_major,
        MemOrder a_mem_order = MemOrder::row_major,
        MemOrder b_mem_order = MemOrder::col_major);

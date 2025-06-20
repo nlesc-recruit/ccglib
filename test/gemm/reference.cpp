@@ -6,9 +6,9 @@
 #include <xtensor/xtensor.hpp>
 #include <xtensor/xview.hpp>
 
+#include <ccglib/common/helper.h>
 #include <ccglib/fp16.h>
 #include <ccglib/gemm/reference.h>
-#include <ccglib/helper.h>
 
 namespace ccglib::test {
 

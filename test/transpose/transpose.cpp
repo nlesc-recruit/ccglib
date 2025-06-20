@@ -6,8 +6,8 @@
 #include <xtensor/xadapt.hpp>
 #include <xtensor/xtensor.hpp>
 
+#include <ccglib/common/precision.h>
 #include <ccglib/fp16.h>
-#include <ccglib/precision.h>
 #include <ccglib/transpose/transpose.h>
 
 namespace ccglib::test {
@@ -82,7 +82,7 @@ private:
     d_a_trans_->zero(kBytesA);
   }
 
-  void verify_output(transpose::ComplexAxisLocation complex_axis_location) {
+  void verify_output(ccglib::ComplexAxisLocation complex_axis_location) {
     // copy output to host
     stream_->memcpyDtoHAsync(*h_a_trans_, *d_a_trans_, kBytesA);
     stream_->synchronize();
@@ -90,16 +90,15 @@ private:
     // verification
     // data is transposed from shape [batch][complex][m][n / packing_factor] to
     // [batch][m/m_per_chunk][n/n_per_chunk][complex][m_per_chunk][n_per_chunk /
-    // packing_factor] in complex-middle mode, where packing_factor is the
+    // packing_factor] in complex-planar mode, where packing_factor is the
     // number of samples per item (e.g. 32 for 1-bit samples packed into 32-bit
-    // ints.) In complex-last mode, complex is the last axis.
+    // ints.) In complex-interleaved mode, complex is the last axis.
 
     std::array<size_t, 4> shape_input;
-    if (complex_axis_location ==
-        transpose::ComplexAxisLocation::complex_middle) {
+    if (complex_axis_location == ccglib::ComplexAxisLocation::complex_planar) {
       shape_input = {kBatchSize, kComplex, kGlobalM, kGlobalN / kPackingFactor};
     } else if (complex_axis_location ==
-               transpose::ComplexAxisLocation::complex_last) {
+               ccglib::ComplexAxisLocation::complex_interleaved) {
       shape_input = {kBatchSize, kGlobalM, kGlobalN / kPackingFactor, kComplex};
     }
 
@@ -122,10 +121,10 @@ private:
 
             float in;
             if (complex_axis_location ==
-                transpose::ComplexAxisLocation::complex_middle) {
+                ccglib::ComplexAxisLocation::complex_planar) {
               in = input(b, c, m, n);
             } else if (complex_axis_location ==
-                       transpose::ComplexAxisLocation::complex_last) {
+                       ccglib::ComplexAxisLocation::complex_interleaved) {
               in = input(b, m, n, c);
             }
 
@@ -140,7 +139,7 @@ private:
   }
 
 public:
-  void transpose(transpose::ComplexAxisLocation complex_axis_location) {
+  void transpose(ccglib::ComplexAxisLocation complex_axis_location) {
     init_memory();
 
     ccglib::transpose::Transpose transpose_a(
@@ -160,20 +159,20 @@ using TransposeTestFixtureInt1 =
 
 TEST_CASE_METHOD(TransposeTestFixtureFloat16, "Transpose Test - float16",
                  "[transpose-test-float16]") {
-  SECTION("complex-middle") {
+  SECTION("complex-planar") {
     TransposeTestFixtureFloat16::transpose(
-        transpose::ComplexAxisLocation::complex_middle);
+        ccglib::ComplexAxisLocation::complex_planar);
   }
-  SECTION("complex-last") {
+  SECTION("complex-interleaved") {
     TransposeTestFixtureFloat16::transpose(
-        transpose::ComplexAxisLocation::complex_last);
+        ccglib::ComplexAxisLocation::complex_interleaved);
   }
 }
 
 TEST_CASE_METHOD(TransposeTestFixtureInt1, "Transpose Test - int1",
                  "[transpose-test-int1]") {
   TransposeTestFixtureInt1::transpose(
-      transpose::ComplexAxisLocation::complex_middle);
+      ccglib::ComplexAxisLocation::complex_planar);
 }
 
 } // namespace ccglib::test

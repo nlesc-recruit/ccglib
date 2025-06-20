@@ -1,4 +1,4 @@
-#include "ccglib/precision.h"
+#include "ccglib/common/precision.h"
 #include <iostream>
 
 #include <ccglib/ccglib.hpp>

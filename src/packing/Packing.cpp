@@ -3,7 +3,7 @@
 #include <cudawrappers/cu.hpp>
 #include <cudawrappers/nvrtc.hpp>
 
-#include <ccglib/helper.h>
+#include <ccglib/common/helper.h>
 #include <ccglib/packing/packing.h>
 
 extern const char _binary_kernels_packing_kernel_cu_start,
@@ -63,19 +63,19 @@ void Packing::Impl::Run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output,
   dim3 grid(helper::ceildiv(N_, threads.x));
 
   bool complex_axis_is_last =
-      input_complex_axis_location == ComplexAxisLocation::complex_last;
+      input_complex_axis_location == ComplexAxisLocation::complex_interleaved;
 
   std::vector<const void *> parameters = {d_output.parameter(),
                                           d_input.parameter()};
 
   std::shared_ptr<cu::Function> function;
   switch (direction) {
-  case Direction::pack:
+  case Direction::forward:
     function = function_pack_;
     // complex-last is only supported in the packing kernel
     parameters.push_back(static_cast<const void *>(&complex_axis_is_last));
     break;
-  case Direction::unpack:
+  case Direction::backward:
     function = function_unpack_;
     // complex-last is not supported in the unpacking kernel
     if (complex_axis_is_last) {

@@ -5,9 +5,9 @@
 #include <cudawrappers/cu.hpp>
 #include <cudawrappers/nvrtc.hpp>
 
+#include <ccglib/common/helper.h>
+#include <ccglib/common/precision.h>
 #include <ccglib/gemm/mma.h>
-#include <ccglib/helper.h>
-#include <ccglib/precision.h>
 
 #include "Kernel.h"
 
@@ -64,11 +64,11 @@ GEMM::Impl::Impl(size_t B_, size_t M_, size_t N_, size_t K_,
   const bool precision_is_int1 = (precision.input_type == ValueType::int1);
   const bool variant_is_basic = variant == Variant::basic;
   const bool c_complex_axis_is_last =
-      c_complex_axis_location == ComplexAxisLocation::complex_last;
+      c_complex_axis_location == ComplexAxisLocation::complex_interleaved;
 
   if (variant_is_basic && c_complex_axis_is_last) {
     throw std::runtime_error(
-        "complex-last output is not supported in basic variant");
+        "complex-interleaved output is not supported in basic variant");
   }
 
 #if defined(DEBUG)
@@ -123,8 +123,12 @@ void GEMM::Impl::compile_kernel() {
     "-DK_GLOBAL=" + std::to_string(K_) + "UL",
     "-DK_PADDING=" + std::to_string(0) +
         "UL", // will be required when K is not a multiple of K_PER_WMMA
-    "-DNBIT_IN=" + std::to_string(kernel_.GetPrecision().GetInputBits()),
-    "-DNBIT_OUT=" + std::to_string(kernel_.GetPrecision().GetOutputBits()),
+    "-DTYPE_IN=" + std::to_string(static_cast<ValueType>(
+                       kernel_.GetPrecision().input_type)),
+    "-DTYPE_OUT=" + std::to_string(static_cast<ValueType>(
+                        kernel_.GetPrecision().output_type)),
+    "-DNBIT_IN=" + std::to_string((kernel_.GetPrecision().GetInputBits())),
+    "-DNBIT_OUT=" + std::to_string((kernel_.GetPrecision().GetOutputBits())),
     "-DWARP_SIZE=" + std::to_string(warp_size),
     "-DM_PER_BLOCK=" + std::to_string(parameters.m_per_block),
     "-DM_PER_WARP=" + std::to_string(parameters.m_per_warp),
@@ -136,10 +140,11 @@ void GEMM::Impl::compile_kernel() {
     "-DNBUFFER=" + std::to_string(parameters.nbuffer)
   };
 
-  if (c_complex_axis_location_ == ComplexAxisLocation::complex_middle) {
-    options.push_back("-DC_COMPLEX_MIDDLE");
-  } else if (c_complex_axis_location_ == ComplexAxisLocation::complex_last) {
-    options.push_back("-DC_COMPLEX_LAST");
+  if (c_complex_axis_location_ == ComplexAxisLocation::complex_planar) {
+    options.push_back("-DC_COMPLEX_PLANAR");
+  } else if (c_complex_axis_location_ ==
+             ComplexAxisLocation::complex_interleaved) {
+    options.push_back("-DC_COMPLEX_INTERLEAVED");
   }
 
   if (a_mem_order_ == MemOrder::row_major) {

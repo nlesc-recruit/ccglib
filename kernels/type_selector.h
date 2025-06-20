@@ -11,6 +11,9 @@ namespace wmma = rocwmma;
 using namespace nvcuda;
 #endif
 
+#include "value_type.h"
+using ccglib::ValueType;
+
 #ifndef COMPLEX
 #define COMPLEX 2
 #endif
@@ -55,13 +58,14 @@ using namespace nvcuda;
 // structures used in the GEMM kernel. It relies on template deduction based on
 // the kernel input and output data types, and is specialized below for the
 // different supported input and output types.
-template <int IN, int OUT> struct TypeSelector {
-  static_assert(IN == 1 || IN == 32 || IN == 16, "Unsupported input data type");
-  static_assert(IN == 1 || OUT == 32 || OUT == 16,
-                "Unsupported output data type");
+template <ValueType IN, ValueType OUT> struct TypeSelector {
+  static_assert((IN == ValueType::int1 && OUT == ValueType::int32) ||
+                    ((IN == ValueType::float16 || IN == ValueType::float32) &&
+                     (OUT == ValueType::float16 || ValueType::float32)),
+                "Unsupported combination of input/output data types");
 };
 
-template <> struct TypeSelector<1, 32> {
+template <> struct TypeSelector<ValueType::int1, ValueType::int32> {
   using Tin = unsigned int;
 #ifdef __HIP_PLATFORM_AMD__
   using Ttc = void;
@@ -76,7 +80,7 @@ template <> struct TypeSelector<1, 32> {
   static constexpr bool IS_DOWNCAST_OP = false;
 };
 
-template <> struct TypeSelector<16, 16> {
+template <> struct TypeSelector<ValueType::float16, ValueType::float16> {
   using Tin = half;
   using Ttc = half;
   using Tshared = half;
@@ -87,7 +91,7 @@ template <> struct TypeSelector<16, 16> {
   static constexpr bool IS_DOWNCAST_OP = false;
 };
 
-template <> struct TypeSelector<16, 32> {
+template <> struct TypeSelector<ValueType::float16, ValueType::float32> {
   using Tin = half;
   using Ttc = half;
   using Tshared = float;
@@ -98,7 +102,7 @@ template <> struct TypeSelector<16, 32> {
   static constexpr bool IS_DOWNCAST_OP = false;
 };
 
-template <> struct TypeSelector<32, 32> {
+template <> struct TypeSelector<ValueType::float32, ValueType::float32> {
   using Tin = float;
 #ifdef __HIP_PLATFORM_AMD__
   using Ttc = float;
@@ -113,7 +117,7 @@ template <> struct TypeSelector<32, 32> {
   static constexpr bool IS_DOWNCAST_OP = false;
 };
 
-template <> struct TypeSelector<32, 16> {
+template <> struct TypeSelector<ValueType::float32, ValueType::float16> {
   using Tin = float;
 #ifdef __HIP_PLATFORM_AMD__
   using Ttc = float;
@@ -129,7 +133,8 @@ template <> struct TypeSelector<32, 16> {
 };
 
 // Create aliases for the defined types
-using DeviceTraits = TypeSelector<NBIT_IN, NBIT_OUT>;
+using DeviceTraits = TypeSelector<static_cast<ValueType>(TYPE_IN),
+                                  static_cast<ValueType>(TYPE_OUT)>;
 
 using Tin = typename DeviceTraits::Tin;
 using Ttc = typename DeviceTraits::Ttc;
@@ -142,13 +147,13 @@ using A_t =
 using B_t =
     Tin[BATCH_SIZE][COMPLEX][N_GLOBAL][K_GLOBAL / DeviceTraits::PACKING_FACTOR];
 
-#if defined(C_COMPLEX_MIDDLE)
+#if defined(C_COMPLEX_PLANAR)
 #ifdef C_ROW_MAJOR
 using C_t = Tout[BATCH_SIZE][COMPLEX][M_GLOBAL][N_GLOBAL];
 #else
 using C_t = Tout[BATCH_SIZE][COMPLEX][N_GLOBAL][M_GLOBAL];
 #endif
-#elif defined(C_COMPLEX_LAST)
+#elif defined(C_COMPLEX_INTERLEAVED)
 #ifdef C_ROW_MAJOR
 using C_t = Tout[BATCH_SIZE][M_GLOBAL][N_GLOBAL][COMPLEX];
 #else
@@ -182,6 +187,6 @@ using Accumulator_t =
 #endif
 
 #define REQUIRES_SHARED_MEMORY                                                 \
-  (M_IS_PADDED || N_IS_PADDED || C_COMPLEX_LAST || REQUIRES_DOWNCAST)
+  (M_IS_PADDED || N_IS_PADDED || C_COMPLEX_INTERLEAVED || REQUIRES_DOWNCAST)
 
 #endif // TYPE_SELECTOR_H_

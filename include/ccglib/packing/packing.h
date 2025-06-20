@@ -9,6 +9,9 @@
 #include <cuda.h>
 #endif
 
+#include <ccglib/common/complex_order.h>
+#include <ccglib/common/direction.h>
+
 // Forward declaration of cudawrappers types
 namespace cu {
 class Device;
@@ -18,8 +21,6 @@ class Stream;
 } // namespace cu
 
 namespace ccglib::packing {
-enum Direction { pack, unpack };
-enum ComplexAxisLocation { complex_first, complex_last };
 
 class Packing {
 public:
@@ -27,22 +28,22 @@ public:
   ~Packing();
   void Run(cu::HostMemory &h_input, cu::DeviceMemory &d_output,
            Direction direction,
-           ComplexAxisLocation input_complex_axis_location = complex_first);
+           ComplexAxisLocation input_complex_axis_location = complex_planar);
   void Run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output,
            Direction direction,
-           ComplexAxisLocation input_complex_axis_location = complex_first);
+           ComplexAxisLocation input_complex_axis_location = complex_planar);
 #ifdef __HIP__
   Packing(size_t N, hipDevice_t &device, hipStream_t &stream);
   void Run(unsigned char *h_input, hipDeviceptr_t d_output, Direction direction,
-           ComplexAxisLocation input_complex_axis_location = complex_first);
+           ComplexAxisLocation input_complex_axis_location = complex_planar);
   void Run(hipDeviceptr_t d_input, hipDeviceptr_t d_output, Direction direction,
-           ComplexAxisLocation input_complex_axis_location = complex_first);
+           ComplexAxisLocation input_complex_axis_location = complex_planar);
 #else
   Packing(size_t N, CUdevice &device, CUstream &stream);
   void Run(unsigned char *h_input, CUdeviceptr d_output, Direction direction,
-           ComplexAxisLocation input_complex_axis_location = complex_first);
+           ComplexAxisLocation input_complex_axis_location = complex_planar);
   void Run(CUdeviceptr d_input, CUdeviceptr d_output, Direction direction,
-           ComplexAxisLocation input_complex_axis_location = complex_first);
+           ComplexAxisLocation input_complex_axis_location = complex_planar);
 #endif
 
 private:

@@ -64,7 +64,7 @@ TEST_CASE("HIP packing") {
 
   ccglib::packing::Packing packing(N, device, stream);
   packing.Run(reinterpret_cast<hipDeviceptr_t>(d_in),
-              reinterpret_cast<hipDeviceptr_t>(d_out), ccglib::packing::pack);
+              reinterpret_cast<hipDeviceptr_t>(d_out), ccglib::forward);
 
   hip_check(hipMemcpy(h_out, d_out, bytes_out, hipMemcpyDeviceToHost));
 

@@ -34,9 +34,9 @@ using T = unsigned int;
 #define M_GLOBAL_PADDED ((M_GLOBAL / M_CHUNK + M_IS_PADDED) * M_CHUNK)
 #define N_GLOBAL_PADDED ((N_GLOBAL / N_CHUNK + N_IS_PADDED) * N_CHUNK)
 
-#if defined(INPUT_COMPLEX_MIDDLE)
+#if defined(INPUT_COMPLEX_PLANAR)
 using Input = T[BATCH_SIZE][COMPLEX][M_GLOBAL][N_GLOBAL / PACKING_FACTOR];
-#elif defined(INPUT_COMPLEX_LAST)
+#elif defined(INPUT_COMPLEX_INTERLEAVED)
 using Input = T[BATCH_SIZE][M_GLOBAL][N_GLOBAL / PACKING_FACTOR][COMPLEX];
 #endif
 using Output =
@@ -64,10 +64,10 @@ __global__ void transpose(Output out, const Input in) {
     size_t n_c = idx_N % (N_CHUNK / PACKING_FACTOR);
 
     if (idx_M < M_GLOBAL && idx_N < N_GLOBAL / PACKING_FACTOR) {
-#if defined(INPUT_COMPLEX_MIDDLE)
+#if defined(INPUT_COMPLEX_PLANAR)
       out[b][m][n][REAL][m_c][n_c] = in[b][REAL][idx_M][idx_N];
       out[b][m][n][IMAG][m_c][n_c] = in[b][IMAG][idx_M][idx_N];
-#elif defined(INPUT_COMPLEX_LAST)
+#elif defined(INPUT_COMPLEX_INTERLEAVED)
       out[b][m][n][REAL][m_c][n_c] = in[b][idx_M][idx_N][REAL];
       out[b][m][n][IMAG][m_c][n_c] = in[b][idx_M][idx_N][IMAG];
 #endif

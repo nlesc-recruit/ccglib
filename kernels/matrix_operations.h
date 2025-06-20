@@ -60,7 +60,7 @@ store_matrix_padded(Accumulator_t sum[COMPLEX][M_PER_WARP / M_PER_WMMA]
                     const size_t &warpN, const size_t &M_TILES,
                     const size_t &N_TILES) {
 
-#if defined(C_COMPLEX_MIDDLE)
+#if defined(C_COMPLEX_PLANAR)
   for (size_t c = 0; c < COMPLEX; c++) {
     for (size_t m = 0; m < M_TILES; m++) {
       for (size_t n = 0; n < N_TILES; n++) {
@@ -82,13 +82,13 @@ store_matrix_padded(Accumulator_t sum[COMPLEX][M_PER_WARP / M_PER_WMMA]
           // store the submatrix, padded values are set to zero
           if (m_index + i < M_GLOBAL && n_index + j < N_GLOBAL) {
 #if defined(C_ROW_MAJOR)
-#if defined(C_COMPLEX_MIDDLE)
+#if defined(C_COMPLEX_PLANAR)
             C[batch][c][m_index + i][n_index + j] = C_s[warpM][warpN][i][j];
 #else
             C[batch][m_index + i][n_index + j][c] = C_s[warpM][warpN][i][j];
 #endif
 #else
-#if defined(C_COMPLEX_MIDDLE)
+#if defined(C_COMPLEX_PLANAR)
             C[batch][c][n_index + j][m_index + i] = C_s[warpM][warpN][i][j];
 #else
             C[batch][n_index + j][m_index + i][c] = C_s[warpM][warpN][i][j];
