@@ -7,12 +7,14 @@ add_subdirectory(reference)
 add_subdirectory(mma)
 add_subdirectory(transpose)
 add_subdirectory(packing)
+add_subdirectory(pipeline)
 
 # Link the main library
 add_library(
   ${PROJECT_NAME} SHARED
   $<TARGET_OBJECTS:gemm-reference> $<TARGET_OBJECTS:transpose>
-  $<TARGET_OBJECTS:gemm-mma> $<TARGET_OBJECTS:packing>)
+  $<TARGET_OBJECTS:gemm-mma> $<TARGET_OBJECTS:packing>
+  $<TARGET_OBJECTS:pipeline>)
 
 target_link_libraries(ccglib PUBLIC cudawrappers::cu cudawrappers::nvrtc)
 target_link_libraries(ccglib PRIVATE OpenMP::OpenMP_CXX xtensor)
