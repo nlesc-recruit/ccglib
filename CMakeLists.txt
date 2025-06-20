@@ -41,7 +41,9 @@ include(FetchContent)
 FetchContent_Declare(
   cudawrappers
   GIT_REPOSITORY https://github.com/nlesc-recruit/cudawrappers
-  GIT_TAG "main")
+  # temporary until source embedding + header inlining is fixed in cudawrappers
+  GIT_TAG "527211f2abbe6ca2f245461074b90124c71f08e4")
+# GIT_TAG "main")
 FetchContent_MakeAvailable(cudawrappers)
 
 include(cmake/xtensor.cmake)
