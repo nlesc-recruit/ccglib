@@ -25,6 +25,7 @@ private:
   static const size_t kComplex = 2;
   const bool needs_packing_;
   const bool needs_transpose_;
+  const ComplexAxisLocation input_complex_axis_location_;
 
   cu::Device device_;
   cu::Stream stream_;
@@ -50,7 +51,8 @@ Pipeline::Impl::Impl(size_t B, size_t M, size_t N, size_t K, cu::Device &device,
                      ValuePrecision output_precision, mma::Variant variant)
     : needs_packing_(input_precision == ccglib::int1),
       needs_transpose_(variant == ccglib::mma::opt), device_(device),
-      stream_(stream) {
+      stream_(stream),
+      input_complex_axis_location_(input_complex_axis_location) {
 
   if (needs_packing_) {
     const size_t num_a = B * kComplex * M * K;
@@ -77,10 +79,10 @@ Pipeline::Impl::Impl(size_t B, size_t M, size_t N, size_t K, cu::Device &device,
   if (needs_transpose_) {
     transpose_a_ = std::make_unique<ccglib::transpose::Transpose>(
         B, M, K, dimensions.x, dimensions.z, precision.GetInputBits(), device_,
-        stream_, input_complex_axis_location);
+        stream_, input_complex_axis_location_);
     transpose_b_ = std::make_unique<ccglib::transpose::Transpose>(
         B, N, K, dimensions.y, dimensions.z, precision.GetOutputBits(), device_,
-        stream_, input_complex_axis_location);
+        stream_, input_complex_axis_location_);
 
     // transposed size may be bigger than input due to padding on block level
     const size_t m_padded =
@@ -102,7 +104,26 @@ Pipeline::Impl::Impl(size_t B, size_t M, size_t N, size_t K, cu::Device &device,
 }
 
 void Pipeline::Impl::Run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b,
-                         cu::DeviceMemory &d_c) {}
+                         cu::DeviceMemory &d_c) {
+
+  if (needs_packing_) {
+    packing_a_->Run(d_a, *d_a_packed_, ccglib::forward,
+                    input_complex_axis_location_);
+    packing_b_->Run(d_b, *d_b_packed_, ccglib::forward,
+                    input_complex_axis_location_);
+  }
+
+  if (needs_transpose_) {
+    cu::DeviceMemory &input_a = needs_packing_ ? *d_a_packed_ : d_a;
+    cu::DeviceMemory &input_b = needs_packing_ ? *d_b_packed_ : d_b;
+    transpose_a_->Run(input_a, *d_a_trans_);
+    transpose_b_->Run(input_b, *d_b_trans_);
+  }
+
+  cu::DeviceMemory &input_a = needs_transpose_ ? *d_a_trans_ : d_a;
+  cu::DeviceMemory &input_b = needs_transpose_ ? *d_b_trans_ : d_b;
+  gemm_->Run(input_a, input_b, d_c);
+}
 
 Pipeline::Pipeline(size_t B, size_t M, size_t N, size_t K, cu::Device &device,
                    cu::Stream &stream,
