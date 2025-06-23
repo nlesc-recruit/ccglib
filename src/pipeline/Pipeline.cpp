@@ -22,8 +22,8 @@ public:
 
 private:
   static const size_t kComplex = 2;
-  const bool needs_packing_;
-  const bool needs_transpose_;
+  const bool requires_packing_;
+  const bool requires_transpose_;
   const ComplexAxisLocation input_complex_axis_location_;
 
   cu::Device device_;
@@ -48,12 +48,12 @@ Pipeline::Impl::Impl(size_t B, size_t M, size_t N, size_t K, cu::Device &device,
                      mma::MemOrder a_mem_order, mma::MemOrder b_mem_order,
                      mma::MemOrder c_mem_order, ValuePrecision input_precision,
                      ValuePrecision output_precision, mma::Variant variant)
-    : needs_packing_(input_precision == ccglib::int1),
-      needs_transpose_(variant == ccglib::mma::opt), device_(device),
+    : requires_packing_(input_precision == ccglib::int1),
+      requires_transpose_(variant == ccglib::mma::opt), device_(device),
       stream_(stream),
       input_complex_axis_location_(input_complex_axis_location) {
 
-  if (needs_packing_) {
+  if (requires_packing_) {
     const size_t num_a = B * kComplex * M * K;
     const size_t num_b = B * kComplex * N * K;
     packing_a_ =
@@ -75,7 +75,7 @@ Pipeline::Impl::Impl(size_t B, size_t M, size_t N, size_t K, cu::Device &device,
   // x, y, z = m_per_block, n_per_block, k_per_wmma
   const dim3 dimensions = ccglib::mma::GEMM::GetDimensions(precision, variant);
 
-  if (needs_transpose_) {
+  if (requires_transpose_) {
     transpose_a_ = std::make_unique<ccglib::transpose::Transpose>(
         B, M, K, dimensions.x, dimensions.z, precision.GetInputBits(), device_,
         stream_, input_complex_axis_location_);
@@ -107,22 +107,22 @@ Pipeline::Impl::Impl(size_t B, size_t M, size_t N, size_t K, cu::Device &device,
 void Pipeline::Impl::Run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b,
                          cu::DeviceMemory &d_c) {
 
-  if (needs_packing_) {
+  if (requires_packing_) {
     packing_a_->Run(d_a, *d_a_packed_, ccglib::forward,
                     input_complex_axis_location_);
     packing_b_->Run(d_b, *d_b_packed_, ccglib::forward,
                     input_complex_axis_location_);
   }
 
-  if (needs_transpose_) {
-    cu::DeviceMemory &input_a = needs_packing_ ? *d_a_packed_ : d_a;
-    cu::DeviceMemory &input_b = needs_packing_ ? *d_b_packed_ : d_b;
+  if (requires_transpose_) {
+    cu::DeviceMemory &input_a = requires_packing_ ? *d_a_packed_ : d_a;
+    cu::DeviceMemory &input_b = requires_packing_ ? *d_b_packed_ : d_b;
     transpose_a_->Run(input_a, *d_a_trans_);
     transpose_b_->Run(input_b, *d_b_trans_);
   }
 
-  cu::DeviceMemory &input_a = needs_transpose_ ? *d_a_trans_ : d_a;
-  cu::DeviceMemory &input_b = needs_transpose_ ? *d_b_trans_ : d_b;
+  cu::DeviceMemory &input_a = requires_transpose_ ? *d_a_trans_ : d_a;
+  cu::DeviceMemory &input_b = requires_transpose_ ? *d_b_trans_ : d_b;
   gemm_->Run(input_a, input_b, d_c);
 }
 

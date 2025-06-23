@@ -13,13 +13,23 @@
 namespace ccglib::test {
 
 TEST_CASE("Pipeline") {
-  const size_t B = 1;
-  const size_t M = 512;
-  const size_t N = 512;
-  const size_t K = 512;
+  const size_t B = 2;
+  const size_t M = 300;
+  const size_t N = 200;
+  const size_t K = 100;
 
   using Tin = half;
   using Tout = float;
+  const ccglib::ValueType input_precision = ccglib::float16;
+  const ccglib::ValueType output_precision = ccglib::float32;
+  const ccglib::ComplexAxisLocation input_complex_axis_location =
+      ccglib::complex_planar;
+  const ccglib::ComplexAxisLocation output_complex_axis_location =
+      ccglib::complex_planar;
+  const ccglib::mma::MemOrder a_mem_order = ccglib::mma::row_major;
+  const ccglib::mma::MemOrder b_mem_order = ccglib::mma::col_major;
+  const ccglib::mma::MemOrder c_mem_order = ccglib::mma::row_major;
+  const ccglib::mma::Variant variant = ccglib::mma::opt;
 
   const size_t num_a = B * 2 * M * K;
   const size_t num_b = B * 2 * N * K;
@@ -52,18 +62,17 @@ TEST_CASE("Pipeline") {
   d_c.zero(d_c.size());
 
   ccglib::pipeline::Pipeline pipeline(
-      B, M, N, K, device, stream, ccglib::complex_planar,
-      ccglib::complex_planar, ccglib::mma::row_major, ccglib::mma::col_major,
-      ccglib::mma::row_major, ccglib::float16, ccglib::float32,
-      ccglib::mma::opt);
+      B, M, N, K, device, stream, input_complex_axis_location,
+      output_complex_axis_location, a_mem_order, b_mem_order, c_mem_order,
+      input_precision, output_precision, variant);
 
   pipeline.Run(d_a, d_b, d_c);
   stream.memcpyDtoHAsync(h_c, d_c, d_c.size());
   stream.synchronize();
 
-  verify<Tin, Tout, ccglib::float16>(
+  verify<Tin, Tout, input_precision>(
       static_cast<const Tin *>(h_a), static_cast<const Tin *>(h_b),
-      static_cast<Tout *>(h_c), B, M, N, K, ccglib::mma::row_major);
+      static_cast<Tout *>(h_c), B, M, N, K, c_mem_order);
 }
 
 } // namespace ccglib::test
