@@ -77,6 +77,10 @@ TEST_CASE("Pipeline float16 - float32") {
 }
 
 TEST_CASE("Pipeline int1 - int32") {
+#ifdef __HIP_PLATFORM_AMD__
+  SKIP("int1 is not available on AMD GPUs");
+#endif
+
   const size_t B = 2;
   const size_t M = 512;
   const size_t N = 512;
