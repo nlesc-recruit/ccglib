@@ -40,8 +40,10 @@ target_link_libraries(test-transpose PRIVATE ccglib cudawrappers::cu
 add_executable(test-pipeline pipeline/pipeline.cpp)
 target_include_directories(
   test-pipeline PRIVATE ${CMAKE_BINARY_DIR} "${PROJECT_SOURCE_DIR}/include")
+target_include_directories(test-pipeline
+                           PRIVATE "${PROJECT_SOURCE_DIR}/test/gemm")
 target_link_libraries(test-pipeline PRIVATE ccglib cudawrappers::cu
-                                            Catch2::Catch2WithMain)
+                                            Catch2::Catch2WithMain xtensor)
 
 set(TESTS test-helper test-reference test-mma test-packing test-transpose
           test-pipeline)
