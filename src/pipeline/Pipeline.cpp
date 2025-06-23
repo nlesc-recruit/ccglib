@@ -59,8 +59,8 @@ Pipeline::Impl::Impl(size_t B, size_t M, size_t N, size_t K, cu::Device &device,
     const size_t num_b = B * kComplex * N * K;
     packing_a_ =
         std::make_unique<ccglib::packing::Packing>(num_a, device_, stream_);
-    packing_b_ = std::make_unique<ccglib::packing::Packing>(
-        num_b * kComplex * N * K, device_, stream_);
+    packing_b_ =
+        std::make_unique<ccglib::packing::Packing>(num_b, device_, stream_);
 
     // packing output is of int32 type, so round up input size to multiple of
     // int32 size.
@@ -140,6 +140,21 @@ Pipeline::Pipeline(size_t B, size_t M, size_t N, size_t K, cu::Device &device,
       input_precision, output_precision, variant);
 }
 
+Pipeline::Pipeline(size_t B, size_t M, size_t N, size_t K, CUdevice &device,
+                   CUstream &stream,
+                   ComplexAxisLocation input_complex_axis_location,
+                   ComplexAxisLocation output_complex_axis_location,
+                   mma::MemOrder a_mem_order, mma::MemOrder b_mem_order,
+                   mma::MemOrder c_mem_order, ValuePrecision input_precision,
+                   ValuePrecision output_precision, mma::Variant variant)
+    : device_(std::make_unique<cu::Device>(device)),
+      stream_(std::make_unique<cu::Stream>(stream)) {
+  impl_ = std::make_unique<Impl>(
+      B, M, N, K, *device_, *stream_, input_complex_axis_location,
+      output_complex_axis_location, a_mem_order, b_mem_order, c_mem_order,
+      input_precision, output_precision, variant);
+}
+
 void Pipeline::Run(cu::HostMemory &a, cu::HostMemory &b, cu::HostMemory &c) {
   cu::DeviceMemory d_a(a.size());
   cu::DeviceMemory d_b(b.size());
@@ -154,6 +169,13 @@ void Pipeline::Run(cu::HostMemory &a, cu::HostMemory &b, cu::HostMemory &c) {
 void Pipeline::Run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b,
                    cu::DeviceMemory &d_c) {
   impl_->Run(d_a, d_b, d_c);
+}
+
+void Pipeline::Run(CUdeviceptr d_a, CUdeviceptr d_b, CUdeviceptr d_c) {
+  cu::DeviceMemory d_a_(d_a);
+  cu::DeviceMemory d_b_(d_b);
+  cu::DeviceMemory d_c_(d_c);
+  impl_->Run(d_a_, d_b_, d_c_);
 }
 
 } // namespace ccglib::pipeline
