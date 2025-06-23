@@ -37,7 +37,14 @@ target_include_directories(
 target_link_libraries(test-transpose PRIVATE ccglib cudawrappers::cu
                                              Catch2::Catch2WithMain xtensor)
 
-set(TESTS test-helper test-reference test-mma test-packing test-transpose)
+add_executable(test-pipeline pipeline/pipeline.cpp)
+target_include_directories(
+  test-pipeline PRIVATE ${CMAKE_BINARY_DIR} "${PROJECT_SOURCE_DIR}/include")
+target_link_libraries(test-pipeline PRIVATE ccglib cudawrappers::cu
+                                            Catch2::Catch2WithMain)
+
+set(TESTS test-helper test-reference test-mma test-packing test-transpose
+          test-pipeline)
 
 # cuda-specific tests
 if(${CCGLIB_BACKEND_CUDA})

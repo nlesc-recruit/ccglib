@@ -178,4 +178,6 @@ void Pipeline::Run(CUdeviceptr d_a, CUdeviceptr d_b, CUdeviceptr d_c) {
   impl_->Run(d_a_, d_b_, d_c_);
 }
 
+Pipeline::~Pipeline() = default;
+
 } // namespace ccglib::pipeline
