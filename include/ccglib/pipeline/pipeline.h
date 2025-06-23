@@ -18,6 +18,7 @@
 namespace cu {
 class Device;
 class HostMemory;
+class DeviceMemory;
 class Stream;
 } // namespace cu
 
