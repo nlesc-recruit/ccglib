@@ -28,6 +28,7 @@ public:
            mma::Variant variant = mma::Variant::opt);
   ~Pipeline();
   void Run(cu::HostMemory &a, cu::HostMemory &b, cu::HostMemory &c);
+  void Run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b, cu::DeviceMemory &d_c);
 
 private:
   class Impl;

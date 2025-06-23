@@ -46,4 +46,9 @@ void Pipeline::Run(cu::HostMemory &a, cu::HostMemory &b, cu::HostMemory &c) {
   stream_->synchronize();
 }
 
+void Pipeline::Run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b,
+                   cu::DeviceMemory &d_c) {
+  impl_->Run(d_a, d_b, d_c);
+}
+
 } // namespace ccglib::pipeline
