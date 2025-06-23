@@ -23,7 +23,7 @@ TEST_CASE("Pipeline") {
 
   const size_t num_a = B * 2 * M * K;
   const size_t num_b = B * 2 * N * K;
-  const size_t num_c = B * 2 * M * K;
+  const size_t num_c = B * 2 * M * N;
 
   cu::init();
   cu::Device device(0);
@@ -44,9 +44,11 @@ TEST_CASE("Pipeline") {
     static_cast<Tin *>(h_b)[i] = generator();
   }
 
-  cu::DeviceMemory d_a(h_a);
-  cu::DeviceMemory d_b(h_b);
+  cu::DeviceMemory d_a(h_a.size());
+  cu::DeviceMemory d_b(h_b.size());
   cu::DeviceMemory d_c(h_c.size());
+  stream.memcpyHtoDAsync(d_a, h_a, d_a.size());
+  stream.memcpyHtoDAsync(d_b, h_b, d_b.size());
   d_c.zero(d_c.size());
 
   ccglib::pipeline::Pipeline pipeline(

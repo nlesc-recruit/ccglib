@@ -1,6 +1,5 @@
-#include <limits>
-
 #include <cudawrappers/cu.hpp>
+#include <limits>
 
 #include <ccglib/common/helper.h>
 #include <ccglib/gemm/mma.h>
@@ -81,7 +80,7 @@ Pipeline::Impl::Impl(size_t B, size_t M, size_t N, size_t K, cu::Device &device,
         B, M, K, dimensions.x, dimensions.z, precision.GetInputBits(), device_,
         stream_, input_complex_axis_location_);
     transpose_b_ = std::make_unique<ccglib::transpose::Transpose>(
-        B, N, K, dimensions.y, dimensions.z, precision.GetOutputBits(), device_,
+        B, N, K, dimensions.y, dimensions.z, precision.GetInputBits(), device_,
         stream_, input_complex_axis_location_);
 
     // transposed size may be bigger than input due to padding on block level
@@ -90,9 +89,11 @@ Pipeline::Impl::Impl(size_t B, size_t M, size_t N, size_t K, cu::Device &device,
     const size_t n_padded =
         dimensions.y * ccglib::helper::ceildiv(N, dimensions.y);
     const size_t k_padded =
-        dimensions.z * ccglib::helper::ceildiv(K, dimensions.y);
-    const size_t bytes_trans_a = B * kComplex * m_padded * k_padded;
-    const size_t bytes_trans_b = B * kComplex * n_padded * k_padded;
+        dimensions.z * ccglib::helper::ceildiv(K, dimensions.z);
+    const size_t bytes_trans_a = B * kComplex * m_padded * k_padded *
+                                 precision.GetInputBits() / CHAR_BIT;
+    const size_t bytes_trans_b = B * kComplex * n_padded * k_padded *
+                                 precision.GetInputBits() / CHAR_BIT;
 
     d_a_trans_ = std::make_unique<cu::DeviceMemory>(bytes_trans_a);
     d_b_trans_ = std::make_unique<cu::DeviceMemory>(bytes_trans_b);
