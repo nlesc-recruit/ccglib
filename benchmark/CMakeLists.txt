@@ -27,6 +27,10 @@ foreach(benchmark ${BENCHMARKS})
     target_link_libraries(${TARGET} pmt)
   endif()
 
+  if(${CCGLIB_BACKEND_HIP})
+    set_source_files_properties(${SOURCE} PROPERTIES LANGUAGE HIP)
+  endif()
+
   target_include_directories(${TARGET} PRIVATE "${PROJECT_SOURCE_DIR}/include")
 
 endforeach()
