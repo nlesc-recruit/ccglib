@@ -15,7 +15,7 @@ template <typename T> constexpr float getEpsilon() {
   if constexpr (std::is_same_v<T, __half> || std::is_same_v<T, float>) {
     // float16 uses an 11-bit mantissa (of which 10 bits are stored)
     // within the kernel, float32 is converted to tf32
-    // tf32 uses the same mantissa as the half-precision math
+    // fp16 and tf32 use an 10-bit mantissa
     // the precision for normal numbers is therefore 2^-10
     return 0.000976562;
   } else if constexpr (std::is_same_v<T, bf16>) {
