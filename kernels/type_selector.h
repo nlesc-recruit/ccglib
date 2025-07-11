@@ -67,7 +67,7 @@ template <ValueType IN, ValueType OUT> struct TypeSelector {
 
 template <> struct TypeSelector<ValueType::int1, ValueType::int32> {
   using Tin = unsigned int;
-#ifdef __HIP_PLATFORM_AMD__
+#if defined(__HIP_PLATFORM_AMD__) || !defined(__CUDA_SUBBYTE_IMMA__)
   using Ttc = void;
 #else
   using Ttc = wmma::experimental::precision::b1;
@@ -104,7 +104,7 @@ template <> struct TypeSelector<ValueType::float16, ValueType::float32> {
 
 template <> struct TypeSelector<ValueType::float32, ValueType::float32> {
   using Tin = float;
-#ifdef __HIP_PLATFORM_AMD__
+#if defined(__HIP_PLATFORM_AMD__) || __CUDA_ARCH__ < 800
   using Ttc = float;
 #else
   using Ttc = wmma::precision::tf32;
@@ -119,7 +119,7 @@ template <> struct TypeSelector<ValueType::float32, ValueType::float32> {
 
 template <> struct TypeSelector<ValueType::float32, ValueType::float16> {
   using Tin = float;
-#ifdef __HIP_PLATFORM_AMD__
+#if defined (__HIP_PLATFORM_AMD__) || __CUDA_ARCH__ < 800
   using Ttc = float;
 #else
   using Ttc = wmma::precision::tf32;
