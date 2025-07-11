@@ -119,7 +119,7 @@ template <> struct TypeSelector<ValueType::float32, ValueType::float32> {
 
 template <> struct TypeSelector<ValueType::float32, ValueType::float16> {
   using Tin = float;
-#if defined (__HIP_PLATFORM_AMD__) || __CUDA_ARCH__ < 800
+#if defined(__HIP_PLATFORM_AMD__) || __CUDA_ARCH__ < 800
   using Ttc = float;
 #else
   using Ttc = wmma::precision::tf32;
