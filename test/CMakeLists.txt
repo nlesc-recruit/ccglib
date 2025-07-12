@@ -37,7 +37,16 @@ target_include_directories(
 target_link_libraries(test-transpose PRIVATE ccglib cudawrappers::cu
                                              Catch2::Catch2WithMain xtensor)
 
-set(TESTS test-helper test-reference test-mma test-packing test-transpose)
+add_executable(test-pipeline pipeline/pipeline.cpp)
+target_include_directories(
+  test-pipeline PRIVATE ${CMAKE_BINARY_DIR} "${PROJECT_SOURCE_DIR}/include")
+target_include_directories(test-pipeline
+                           PRIVATE "${PROJECT_SOURCE_DIR}/test/gemm")
+target_link_libraries(test-pipeline PRIVATE ccglib cudawrappers::cu
+                                            Catch2::Catch2WithMain xtensor)
+
+set(TESTS test-helper test-reference test-mma test-packing test-transpose
+          test-pipeline)
 
 # cuda-specific tests
 if(${CCGLIB_BACKEND_CUDA})
@@ -56,7 +65,14 @@ if(${CCGLIB_BACKEND_CUDA})
     test-transpose-cuda PRIVATE ccglib Catch2::Catch2WithMain CUDA::cudart
                                 xtensor)
 
-  list(APPEND TESTS test-mma-cuda test-packing-cuda test-transpose-cuda)
+  add_executable(test-pipeline-cuda cuda/pipeline.cpp)
+  target_include_directories(test-pipeline-cuda
+                             PRIVATE "${PROJECT_SOURCE_DIR}/test/gemm")
+  target_link_libraries(test-pipeline-cuda
+                        PRIVATE ccglib Catch2::Catch2WithMain CUDA::cudart)
+
+  list(APPEND TESTS test-mma-cuda test-packing-cuda test-transpose-cuda
+       test-pipeline-cuda)
 endif()
 
 # hip-specific tests
@@ -73,7 +89,13 @@ if(${CCGLIB_BACKEND_HIP})
   target_link_libraries(test-transpose-hip
                         PRIVATE ccglib Catch2::Catch2WithMain xtensor)
 
-  list(APPEND TESTS test-mma-hip test-packing-hip test-transpose-hip)
+  add_executable(test-pipeline-hip hip/pipeline.cpp)
+  target_include_directories(test-pipeline-hip
+                             PRIVATE "${PROJECT_SOURCE_DIR}/test/gemm")
+  target_link_libraries(test-pipeline-hip PRIVATE ccglib Catch2::Catch2WithMain)
+
+  list(APPEND TESTS test-mma-hip test-packing-hip test-transpose-hip
+       test-pipeline-hip)
 endif()
 
 foreach(test IN ITEMS ${TESTS})
