@@ -3,6 +3,7 @@
 
 #include <cudawrappers/cu.hpp>
 
+namespace ccglib {
 bool isCDNA1(cu::Device &device) {
   const std::string arch(device.getArch());
   return (arch.find("gfx908") != std::string::npos);
@@ -28,5 +29,7 @@ bool isVolta(cu::Device &device) {
   const std::string arch(device.getArch());
   return (arch.find("sm_70") != std::string::npos);
 }
+
+} // namespace ccglib
 
 #endif // ARCH_H_

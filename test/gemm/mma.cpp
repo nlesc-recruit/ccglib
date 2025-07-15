@@ -4,7 +4,9 @@
 #include <cudawrappers/cu.hpp>
 #include <cudawrappers/nvrtc.hpp>
 
+#include <ccglib/common/arch.h>
 #include <ccglib/common/helper.h>
+#include <ccglib/common/precision.h>
 #include <ccglib/fp16.h>
 #include <ccglib/gemm/mma.h>
 #include <ccglib/gemm/reference.h>
@@ -18,9 +20,7 @@
 #include <xtensor/xadapt.hpp>
 #include <xtensor/xtensor.hpp>
 
-#include "arch.h"
 #include "verify.h"
-#include <ccglib/common/precision.h>
 #ifndef COMPLEX
 #define COMPLEX 2
 #endif
