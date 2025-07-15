@@ -23,6 +23,7 @@ public:
   void Run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b, cu::DeviceMemory &d_c);
 
 private:
+  void check_support();
   void compile_kernel();
 
   ComplexAxisLocation c_complex_axis_location_;
@@ -71,6 +72,8 @@ GEMM::Impl::Impl(size_t B_, size_t M_, size_t N_, size_t K_,
         "complex-interleaved output is not supported in basic variant");
   }
 
+  check_support();
+
 #if defined(DEBUG)
   std::cout << "Problem size (B, M, N, K): (" << B_ << ", " << M_ << ", " << N_
             << ", " << K_ << ")" << std::endl;
@@ -95,6 +98,17 @@ void GEMM::Impl::Run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b,
 
   stream_.launchKernel(*function_, grid_.x, grid_.y, grid_.z, threads_.x,
                        threads_.y, threads_.z, 0, parameters);
+}
+
+void GEMM::Impl::check_support() {
+  const std::string arch = device_.getArch();
+  if (arch.find("sm_70") != std::string::npos) {
+    if (kernel_.GetPrecision().input_type == ValueType::int1) {
+      throw std::runtime_error("Int1 input is not supported on " + arch);
+    } else if (kernel_.GetPrecision().input_type == ValueType::float32) {
+      throw std::runtime_error("Float32 input is not supported on " + arch);
+    }
+  }
 }
 
 void GEMM::Impl::compile_kernel() {
