@@ -24,4 +24,9 @@ bool isCDNA(cu::Device &device) {
   return (isCDNA1(device) || isCDNA2(device) || isCDNA3(device));
 }
 
+bool isVolta(cu::Device &device) {
+  const std::string arch(device.getArch());
+  return (arch.find("sm_70") != std::string::npos);
+}
+
 #endif // ARCH_H_

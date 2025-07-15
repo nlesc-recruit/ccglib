@@ -457,15 +457,21 @@ template <typename Fixture> struct GemmTestOpt : public Fixture {
 TEMPLATE_LIST_TEST_CASE_METHOD(GemmTestBasic, "Complex GEMM Test",
                                "[complex-gemm-test-basic]",
                                TestTypesComplexGemm) {
-  // on AMD, skip on unsupported GPUs
-#ifdef __HIP_PLATFORM_AMD__
   if constexpr (std::is_same_v<typename GemmTestBasic<TestType>::InputType,
                                float>) {
+
+    // on AMD, skip on unsupported GPUs
+#ifdef __HIP_PLATFORM_AMD__
     if (!isCDNA(*GemmTestBasic<TestType>().device_)) {
       SKIP("Float32 is only available on CDNA GPUs");
     }
-  }
+// on NVIDIA, skip on unsupported GPUs
+#else
+    if (isVolta(*GemmTestBasic<TestType>().device_)) {
+      SKIP("Float32 is not available on Volta GPUs");
+    }
 #endif
+  }
 
   GemmTestBasic<TestType>().run_tests();
 }
@@ -475,11 +481,13 @@ TEMPLATE_LIST_TEST_CASE_METHOD(GemmTestOpt, "Complex GEMM Test",
                                TestTypesComplexGemm) {
   // on AMD, skip on unsupported GPUs
 #ifdef __HIP_PLATFORM_AMD__
-  if constexpr (std::is_same_v<typename GemmTestOpt<TestType>::InputType,
-                               float>) {
-    if (!isCDNA(*GemmTestOpt<TestType>().device_)) {
-      SKIP("Float32 is only available on CDNA GPUs");
-    }
+  if (!isCDNA(*GemmTestBasic<TestType>().device_)) {
+    SKIP("Float32 is only available on CDNA GPUs");
+  }
+// on NVIDIA, skip on unsupported GPUs
+#else
+  if (isVolta(*GemmTestBasic<TestType>().device_)) {
+    SKIP("Float32 is not available on Volta GPUs");
   }
 #endif
 
@@ -489,11 +497,17 @@ TEMPLATE_LIST_TEST_CASE_METHOD(GemmTestOpt, "Complex GEMM Test",
 #if !defined(__HIP_PLATFORM_AMD__)
 TEST_CASE_METHOD(ComplexGemmTestFixtureInt1, "Complex GEMM Test - int1 basic",
                  "[complex-gemm-test-int1-basic]") {
+  if (isVolta(*ComplexGemmTestFixtureInt1().device_)) {
+    SKIP("Int1 is not available on Volta GPUs");
+  }
   GemmTestBasic<ComplexGemmTestFixtureInt1>().run_tests();
 }
 
 TEST_CASE_METHOD(ComplexGemmTestFixtureInt1, "Complex GEMM Test - int1 opt",
                  "[complex-gemm-test-int1-opt]") {
+  if (isVolta(*ComplexGemmTestFixture().device_)) {
+    SKIP("Int1 is not available on Volta GPUs");
+  }
   GemmTestOpt<ComplexGemmTestFixtureInt1>().run_tests();
 }
 #endif
@@ -532,6 +546,9 @@ TEST_CASE("Unsupported matrix layout") {
 #if !defined(__HIP_PLATFORM_AMD__)
   // 1-bit requires A row-major, B col-major
   SECTION("int1") {
+    if (isVolta(device)) {
+      SKIP("Int1 is not available on Volta GPUs");
+    }
     CHECK_THROWS_WITH(
         ccglib::mma::GEMM(batch_size, m, n, k, device, stream,
                           {ccglib::ValueType::int1, ccglib::ValueType::int32},
