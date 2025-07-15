@@ -55,12 +55,12 @@ Option                      | Description | Default
 ## Supported data types and matrix layouts
 ccglib supports a range of input/output data types, depending on the available hardware:
 
-Input type  | Output type      | Supported GPUs | Notes
-----------  | -----------      | -------------- | -
-float16     | float32/float16* | NVIDIA and AMD | -
-float32     | float32/float16* | AMD CDNA only  | -
-tensorfloat | float32/float16* | NVIDIA only    | Input data must be in float32 format, conversion to tensorfloat is automatic
-int1        | int32            | NVIDIA only    | Input bits must be packed into int32 values. ccglib provides a tool to do this
+Input type  | Output type      | NVIDIA | AMD | Notes
+----------  | -----------      | ------ | - | -
+float16     | float32/float16\* | ✅              | ✅ | -
+float32     | float32/float16\* | ❌              | CDNA only  | | -
+tensorfloat | float32/float16\* | Ampere or newer | ❌ | Input data must be in float32 format, conversion to tensorfloat is automatic
+int1        | int32            | ✅              | ❌ | Input bits must be packed into int32 values. ccglib provides a tool to do this
 
 \* float16 output is native float32 output downcasted to float16.
 
