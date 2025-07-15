@@ -5,6 +5,7 @@
 #include <cudawrappers/cu.hpp>
 #include <cudawrappers/nvrtc.hpp>
 
+#include <ccglib/common/arch.h>
 #include <ccglib/common/helper.h>
 #include <ccglib/common/precision.h>
 #include <ccglib/gemm/mma.h>
@@ -101,12 +102,11 @@ void GEMM::Impl::Run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b,
 }
 
 void GEMM::Impl::check_support() {
-  const std::string arch = device_.getArch();
-  if (arch.find("sm_70") != std::string::npos) {
+  if (isVolta(device_)) {
     if (kernel_.GetPrecision().input_type == ValueType::int1) {
-      throw std::runtime_error("Int1 input is not supported on " + arch);
+      throw std::runtime_error("Int1 input is not supported on Volta");
     } else if (kernel_.GetPrecision().input_type == ValueType::float32) {
-      throw std::runtime_error("Float32 input is not supported on " + arch);
+      throw std::runtime_error("Float32 input is not supported on Volta");
     }
   }
 }
