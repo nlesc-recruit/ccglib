@@ -42,7 +42,7 @@ template <typename T> void fpEquals(T x, T y) {
   const double numerator = std::fabs(x_conv - y_conv);
   const double divisor = std::fabs(x_conv) + std::fabs(y_conv) + 1.0;
   const double rel_error = numerator / divisor;
-  REQUIRE(rel_error < max_rel_error);
+  REQUIRE(rel_error <= max_rel_error);
 }
 
 template <typename T> void fpEquals(std::complex<T> x, std::complex<T> y) {
