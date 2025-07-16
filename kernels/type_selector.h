@@ -11,6 +11,9 @@ namespace wmma = rocwmma;
 using namespace nvcuda;
 #endif
 
+#include "ccglib/bf16.h"
+#include "ccglib/fp16.h"
+
 #include "value_type.h"
 using ccglib::ValueType;
 
