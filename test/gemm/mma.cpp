@@ -323,21 +323,24 @@ public:
   }
 };
 
-using TestTypesComplexGemm =
-    std::tuple<ComplexGemmTestFixture<bf16, bf16, ccglib::ValueType::bfloat16,
-                                      ccglib::ValueType::bfloat16>,
-               ComplexGemmTestFixture<float, bf16, ccglib::ValueType::float32,
-                                      ccglib::ValueType::bfloat16>,
-               ComplexGemmTestFixture<bf16, float, ccglib::ValueType::bfloat16,
-                                      ccglib::ValueType::float32>,
-               ComplexGemmTestFixture<half, half, ccglib::ValueType::float16,
-                                      ccglib::ValueType::float16>,
-               ComplexGemmTestFixture<float, half, ccglib::ValueType::float32,
-                                      ccglib::ValueType::float16>,
-               ComplexGemmTestFixture<half, float, ccglib::ValueType::float16,
-                                      ccglib::ValueType::float32>,
-               ComplexGemmTestFixture<float, float, ccglib::ValueType::float32,
-                                      ccglib::ValueType::float32>>;
+using TestTypesComplexGemm = std::tuple<
+// CUDA does not support bfloat16 as accumulation type
+#ifdef __HIP_PLATFORM_AMD__
+    ComplexGemmTestFixture<bf16, bf16, ccglib::ValueType::bfloat16,
+                           ccglib::ValueType::bfloat16>,
+#endif
+    ComplexGemmTestFixture<float, bf16, ccglib::ValueType::float32,
+                           ccglib::ValueType::bfloat16>,
+    ComplexGemmTestFixture<bf16, float, ccglib::ValueType::bfloat16,
+                           ccglib::ValueType::float32>,
+    ComplexGemmTestFixture<half, half, ccglib::ValueType::float16,
+                           ccglib::ValueType::float16>,
+    ComplexGemmTestFixture<float, half, ccglib::ValueType::float32,
+                           ccglib::ValueType::float16>,
+    ComplexGemmTestFixture<half, float, ccglib::ValueType::float16,
+                           ccglib::ValueType::float32>,
+    ComplexGemmTestFixture<float, float, ccglib::ValueType::float32,
+                           ccglib::ValueType::float32>>;
 
 // GemmTestTraits is a template struct that provides parameters for the
 // GemmTestBasic and GemmTestOpt test cases.

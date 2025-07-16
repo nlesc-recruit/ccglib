@@ -57,12 +57,13 @@ ccglib supports a range of input/output data types, depending on the available h
 
 Input type  | Output type      | NVIDIA | AMD | Notes
 ----------  | -----------      | ------ | - | -
-float16     | float32/float16\* | ✅              | ✅ | -
-float32     | float32/float16\* | ❌              | CDNA only  | | -
+bfloat16    | bfloat16/float32 | float32 output only             | ✅ | -
+float16     | float32/float16  | ✅              | ✅ | -
+float32     | float32/bfloat16/float16\* | ❌              | CDNA only  | | -
 tensorfloat | float32/float16\* | Ampere or newer | ❌ | Input data must be in float32 format, conversion to tensorfloat is automatic
 int1        | int32            | ✅              | ❌ | Input bits must be packed into int32 values. ccglib provides a tool to do this
 
-\* float16 output is native float32 output downcasted to float16.
+\* bfloat16/float16 output is native float32 output downcasted to bfloat16/float16.
 
 
 With matrix-matrix multiplication defined as `C = A x B`, ccglib requires the A matrix to be in row-major format and the B matrix to be in column-major format. The C matrix can be either row-major or column-major.
