@@ -21,4 +21,5 @@ jobs:
             cmake -S . -B build -DCCGLIB_BUILD_TESTING=1
             make -C build -j
             cd build
+            nm ./src/kernels/*.o
             ctest --output-on-failure
