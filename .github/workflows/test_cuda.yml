@@ -20,6 +20,6 @@ jobs:
             module load cuda
             cmake -S . -B build -DCCGLIB_BUILD_TESTING=1
             make -C build -j
+            nm $(find . -name '*kernel*.o')
             cd build
-            nm ./src/kernels/*.o
             ctest --output-on-failure
