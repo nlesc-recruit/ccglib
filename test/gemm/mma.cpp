@@ -4,8 +4,8 @@
 #include <cudawrappers/cu.hpp>
 #include <cudawrappers/nvrtc.hpp>
 
-#include <ccglib/common/arch.h>
 #include <ccglib/bf16.h>
+#include <ccglib/common/arch.h>
 #include <ccglib/common/helper.h>
 #include <ccglib/common/precision.h>
 #include <ccglib/fp16.h>
