@@ -15,7 +15,6 @@ namespace {
 template <typename Tin, typename Tout>
 void Run(const Tin *a, const Tin *b, Tout *c, size_t M, size_t N, size_t K,
          ccglib::mma::MemOrder output_mem_order) {
-
   // Use the output type as compute type, unless the output is a narrow type
   // because tensor core multiply-add still happens in the wider type
   using ComputeType =
