@@ -58,7 +58,7 @@ void verify(const Tin *a, const Tin *b, const Tout *c, size_t B, size_t M,
           ref = {c_ref(b, 0, n, m), c_ref(b, 1, n, m)};
           tst = {c_view(b, 0, n, m), c_view(b, 1, n, m)};
         }
-        ccglib::test::fpEquals(ref, tst, K);
+        ccglib::test::fpEquals(ref, tst);
       }
     }
   }

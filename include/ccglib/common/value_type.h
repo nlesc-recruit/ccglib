@@ -11,18 +11,18 @@
 
 namespace ccglib {
 
-enum ValueType { int1, int32, float16, float32 };
+enum ValueType { int1, int32, bfloat16, float16, float32 };
 
 constexpr size_t __host__ __device__ CalculateBitWidth(ValueType type) {
   switch (type) {
   case ValueType::int1:
     return 1;
-  case ValueType::int32:
-    return CHAR_BIT * sizeof(unsigned);
+  case ValueType::bfloat16:
   case ValueType::float16:
-    return CHAR_BIT * sizeof(half);
+    return 16;
   case ValueType::float32:
-    return CHAR_BIT * sizeof(float);
+  case ValueType::int32:
+    return 32;
   default:
     // Default case, shouldn't happen
     return 0;

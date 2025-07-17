@@ -4,6 +4,7 @@
 #include <cudawrappers/cu.hpp>
 #include <cudawrappers/nvrtc.hpp>
 
+#include <ccglib/bf16.h>
 #include <ccglib/common/arch.h>
 #include <ccglib/common/helper.h>
 #include <ccglib/common/precision.h>
@@ -21,6 +22,7 @@
 #include <xtensor/xtensor.hpp>
 
 #include "verify.h"
+
 #ifndef COMPLEX
 #define COMPLEX 2
 #endif
@@ -33,6 +35,23 @@ static inline float float_to_tf32(float x) {
   return *reinterpret_cast<float *>(value_int);
 }
 
+static inline std::string type_to_string(ccglib::ValueType type) {
+  switch (type) {
+  case ccglib::int1:
+    return "int1";
+  case ccglib::int32:
+    return "int32";
+  case ccglib::bfloat16:
+    return "bfloat16";
+  case ccglib::float16:
+    return "float16";
+  case ccglib::float32:
+    return "float32";
+  default:
+    return "unrecognized type";
+  }
+}
+
 namespace ccglib::test {
 
 template <typename Tin, typename Tout, ccglib::ValueType InputPrecision,
@@ -41,6 +60,8 @@ class ComplexGemmTestFixture {
 public:
   using InputType = Tin;
   using OutputType = Tout;
+  const std::string InputTypeName = type_to_string(InputPrecision);
+  const std::string OutputTypeName = type_to_string(OutputPrecision);
   std::unique_ptr<cu::Device> device_;
 
   ComplexGemmTestFixture() {
@@ -126,6 +147,16 @@ private:
       for (int idx = 0; idx < bytes_b_ / sizeof(T); idx++) {
         b[idx] = __float2half(static_cast<float>(rand_r(&seed)) /
                               static_cast<float>(RAND_MAX));
+      }
+    } else if constexpr (std::is_same_v<T, bf16>) {
+      unsigned int seed = 0;
+      for (int idx = 0; idx < bytes_a_ / sizeof(T); idx++) {
+        a[idx] = static_cast<bf16>(static_cast<float>(rand_r(&seed)) /
+                                   static_cast<float>(RAND_MAX));
+      }
+      for (int idx = 0; idx < bytes_b_ / sizeof(T); idx++) {
+        b[idx] = static_cast<bf16>(static_cast<float>(rand_r(&seed)) /
+                                   static_cast<float>(RAND_MAX));
       }
     } else if constexpr (std::is_same_v<T, float>) {
       unsigned int seed = 0;
@@ -292,15 +323,24 @@ public:
   }
 };
 
-using TestTypesComplexGemm =
-    std::tuple<ComplexGemmTestFixture<half, half, ccglib::ValueType::float16,
-                                      ccglib::ValueType::float16>,
-               ComplexGemmTestFixture<float, half, ccglib::ValueType::float32,
-                                      ccglib::ValueType::float16>,
-               ComplexGemmTestFixture<half, float, ccglib::ValueType::float16,
-                                      ccglib::ValueType::float32>,
-               ComplexGemmTestFixture<float, float, ccglib::ValueType::float32,
-                                      ccglib::ValueType::float32>>;
+using TestTypesComplexGemm = std::tuple<
+// CUDA does not support bfloat16 as accumulation type
+#ifdef __HIP_PLATFORM_AMD__
+    ComplexGemmTestFixture<bf16, bf16, ccglib::ValueType::bfloat16,
+                           ccglib::ValueType::bfloat16>,
+#endif
+    ComplexGemmTestFixture<float, bf16, ccglib::ValueType::float32,
+                           ccglib::ValueType::bfloat16>,
+    ComplexGemmTestFixture<bf16, float, ccglib::ValueType::bfloat16,
+                           ccglib::ValueType::float32>,
+    ComplexGemmTestFixture<half, half, ccglib::ValueType::float16,
+                           ccglib::ValueType::float16>,
+    ComplexGemmTestFixture<float, half, ccglib::ValueType::float32,
+                           ccglib::ValueType::float16>,
+    ComplexGemmTestFixture<half, float, ccglib::ValueType::float16,
+                           ccglib::ValueType::float32>,
+    ComplexGemmTestFixture<float, float, ccglib::ValueType::float32,
+                           ccglib::ValueType::float32>>;
 
 // GemmTestTraits is a template struct that provides parameters for the
 // GemmTestBasic and GemmTestOpt test cases.
@@ -374,9 +414,8 @@ template <typename Fixture> struct GemmTestBasic : public Fixture {
   void run_tests() {
     using Traits = GemmTestTraits<Fixture>;
 
-    SECTION(
-        "basic-row-major - InputSize: " + std::to_string(Traits::InputSize) +
-        "b, OutputSize: " + std::to_string(Traits::OutputSize) + "b") {
+    SECTION("basic-row-major - InputType: " + this->InputTypeName +
+            ", OutputType: " + this->OutputTypeName) {
       this->init(Traits::M_row_major.aligned, Traits::N_row_major.aligned,
                  Traits::K_row_major.aligned);
       this->complex_gemm_basic(ccglib::mma::row_major);
@@ -385,9 +424,8 @@ template <typename Fixture> struct GemmTestBasic : public Fixture {
                  Traits::K_row_major.unaligned);
       this->complex_gemm_basic(ccglib::mma::row_major);
     }
-    SECTION(
-        "basic-col-major - InputSize: " + std::to_string(Traits::InputSize) +
-        "b. OutputSize: " + std::to_string(Traits::OutputSize) + "b") {
+    SECTION("basic-col-major - InputType: " + this->InputTypeName +
+            ", OutputType: " + this->OutputTypeName) {
       this->init(Traits::M_col_major.aligned, Traits::N_col_major.aligned,
                  Traits::K_col_major.aligned);
       this->complex_gemm_basic(ccglib::mma::col_major);
@@ -403,8 +441,8 @@ template <typename Fixture> struct GemmTestOpt : public Fixture {
   void run_tests() {
     using Traits = GemmTestTraits<Fixture>;
 
-    SECTION("opt-row-major - InputSize: " + std::to_string(Traits::InputSize) +
-            "b, OutputSize: " + std::to_string(Traits::OutputSize) + "b") {
+    SECTION("opt-row-major - InputType: " + this->InputTypeName +
+            ", OutputType: " + this->OutputTypeName) {
       this->init(Traits::M_row_major.aligned, Traits::N_row_major.aligned,
                  Traits::K_row_major.aligned);
       this->complex_gemm_opt(ccglib::mma::row_major);
@@ -413,8 +451,8 @@ template <typename Fixture> struct GemmTestOpt : public Fixture {
                  Traits::K_row_major.unaligned);
       this->complex_gemm_basic(ccglib::mma::row_major);
     }
-    SECTION("opt-col-major - InputSize: " + std::to_string(Traits::InputSize) +
-            "b, OutputSize: " + std::to_string(Traits::OutputSize) + "b") {
+    SECTION("opt-col-major - InputType: " + this->InputTypeName +
+            ", OutputType: " + this->OutputTypeName) {
       this->init(Traits::M_col_major.aligned, Traits::N_col_major.aligned,
                  Traits::K_col_major.aligned);
       this->complex_gemm_opt(ccglib::mma::col_major);
@@ -424,9 +462,8 @@ template <typename Fixture> struct GemmTestOpt : public Fixture {
       this->complex_gemm_opt(ccglib::mma::col_major);
     }
 
-    SECTION("opt-row-major-complex-interleaved - InputSize: " +
-            std::to_string(Traits::InputSize) +
-            "b, OutputSize: " + std::to_string(Traits::OutputSize) + "b") {
+    SECTION("opt-row-major-complex-interleaved - InputType: " +
+            this->InputTypeName + ", OutputType: " + this->OutputTypeName) {
       this->init(Traits::M_row_major.aligned, Traits::N_row_major.aligned,
                  Traits::K_row_major.aligned);
       this->complex_gemm_opt(ccglib::mma::row_major,
@@ -438,9 +475,8 @@ template <typename Fixture> struct GemmTestOpt : public Fixture {
                              ccglib::complex_interleaved);
     }
 
-    SECTION("opt-col-major-complex-interleaved - InputSize: " +
-            std::to_string(Traits::InputSize) +
-            "b, OutputSize: " + std::to_string(Traits::OutputSize) + "b") {
+    SECTION("opt-col-major-complex-interleaved - InputType: " +
+            this->InputTypeName + ", OutputType: " + this->OutputTypeName) {
       this->init(Traits::M_col_major.aligned, Traits::N_col_major.aligned,
                  Traits::K_col_major.aligned);
       this->complex_gemm_opt(ccglib::mma::col_major,

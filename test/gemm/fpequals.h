@@ -5,7 +5,8 @@
 #include <iostream>
 #include <limits>
 
-#include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include <catch2/catch_test_macros.hpp>
+#include <ccglib/bf16.h>
 #include <ccglib/fp16.h>
 
 namespace ccglib::test {
@@ -14,35 +15,37 @@ template <typename T> constexpr float getEpsilon() {
   if constexpr (std::is_same_v<T, __half> || std::is_same_v<T, float>) {
     // float16 uses an 11-bit mantissa (of which 10 bits are stored)
     // within the kernel, float32 is converted to tf32
-    // tf32 uses the same mantissa as the half-precision math
+    // fp16 and tf32 use an 10-bit mantissa
     // the precision for normal numbers is therefore 2^-10
     return 0.000976562;
+  } else if constexpr (std::is_same_v<T, bf16>) {
+    // bfloat16 uses an 8-bit mantissa (of which 7 bits are stored)
+    // the precision for normal numbers is therefore 2^-7
+    return 0.0078125;
   }
   return std::numeric_limits<T>::epsilon();
 }
 
-template <typename T> void fpEquals(T x, T y, size_t K = 1) {
-  constexpr float epsilon = getEpsilon<T>();
+template <typename T> void fpEquals(T x, T y) {
+  // Follow the same approach as rocWMMA: the max relative error should be
+  // < 10 * epsilon. If the output is a narrow type, the downcast results in a
+  // loss of precision and the tolerance is increased to 100 * epsilon.
+  constexpr double epsilon = static_cast<double>(getEpsilon<T>());
+  constexpr double max_rel_error =
+      (sizeof(T) < sizeof(float32) ? 100 : 10) * epsilon;
 
-  if constexpr (std::is_same_v<T, half>) {
-    // We need to upcast since Catch2 cannot print float16/half types in case of
-    // test failure.
-    const float x_conv = __half2float(x);
-    const float y_conv = __half2float(y);
+  const double x_conv = static_cast<double>(x);
+  const double y_conv = static_cast<double>(y);
 
-    // We are more lenient in WithinAbs since we use a less precise type.
-    REQUIRE_THAT(y_conv, Catch::Matchers::WithinAbs(x_conv, epsilon * K) ||
-                             Catch::Matchers::WithinRel(x_conv, epsilon * 100));
-  } else {
-    REQUIRE_THAT(y, Catch::Matchers::WithinAbs(x, epsilon) ||
-                        Catch::Matchers::WithinRel(x, epsilon * 100));
-  }
+  const double numerator = std::fabs(x_conv - y_conv);
+  const double divisor = std::fabs(x_conv) + std::fabs(y_conv) + 1.0;
+  const double rel_error = numerator / divisor;
+  REQUIRE(rel_error <= max_rel_error);
 }
 
-template <typename T>
-void fpEquals(std::complex<T> x, std::complex<T> y, size_t K = 1) {
-  fpEquals(x.real(), y.real(), K);
-  fpEquals(x.imag(), y.imag(), K);
+template <typename T> void fpEquals(std::complex<T> x, std::complex<T> y) {
+  fpEquals(x.real(), y.real());
+  fpEquals(x.imag(), y.imag());
 }
 
 } // namespace ccglib::test

@@ -6,6 +6,7 @@
 #include <xtensor/xadapt.hpp>
 #include <xtensor/xtensor.hpp>
 
+#include <ccglib/bf16.h>
 #include <ccglib/common/precision.h>
 #include <ccglib/fp16.h>
 #include <ccglib/transpose/transpose.h>
@@ -154,6 +155,8 @@ public:
 
 using TransposeTestFixtureFloat16 =
     TransposeTestFixture<half, ccglib::ValueType::float16>;
+using TransposeTestFixtureBfloat16 =
+    TransposeTestFixture<bf16, ccglib::ValueType::bfloat16>;
 using TransposeTestFixtureInt1 =
     TransposeTestFixture<unsigned int, ccglib::ValueType::int1>;
 
@@ -165,6 +168,18 @@ TEST_CASE_METHOD(TransposeTestFixtureFloat16, "Transpose Test - float16",
   }
   SECTION("complex-interleaved") {
     TransposeTestFixtureFloat16::transpose(
+        ccglib::ComplexAxisLocation::complex_interleaved);
+  }
+}
+
+TEST_CASE_METHOD(TransposeTestFixtureBfloat16, "Transpose Test - bfloat16",
+                 "[transpose-test-bfloat16]") {
+  SECTION("complex-middle") {
+    TransposeTestFixtureBfloat16::transpose(
+        ccglib::ComplexAxisLocation::complex_planar);
+  }
+  SECTION("complex-last") {
+    TransposeTestFixtureBfloat16::transpose(
         ccglib::ComplexAxisLocation::complex_interleaved);
   }
 }

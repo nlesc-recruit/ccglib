@@ -11,6 +11,9 @@ namespace wmma = rocwmma;
 using namespace nvcuda;
 #endif
 
+#include "ccglib/bf16.h"
+#include "ccglib/fp16.h"
+
 #include "value_type.h"
 using ccglib::ValueType;
 
@@ -80,6 +83,28 @@ template <> struct TypeSelector<ValueType::int1, ValueType::int32> {
   static constexpr bool IS_DOWNCAST_OP = false;
 };
 
+template <> struct TypeSelector<ValueType::bfloat16, ValueType::bfloat16> {
+  using Tin = bf16;
+  using Ttc = bf16;
+  using Tshared = bf16;
+  using Tout = bf16;
+
+  static constexpr unsigned PACKING_FACTOR = 1;
+  static constexpr size_t OVERRIDE_K_PER_WMMA = 0;
+  static constexpr bool IS_DOWNCAST_OP = false;
+};
+
+template <> struct TypeSelector<ValueType::bfloat16, ValueType::float32> {
+  using Tin = bf16;
+  using Ttc = bf16;
+  using Tshared = float;
+  using Tout = float;
+
+  static constexpr unsigned PACKING_FACTOR = 1;
+  static constexpr size_t OVERRIDE_K_PER_WMMA = 0;
+  static constexpr bool IS_DOWNCAST_OP = false;
+};
+
 template <> struct TypeSelector<ValueType::float16, ValueType::float16> {
   using Tin = half;
   using Ttc = half;
@@ -117,6 +142,21 @@ template <> struct TypeSelector<ValueType::float32, ValueType::float32> {
   static constexpr unsigned PACKING_FACTOR = 1;
   static constexpr size_t OVERRIDE_K_PER_WMMA = 0;
   static constexpr bool IS_DOWNCAST_OP = false;
+};
+
+template <> struct TypeSelector<ValueType::float32, ValueType::bfloat16> {
+  using Tin = float;
+#ifdef __HIP_PLATFORM_AMD__
+  using Ttc = float;
+#else
+  using Ttc = wmma::precision::tf32;
+#endif
+  using Tshared = float;
+  using Tout = bf16;
+
+  static constexpr unsigned PACKING_FACTOR = 1;
+  static constexpr size_t OVERRIDE_K_PER_WMMA = 8;
+  static constexpr bool IS_DOWNCAST_OP = true;
 };
 
 template <> struct TypeSelector<ValueType::float32, ValueType::float16> {

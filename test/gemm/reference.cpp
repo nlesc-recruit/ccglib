@@ -6,6 +6,7 @@
 #include <xtensor/xtensor.hpp>
 #include <xtensor/xview.hpp>
 
+#include <ccglib/bf16.h>
 #include <ccglib/common/helper.h>
 #include <ccglib/fp16.h>
 #include <ccglib/gemm/reference.h>
@@ -20,10 +21,20 @@ public:
     const size_t K = 2;
     const size_t COMPLEX = 2;
     // Matrix a row-major a(2,M,K)
-    const InputType a[COMPLEX * M * K] = {1., 2., 3., 4., 5., 6.,
-                                          6., 5., 4., 3., 2., 1.};
-    // Matrix a column-major a(2,M,K)
-    const InputType b[COMPLEX * N * K] = {1., 2., 3., 4., 4., 3., 2., 1.};
+    // the static_casts are necessary for handling the bfloat16 type
+    const InputType a[COMPLEX * M * K] = {
+        static_cast<InputType>(1), static_cast<InputType>(2),
+        static_cast<InputType>(3), static_cast<InputType>(4),
+        static_cast<InputType>(5), static_cast<InputType>(6),
+        static_cast<InputType>(6), static_cast<InputType>(5),
+        static_cast<InputType>(4), static_cast<InputType>(3),
+        static_cast<InputType>(2), static_cast<InputType>(1)};
+    // Matrix b column-major b(2,N,K)
+    const InputType b[COMPLEX * N * K] = {
+        static_cast<InputType>(1), static_cast<InputType>(2),
+        static_cast<InputType>(3), static_cast<InputType>(4),
+        static_cast<InputType>(4), static_cast<InputType>(3),
+        static_cast<InputType>(2), static_cast<InputType>(1)};
     // Matrix c=a*b row-major c(2,M,N)
     const std::array<float, COMPLEX * M * N> c_ref_row_major = {
         -34, -6, -14, 14, 6, 34, 26, 42, 34, 34, 42, 26};
@@ -42,7 +53,7 @@ public:
   }
 };
 
-using TestTypes = std::tuple<half, float>;
+using TestTypes = std::tuple<half, bf16, float>;
 TEMPLATE_LIST_TEST_CASE_METHOD(TestImpl, "Reference complex float",
                                "[correctness]", TestTypes) {
   SECTION("Simple reference output") { TestImpl<TestType>::runTestReference(); }
