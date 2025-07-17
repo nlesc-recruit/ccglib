@@ -21,8 +21,6 @@ template <typename T> constexpr float getEpsilon() {
   } else if constexpr (std::is_same_v<T, bf16>) {
     // bfloat16 uses an 8-bit mantissa (of which 7 bits are stored)
     // the precision for normal numbers is therefore 2^-7
-    // Note: this epsilon exists already in e.g. HIP, but is not constexpr so
-    // cannot be reused here
     return 0.0078125;
   }
   return std::numeric_limits<T>::epsilon();
