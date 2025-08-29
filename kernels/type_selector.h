@@ -148,8 +148,10 @@ template <> struct TypeSelector<ValueType::float32, ValueType::bfloat16> {
   using Tin = float;
 #ifdef __HIP_PLATFORM_AMD__
   using Ttc = float;
-#else
+#elif (__CUDA_ARCH__ >= 800)
   using Ttc = wmma::precision::tf32;
+#else
+  using Ttc = void;
 #endif
   using Tshared = float;
   using Tout = bf16;
