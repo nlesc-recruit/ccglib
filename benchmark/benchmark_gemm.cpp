@@ -105,9 +105,16 @@ int main(int argc, const char *argv[]) {
   const std::map<const std::string, const ccglib::ValueType> map_gemm_precision{
       {"float32", ccglib::ValueType::float32},
       {"float16", ccglib::ValueType::float16},
+      {"float8e4m3", ccglib::ValueType::float8e4m3},
       {"int32", ccglib::ValueType::int32},
       {"int1", ccglib::ValueType::int1}};
 
+  if (map_gemm_precision.find(precision_in) == map_gemm_precision.end() ||
+      map_gemm_precision.find(precision_out) == map_gemm_precision.end()) {
+    std::cerr << "Invalid precision provided: input=" << precision_in
+              << ", output=" << precision_out << std::endl;
+    exit(EXIT_FAILURE);
+  }
   const ccglib::Precision gemm_precision(map_gemm_precision.at(precision_in),
                                          map_gemm_precision.at(precision_out));
 

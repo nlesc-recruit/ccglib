@@ -1,3 +1,5 @@
+
+#include "ccglib/fp8.h"
 #if defined(__HIP_PLATFORM_AMD__)
 #include <rocwmma/rocwmma.hpp>
 namespace wmma = rocwmma;

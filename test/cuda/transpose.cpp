@@ -9,6 +9,7 @@
 
 #include <ccglib/common/precision.h>
 #include <ccglib/fp16.h>
+#include <ccglib/fp8.h>
 #include <ccglib/transpose/transpose.h>
 
 namespace ccglib::test {

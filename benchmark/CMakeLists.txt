@@ -24,7 +24,7 @@ foreach(benchmark ${BENCHMARKS})
   target_link_libraries(${TARGET} ccglib cudawrappers::cu cudawrappers::nvrtc
                         cxxopts)
   if(CCGLIB_BENCHMARK_WITH_PMT)
-    target_link_libraries(${TARGET} pmt)
+    target_link_libraries(${TARGET} pmt PROPERTIES LINKER_LANGUAGE CXX)
   endif()
 
   if(${CCGLIB_BACKEND_HIP})

@@ -9,6 +9,7 @@
 #include <ccglib/bf16.h>
 #include <ccglib/common/precision.h>
 #include <ccglib/fp16.h>
+#include <ccglib/fp8.h>
 #include <ccglib/transpose/transpose.h>
 
 namespace ccglib::test {
@@ -153,12 +154,27 @@ public:
   }
 };
 
+// FIXME: fix types for float8.
+using TransposeTestFixtureFloat8 =
+    TransposeTestFixture<half, ccglib::ValueType::float8e4m3>;
 using TransposeTestFixtureFloat16 =
     TransposeTestFixture<half, ccglib::ValueType::float16>;
 using TransposeTestFixtureBfloat16 =
     TransposeTestFixture<bf16, ccglib::ValueType::bfloat16>;
 using TransposeTestFixtureInt1 =
     TransposeTestFixture<unsigned int, ccglib::ValueType::int1>;
+
+TEST_CASE_METHOD(TransposeTestFixtureFloat8, "Transpose Test - float8",
+                 "[transpose-test-float8]") {
+  SECTION("complex-planar") {
+    TransposeTestFixtureFloat8::transpose(
+        ccglib::ComplexAxisLocation::complex_planar);
+  }
+  SECTION("complex-interleaved") {
+    TransposeTestFixtureFloat8::transpose(
+        ccglib::ComplexAxisLocation::complex_interleaved);
+  }
+}
 
 TEST_CASE_METHOD(TransposeTestFixtureFloat16, "Transpose Test - float16",
                  "[transpose-test-float16]") {

@@ -96,6 +96,7 @@ int main(int argc, const char *argv[]) {
   std::map<std::string, ccglib::ValueType> map_gemm_precision{
       {"float32", ccglib::ValueType::float32},
       {"float16", ccglib::ValueType::float16},
+      {"float8e4m3", ccglib::ValueType::float8e4m3},
       {"int32", ccglib::ValueType::int32},
       {"int1", ccglib::ValueType::int1}};
   ccglib::ValueType gemm_precision = map_gemm_precision[precision];
