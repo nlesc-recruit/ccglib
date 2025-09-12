@@ -80,11 +80,10 @@ mma_sync(fragment<accumulator, 16, 8, 32, float> &d,
 inline __device__ void
 load_matrix_sync(fragment<matrix_a, 16, 8, 32, __nv_fp8_e4m3, row_major> &a,
                  const void *p, size_t ldm) {
-
-  a.x[0] = ((const int *)p)[ldm / 4 * (laneid() / 4) + laneid() % 4];
-  a.x[1] = ((const int *)p)[ldm / 4 * (laneid() / 4 + 8) + laneid() % 4];
-  a.x[2] = ((const int *)p)[ldm / 4 * (laneid() / 4) + laneid() % 4 + 4];
-  a.x[3] = ((const int *)p)[ldm / 4 * (laneid() / 4 + 8) + laneid() % 4 + 4];
+  a.x[0] = ((const int *)p)[ldm / 8 * (laneid() / 4) + laneid() % 4];
+  a.x[1] = ((const int *)p)[ldm / 8 * (laneid() / 4 + 8) + laneid() % 4];
+  a.x[2] = ((const int *)p)[ldm / 8 * (laneid() / 4) + laneid() % 4 + 4];
+  a.x[3] = ((const int *)p)[ldm / 8 * (laneid() / 4 + 8) + laneid() % 4 + 4];
 }
 
 inline __device__ void
@@ -114,15 +113,15 @@ inline __device__ void
 store_matrix_sync(float *p, const fragment<accumulator, 16, 8, 32, float> &d,
                   unsigned ldm, layout_t layout) {
   if (layout == mem_row_major) {
-    ((float2 *)p)[ldm / 4 * (laneid() / 4) + laneid() % 4] =
+    ((float2 *)p)[ldm / 2 * (laneid() / 4) + laneid() % 4] =
         make_float2(d.x[0], d.x[1]);
-    ((float2 *)p)[ldm / 4 * (laneid() / 4 + 8) + laneid() % 4] =
+    ((float2 *)p)[ldm / 2 * (laneid() / 4 + 8) + laneid() % 4] =
         make_float2(d.x[2], d.x[3]);
   } else {
-    p[(laneid() % 8) * 2 * ldm + (laneid() / 8)] = d.x[0];
-    p[(laneid() % 8) * 2 * ldm + (laneid() / 8) + ldm] = d.x[1];
-    p[(laneid() % 8) * 2 * ldm + (laneid() / 8 + 8)] = d.x[2];
-    p[(laneid() % 8) * 2 * ldm + (laneid() / 8 + 8) + ldm] = d.x[3];
+    p[(laneid() % 4) * 2 * ldm + (laneid() / 4)] = d.x[0];
+    p[(laneid() % 4) * 2 * ldm + (laneid() / 4) + ldm] = d.x[1];
+    p[(laneid() % 4) * 2 * ldm + (laneid() / 4 + 8)] = d.x[2];
+    p[(laneid() % 4) * 2 * ldm + (laneid() / 4 + 8) + ldm] = d.x[3];
   }
 }
 

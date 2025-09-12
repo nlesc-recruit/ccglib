@@ -148,12 +148,12 @@ private:
         // type, which is not directly compatible/castable to __nv_fp8_e4m3. As
         // CUDA provides a direct constructor for __nv_fp8_e4m3 from float, we
         // use that instead.
-        a[idx] = __nv_fp8_e4m3(static_cast<float>(rand_r(&seed)) /
-                               static_cast<float>(RAND_MAX));
+        a[idx] = static_cast<__nv_fp8_e4m3>(static_cast<float>(rand_r(&seed)) /
+                                            static_cast<float>(RAND_MAX));
       }
       for (int idx = 0; idx < bytes_b_ / sizeof(T); idx++) {
-        b[idx] = __nv_fp8_e4m3(static_cast<float>(rand_r(&seed)) /
-                               static_cast<float>(RAND_MAX));
+        b[idx] = static_cast<__nv_fp8_e4m3>(static_cast<float>(rand_r(&seed)) /
+                                            static_cast<float>(RAND_MAX));
       }
     } else if constexpr (std::is_same_v<T, __half>) {
       unsigned int seed = 0;
@@ -450,9 +450,9 @@ template <typename Fixture> struct GemmTestBasic : public Fixture {
                  Traits::K_col_major.aligned);
       this->complex_gemm_basic(ccglib::mma::col_major);
 
-      this->init(Traits::M_row_major.unaligned, Traits::N_row_major.unaligned,
-                 Traits::K_row_major.unaligned);
-      this->complex_gemm_basic(ccglib::mma::row_major);
+      this->init(Traits::M_col_major.unaligned, Traits::N_col_major.unaligned,
+                 Traits::K_col_major.unaligned);
+      this->complex_gemm_basic(ccglib::mma::col_major);
     }
   }
 };

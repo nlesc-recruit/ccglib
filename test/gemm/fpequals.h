@@ -39,8 +39,9 @@ template <typename T, typename T_EPSILON = T> void fpEquals(T x, T y) {
   constexpr double max_rel_error =
       (sizeof(T) < sizeof(float32) ? 100 : 10) * epsilon;
 
-  std::cout << "x: " << static_cast<double>(x)
-            << ", y: " << static_cast<double>(y) << std::endl;
+  // std::cout << "x: " << static_cast<double>(x)
+  //           << ", y: " << static_cast<double>(y) << ", diff: " <<
+  //           static_cast<double>(x) - static_cast<double>(y) <<  std::endl;
   const double x_conv = static_cast<double>(x);
   const double y_conv = static_cast<double>(y);
 
