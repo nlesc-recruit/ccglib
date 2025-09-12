@@ -127,13 +127,14 @@ int main(int argc, const char *argv[]) {
   }
   for (size_t bench = 0; bench < nr_benchmarks; bench++) {
     for (size_t idx = 0; idx < num_sizes; idx++) {
-      ccglib::packing::Packing packing(N[idx], device, stream);
+      ccglib::packing::Packing packing(N[idx], packing_direction, device,
+                                       stream);
 
       // Run once to get estimate of runtime per kernel
       cu::Event start;
       cu::Event end;
       stream.record(start);
-      packing.Run(d_input, d_output, packing_direction);
+      packing.Run(d_input, d_output);
       stream.record(end);
       stream.synchronize();
       const size_t nr_iterations =
@@ -142,7 +143,7 @@ int main(int argc, const char *argv[]) {
       // If this is the first iteration, do a warmup run
       if (bench == 0 && idx == 0) {
         for (size_t warmup = 0; warmup < nr_iterations; warmup++) {
-          packing.Run(d_input, d_output, packing_direction);
+          packing.Run(d_input, d_output);
         }
       }
       stream.synchronize();
@@ -155,7 +156,7 @@ int main(int argc, const char *argv[]) {
       stream.record(start);
 #endif
       for (size_t iter = 0; iter < nr_iterations; iter++) {
-        packing.Run(d_input, d_output, packing_direction);
+        packing.Run(d_input, d_output);
       }
 #if defined(HAVE_PMT)
       stream.synchronize();

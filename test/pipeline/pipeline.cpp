@@ -144,10 +144,12 @@ TEST_CASE("Pipeline int1 - int32") {
   stream.memcpyHtoDAsync(d_a_packed, h_a_packed, d_a_packed.size());
   stream.memcpyHtoDAsync(d_b_packed, h_b_packed, d_b_packed.size());
 
-  ccglib::packing::Packing pack_a(num_a, device, stream);
-  ccglib::packing::Packing pack_b(num_a, device, stream);
-  pack_a.Run(d_a_packed, d_a, ccglib::backward, input_complex_axis_location);
-  pack_b.Run(d_b_packed, d_b, ccglib::backward, input_complex_axis_location);
+  ccglib::packing::Packing unpack_a(num_a, ccglib::backward, device, stream,
+                                    input_complex_axis_location);
+  ccglib::packing::Packing unpack_b(num_a, ccglib::backward, device, stream,
+                                    input_complex_axis_location);
+  unpack_a.Run(d_a_packed, d_a);
+  unpack_b.Run(d_b_packed, d_b);
 
   cu::DeviceMemory d_c(h_c.size());
   d_c.zero(d_c.size());

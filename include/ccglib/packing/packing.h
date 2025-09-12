@@ -24,26 +24,25 @@ namespace ccglib::packing {
 
 class Packing {
 public:
-  Packing(size_t N, cu::Device &device, cu::Stream &stream);
+  Packing(size_t N, Direction direction, cu::Device &device, cu::Stream &stream,
+          ComplexAxisLocation input_complex_axis_location =
+              ComplexAxisLocation::complex_planar);
   ~Packing();
-  void Run(cu::HostMemory &h_input, cu::DeviceMemory &d_output,
-           Direction direction,
-           ComplexAxisLocation input_complex_axis_location = complex_planar);
-  void Run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output,
-           Direction direction,
-           ComplexAxisLocation input_complex_axis_location = complex_planar);
+  void Run(cu::HostMemory &h_input, cu::DeviceMemory &d_output);
+  void Run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output);
 #ifdef __HIP__
-  Packing(size_t N, hipDevice_t &device, hipStream_t &stream);
-  void Run(unsigned char *h_input, hipDeviceptr_t d_output, Direction direction,
-           ComplexAxisLocation input_complex_axis_location = complex_planar);
-  void Run(hipDeviceptr_t d_input, hipDeviceptr_t d_output, Direction direction,
-           ComplexAxisLocation input_complex_axis_location = complex_planar);
+  Packing(size_t N, Direction direction, hipDevice_t &device,
+          hipStream_t &stream,
+          ComplexAxisLocation input_complex_axis_location =
+              ComplexAxisLocation::complex_planar);
+  void Run(unsigned char *h_input, hipDeviceptr_t d_output);
+  void Run(hipDeviceptr_t d_input, hipDeviceptr_t d_output);
 #else
-  Packing(size_t N, CUdevice &device, CUstream &stream);
-  void Run(unsigned char *h_input, CUdeviceptr d_output, Direction direction,
-           ComplexAxisLocation input_complex_axis_location = complex_planar);
-  void Run(CUdeviceptr d_input, CUdeviceptr d_output, Direction direction,
-           ComplexAxisLocation input_complex_axis_location = complex_planar);
+  Packing(size_t N, Direction direction, CUdevice &device, CUstream &stream,
+          ComplexAxisLocation input_complex_axis_location =
+              ComplexAxisLocation::complex_planar);
+  void Run(unsigned char *h_input, CUdeviceptr d_output);
+  void Run(CUdeviceptr d_input, CUdeviceptr d_output);
 #endif
 
 private:

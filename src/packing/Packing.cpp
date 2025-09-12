@@ -13,30 +13,31 @@ namespace ccglib::packing {
 
 class Packing::Impl {
 public:
-  Impl(size_t N, cu::Device &device, cu::Stream &stream);
+  Impl(size_t N, Direction direction, cu::Device &device, cu::Stream &stream,
+       ComplexAxisLocation input_complex_axis_location);
 
-  void Run(cu::HostMemory &h_input, cu::DeviceMemory &d_output,
-           Direction direction,
-           ComplexAxisLocation input_complex_axis_location);
+  void Run(cu::HostMemory &h_input, cu::DeviceMemory &d_output);
 
-  void Run(cu::DeviceMemory &h_input, cu::DeviceMemory &d_output,
-           Direction direction,
-           ComplexAxisLocation input_complex_axis_location);
+  void Run(cu::DeviceMemory &h_input, cu::DeviceMemory &d_output);
 
 private:
   void compile_kernel();
 
   size_t N_;
+  Direction direction_;
   cu::Device &device_;
   cu::Stream &stream_;
+  ComplexAxisLocation input_complex_axis_location_;
 
   std::shared_ptr<cu::Module> module_;
-  std::shared_ptr<cu::Function> function_pack_;
-  std::shared_ptr<cu::Function> function_unpack_;
+  std::shared_ptr<cu::Function> function_;
 };
 
-Packing::Impl::Impl(size_t N, cu::Device &device, cu::Stream &stream)
-    : N_(N), device_(device), stream_(stream) {
+Packing::Impl::Impl(size_t N, Direction direction, cu::Device &device,
+                    cu::Stream &stream,
+                    ComplexAxisLocation input_complex_axis_location)
+    : N_(N), direction_(direction), device_(device), stream_(stream),
+      input_complex_axis_location_(input_complex_axis_location) {
   // Packing kernel uses functions not supported in HIP < 6.2
 #if defined(__HIP_PLATFORM_AMD__)
   const int hip_version = HIP_VERSION_MAJOR * 10 + HIP_VERSION_MINOR;
@@ -44,50 +45,31 @@ Packing::Impl::Impl(size_t N, cu::Device &device, cu::Stream &stream)
     throw std::runtime_error("packing kernel requires HIP 6.2+");
   }
 #endif
+
+  if (direction == Direction::backward &&
+      input_complex_axis_location == ComplexAxisLocation::complex_interleaved) {
+    throw std::runtime_error(
+        "complex-interleaved input is not supported in unpacking kernel");
+  }
+
   compile_kernel();
 }
 
-void Packing::Impl::Run(cu::HostMemory &h_input, cu::DeviceMemory &d_output,
-                        Direction direction,
-                        ComplexAxisLocation input_complex_axis_location) {
+void Packing::Impl::Run(cu::HostMemory &h_input, cu::DeviceMemory &d_output) {
   cu::DeviceMemory d_input = stream_.memAllocAsync(h_input.size());
   stream_.memcpyHtoDAsync(d_input, h_input, h_input.size());
-  Run(d_input, d_output, direction, input_complex_axis_location);
+  Run(d_input, d_output);
   stream_.memFreeAsync(d_input);
 }
 
-void Packing::Impl::Run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output,
-                        Direction direction,
-                        ComplexAxisLocation input_complex_axis_location) {
+void Packing::Impl::Run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output) {
   dim3 threads(256);
   dim3 grid(helper::ceildiv(N_, threads.x));
-
-  bool complex_axis_is_last =
-      input_complex_axis_location == ComplexAxisLocation::complex_interleaved;
 
   std::vector<const void *> parameters = {d_output.parameter(),
                                           d_input.parameter()};
 
-  std::shared_ptr<cu::Function> function;
-  switch (direction) {
-  case Direction::forward:
-    function = function_pack_;
-    // complex-last is only supported in the packing kernel
-    parameters.push_back(static_cast<const void *>(&complex_axis_is_last));
-    break;
-  case Direction::backward:
-    function = function_unpack_;
-    // complex-last is not supported in the unpacking kernel
-    if (complex_axis_is_last) {
-      throw std::runtime_error(
-          "complex-last input is not supported in unpacking kernel");
-    }
-    break;
-  default:
-    throw std::runtime_error("Unknown packing direction");
-  }
-
-  stream_.launchKernel(*function, grid.x, grid.y, grid.z, threads.x, threads.y,
+  stream_.launchKernel(*function_, grid.x, grid.y, grid.z, threads.x, threads.y,
                        threads.z, 0, parameters);
 }
 
@@ -114,6 +96,13 @@ void Packing::Impl::compile_kernel() {
     "-DWARP_SIZE=" + std::to_string(warp_size)
   };
 
+  if (input_complex_axis_location_ == ComplexAxisLocation::complex_planar) {
+    options.push_back("-DINPUT_COMPLEX_PLANAR");
+  } else if (input_complex_axis_location_ ==
+             ComplexAxisLocation::complex_interleaved) {
+    options.push_back("-DINPUT_COMPLEX_INTERLEAVED");
+  }
+
   const std::string kernel(&_binary_kernels_packing_kernel_cu_start,
                            &_binary_kernels_packing_kernel_cu_end);
 
@@ -128,46 +117,49 @@ void Packing::Impl::compile_kernel() {
 
   module_ = std::make_unique<cu::Module>(
       static_cast<const void *>(program.getPTX().data()));
-  function_pack_ = std::make_unique<cu::Function>(*module_, "pack_bits");
-  function_unpack_ = std::make_unique<cu::Function>(*module_, "unpack_bits");
+  if (direction_ == Direction::forward) {
+    function_ = std::make_unique<cu::Function>(*module_, "pack_bits");
+  } else if (direction_ == Direction::backward) {
+    function_ = std::make_unique<cu::Function>(*module_, "unpack_bits");
+  } else {
+    throw std::runtime_error("Unknown packing direction");
+  }
 }
 
-Packing::Packing(size_t N, cu::Device &device, cu::Stream &stream)
-    : impl_(std::make_unique<Impl>(N, device, stream)){};
+Packing::Packing(size_t N, Direction direction, cu::Device &device,
+                 cu::Stream &stream,
+                 ComplexAxisLocation input_complex_axis_location)
+    : impl_(std::make_unique<Impl>(N, direction, device, stream,
+                                   input_complex_axis_location)){};
 
-Packing::Packing(size_t N, CUdevice &device, CUstream &stream)
+Packing::Packing(size_t N, Direction direction, CUdevice &device,
+                 CUstream &stream,
+                 ComplexAxisLocation input_complex_axis_location)
     : N_(N), device_(new cu::Device(device)), stream_(new cu::Stream(stream)) {
-  impl_ = std::make_unique<Impl>(N, *device_, *stream_);
+  impl_ = std::make_unique<Impl>(N, direction, *device_, *stream_,
+                                 input_complex_axis_location);
 }
 
 Packing::~Packing() = default;
 
-void Packing::Run(cu::HostMemory &h_input, cu::DeviceMemory &d_output,
-                  Direction direction,
-                  ComplexAxisLocation input_complex_axis_location) {
-  impl_->Run(h_input, d_output, direction, input_complex_axis_location);
+void Packing::Run(cu::HostMemory &h_input, cu::DeviceMemory &d_output) {
+  impl_->Run(h_input, d_output);
 }
 
-void Packing::Run(unsigned char *h_input, CUdeviceptr d_output,
-                  Direction direction,
-                  ComplexAxisLocation input_complex_axis_location) {
+void Packing::Run(unsigned char *h_input, CUdeviceptr d_output) {
   cu::HostMemory h_input_(h_input, N_);
   cu::DeviceMemory d_output_(d_output);
-  impl_->Run(h_input_, d_output_, direction, input_complex_axis_location);
+  impl_->Run(h_input_, d_output_);
 }
 
-void Packing::Run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output,
-                  Direction direction,
-                  ComplexAxisLocation input_complex_axis_location) {
-  impl_->Run(d_input, d_output, direction, input_complex_axis_location);
+void Packing::Run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output) {
+  impl_->Run(d_input, d_output);
 }
 
-void Packing::Run(CUdeviceptr d_input, CUdeviceptr d_output,
-                  Direction direction,
-                  ComplexAxisLocation input_complex_axis_location) {
+void Packing::Run(CUdeviceptr d_input, CUdeviceptr d_output) {
   cu::DeviceMemory d_input_(d_input);
   cu::DeviceMemory d_output_(d_output);
-  impl_->Run(d_input_, d_output_, direction, input_complex_axis_location);
+  impl_->Run(d_input_, d_output_);
 }
 
 } // end namespace ccglib::packing
