@@ -24,7 +24,6 @@ private:
   static const size_t kComplex = 2;
   const bool requires_packing_;
   const bool requires_transpose_;
-  const ComplexAxisLocation input_complex_axis_location_;
 
   cu::Device device_;
   cu::Stream stream_;
@@ -50,16 +49,15 @@ Pipeline::Impl::Impl(size_t B, size_t M, size_t N, size_t K, cu::Device &device,
                      ValuePrecision output_precision, mma::Variant variant)
     : requires_packing_(input_precision == ccglib::int1),
       requires_transpose_(variant == ccglib::mma::opt), device_(device),
-      stream_(stream),
-      input_complex_axis_location_(input_complex_axis_location) {
+      stream_(stream) {
 
   if (requires_packing_) {
     const size_t num_a = B * kComplex * M * K;
     const size_t num_b = B * kComplex * N * K;
-    packing_a_ =
-        std::make_unique<ccglib::packing::Packing>(num_a, device_, stream_);
-    packing_b_ =
-        std::make_unique<ccglib::packing::Packing>(num_b, device_, stream_);
+    packing_a_ = std::make_unique<ccglib::packing::Packing>(
+        num_a, ccglib::forward, device_, stream_, input_complex_axis_location);
+    packing_b_ = std::make_unique<ccglib::packing::Packing>(
+        num_b, ccglib::forward, device_, stream_, input_complex_axis_location);
 
     // packing output is of int32 type, so round up input size to multiple of
     // int32 size.
@@ -78,10 +76,10 @@ Pipeline::Impl::Impl(size_t B, size_t M, size_t N, size_t K, cu::Device &device,
   if (requires_transpose_) {
     transpose_a_ = std::make_unique<ccglib::transpose::Transpose>(
         B, M, K, dimensions.x, dimensions.z, precision.GetInputBits(), device_,
-        stream_, input_complex_axis_location_);
+        stream_, input_complex_axis_location);
     transpose_b_ = std::make_unique<ccglib::transpose::Transpose>(
         B, N, K, dimensions.y, dimensions.z, precision.GetInputBits(), device_,
-        stream_, input_complex_axis_location_);
+        stream_, input_complex_axis_location);
 
     // transposed size may be bigger than input due to padding on block level
     const size_t m_padded =
@@ -108,10 +106,8 @@ void Pipeline::Impl::Run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b,
                          cu::DeviceMemory &d_c) {
 
   if (requires_packing_) {
-    packing_a_->Run(d_a, *d_a_packed_, ccglib::forward,
-                    input_complex_axis_location_);
-    packing_b_->Run(d_b, *d_b_packed_, ccglib::forward,
-                    input_complex_axis_location_);
+    packing_a_->Run(d_a, *d_a_packed_);
+    packing_b_->Run(d_b, *d_b_packed_);
   }
 
   if (requires_transpose_) {

@@ -61,9 +61,9 @@ TEST_CASE("CUDA packing") {
 
   cuda_check(cudaMemcpy(d_in, h_in, bytes_in, cudaMemcpyHostToDevice));
 
-  ccglib::packing::Packing packing(N, device, stream);
+  ccglib::packing::Packing packing(N, ccglib::forward, device, stream);
   packing.Run(reinterpret_cast<CUdeviceptr>(d_in),
-              reinterpret_cast<CUdeviceptr>(d_out), ccglib::forward);
+              reinterpret_cast<CUdeviceptr>(d_out));
 
   cuda_check(cudaMemcpy(h_out, d_out, bytes_out, cudaMemcpyDeviceToHost));
 
