@@ -80,17 +80,17 @@ mma_sync(fragment<accumulator, 16, 8, 32, float> &d,
 inline __device__ void
 load_matrix_sync(fragment<matrix_a, 16, 8, 32, __nv_fp8_e4m3, row_major> &a,
                  const void *p, size_t ldm) {
-  a.x[0] = ((const int *)p)[ldm / 8 * (laneid() / 4) + laneid() % 4];
-  a.x[1] = ((const int *)p)[ldm / 8 * (laneid() / 4 + 8) + laneid() % 4];
-  a.x[2] = ((const int *)p)[ldm / 8 * (laneid() / 4) + laneid() % 4 + 4];
-  a.x[3] = ((const int *)p)[ldm / 8 * (laneid() / 4 + 8) + laneid() % 4 + 4];
+  a.x[0] = ((const int *)p)[ldm / 4 * (laneid() / 4) + laneid() % 4];
+  a.x[1] = ((const int *)p)[ldm / 4 * (laneid() / 4 + 8) + laneid() % 4];
+  a.x[2] = ((const int *)p)[ldm / 4 * (laneid() / 4) + laneid() % 4 + 4];
+  a.x[3] = ((const int *)p)[ldm / 4 * (laneid() / 4 + 8) + laneid() % 4 + 4];
 }
 
 inline __device__ void
 load_matrix_sync(fragment<matrix_b, 16, 8, 32, __nv_fp8_e4m3, col_major> &b,
                  const void *p, size_t ldm) {
-  b.x[0] = ((const int *)p)[ldm / 8 * (laneid() / 4) + laneid() % 4];
-  b.x[1] = ((const int *)p)[ldm / 8 * (laneid() / 4) + laneid() % 4 + 4];
+  b.x[0] = ((const int *)p)[ldm / 4 * (laneid() / 4) + laneid() % 4];
+  b.x[1] = ((const int *)p)[ldm / 4 * (laneid() / 4) + laneid() % 4 + 4];
 }
 
 inline __device__ void load_matrix_sync(

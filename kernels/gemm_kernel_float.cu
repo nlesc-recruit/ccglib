@@ -152,7 +152,7 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
     for (size_t n = 0; n < N_TILES; n++) {
       for (size_t element = 0; element < b[IMAG][n].num_elements; element++) {
         if constexpr (sizeof(Tin) == 1) {
-          int tmp = static_cast<int>(b[IMAG][n].x[element]);
+          unsigned tmp = static_cast<unsigned>(b[IMAG][n].x[element]);
           tmp ^= 0x80808080u; // flip sign bit of each FP8 byte
           b[IMAG][n].x[element] = tmp;
         } else {
@@ -320,7 +320,7 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
     for (size_t n = 0; n < N_TILES; n++) {
       for (size_t element = 0; element < b[IMAG][n].num_elements; element++) {
         if constexpr (sizeof(Tin) == 1) {
-          int tmp = static_cast<int>(b[IMAG][n].x[element]);
+          unsigned tmp = static_cast<unsigned>(b[IMAG][n].x[element]);
           tmp ^= 0x80808080u; // flip sign bit of each FP8 byte
           b[IMAG][n].x[element] = tmp;
         } else {
