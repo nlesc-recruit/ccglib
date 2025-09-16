@@ -143,11 +143,6 @@ private:
     if constexpr (std::is_same_v<T, __nv_fp8_e4m3>) {
       unsigned int seed = 0;
       for (int idx = 0; idx < bytes_a_ / sizeof(T); idx++) {
-        // Here, __nv_cvt_float_to_fp6 could also be used to initialize the
-        // float8 values. However, this function returns a __nv_fp8_storage_t
-        // type, which is not directly compatible/castable to __nv_fp8_e4m3. As
-        // CUDA provides a direct constructor for __nv_fp8_e4m3 from float, we
-        // use that instead.
         a[idx] = static_cast<__nv_fp8_e4m3>(static_cast<float>(rand_r(&seed)) /
                                             static_cast<float>(RAND_MAX));
       }
