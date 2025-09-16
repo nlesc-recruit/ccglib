@@ -57,7 +57,7 @@ ccglib supports a range of input/output data types, depending on the available h
 
 Input type  | Output type      | NVIDIA | AMD | Notes
 ----------  | -----------      | ------ | - | -
-float8e4m3  | float32          | Compute capability >= 8.9 | CDNA3 and RDNA4 only | -
+float8e4m3  | float32          | Compute capability >= 8.9 | CDNA3 and RDNA4 only | Only RDNA4 implements FP8 in hardware
 bfloat16    | bfloat16/float32 | float32 output only             | ✅ | -
 float16     | float32/float16  | ✅              | ✅ | -
 float32     | float32/bfloat16/float16\* | ❌              | CDNA only  | | -
