@@ -2,7 +2,6 @@
 #define ARCH_H_
 
 #include <cudawrappers/cu.hpp>
-#include <iostream>
 
 namespace ccglib {
 
