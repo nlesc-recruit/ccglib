@@ -92,7 +92,7 @@ void Packing::Impl::compile_kernel() {
     "-DHIP_ENABLE_WARP_SYNC_BUILTINS",
 #endif
     "-I" + cuda_include_path,
-    "-DN=" + std::to_string(N_) + "UL",
+    "-DN_GLOBAL=" + std::to_string(N_) + "UL",
     "-DWARP_SIZE=" + std::to_string(warp_size)
   };
 
