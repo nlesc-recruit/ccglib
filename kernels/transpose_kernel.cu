@@ -75,8 +75,8 @@ __global__ void transpose(Output out, const Input in) {
       out[b][m][n][IMAG][m_c][n_c] = in[b][idx_M][idx_N][IMAG];
 #endif
     } else {
-      out[b][m][n][REAL][m_c][n_c] = static_cast<T>(0);
-      out[b][m][n][IMAG][m_c][n_c] = static_cast<T>(0);
+      out[b][m][n][REAL][m_c][n_c] = static_cast<T>(0.0f);
+      out[b][m][n][IMAG][m_c][n_c] = static_cast<T>(0.0f);
     }
   }
 };

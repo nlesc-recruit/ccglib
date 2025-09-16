@@ -345,7 +345,6 @@ using TestTypesComplexGemm = std::tuple<
     ComplexGemmTestFixture<bf16, float, ccglib::ValueType::bfloat16,
                            ccglib::ValueType::float32>,
 #endif
-
     ComplexGemmTestFixture<__nv_fp8_e4m3, float, ccglib::ValueType::float8e4m3,
                            ccglib::ValueType::float32>,
     ComplexGemmTestFixture<half, half, ccglib::ValueType::float16,

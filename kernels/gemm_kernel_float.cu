@@ -96,7 +96,7 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
           if (m_index + i < M_GLOBAL && k_index + j < K_GLOBAL) {
             A_s[warpM][warpN][i][j] = A[batch][c][m_index + i][k_index + j];
           } else {
-            A_s[warpM][warpN][i][j] = static_cast<Tin>(0.0);
+            A_s[warpM][warpN][i][j] = static_cast<Tin>(0.0f);
           }
         }
         __syncwarp();
@@ -123,7 +123,7 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
           if (n_index + i < N_GLOBAL && k_index + j < K_GLOBAL) {
             B_s[warpM][warpN][i][j] = B[batch][c][n_index + i][k_index + j];
           } else {
-            B_s[warpM][warpN][i][j] = static_cast<Tin>(0.0f); // 0;
+            B_s[warpM][warpN][i][j] = static_cast<Tin>(0.0f);
           }
         }
         __syncwarp();
@@ -152,7 +152,9 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
       for (size_t element = 0; element < b[IMAG][n].num_elements; element++) {
         if constexpr (sizeof(Tin) == 1) {
           unsigned tmp = static_cast<unsigned>(b[IMAG][n].x[element]);
-          tmp ^= 0x80808080u; // flip sign bit of each FP8 byte
+         // Negate the sign for the the four FP8 values contained in tmp
+         // by flipping the most signficant bit (the sign bit) of each byte.
+         tmp ^= 0x80808080u; 
           b[IMAG][n].x[element] = tmp;
         } else {
           b[IMAG][n].x[element] = -b[IMAG][n].x[element];
@@ -320,7 +322,8 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
       for (size_t element = 0; element < b[IMAG][n].num_elements; element++) {
         if constexpr (sizeof(Tin) == 1) {
           unsigned tmp = static_cast<unsigned>(b[IMAG][n].x[element]);
-          tmp ^= 0x80808080u; // flip sign bit of each FP8 byte
+          // Negate the sign of each FP8 value.
+          tmp ^= 0x80808080u;
           b[IMAG][n].x[element] = tmp;
         } else {
           b[IMAG][n].x[element] = -b[IMAG][n].x[element];
