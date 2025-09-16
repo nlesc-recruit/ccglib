@@ -160,7 +160,6 @@ public:
   }
 };
 
-// FIXME: fix types for float8.
 using TransposeTestFixtureFloat8e4m3 =
     TransposeTestFixture<__nv_fp8_e4m3, ccglib::ValueType::float8e4m3>;
 using TransposeTestFixtureFloat16 =
