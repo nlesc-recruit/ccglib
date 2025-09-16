@@ -69,7 +69,8 @@ private:
   void init_memory() {
     if constexpr (std::is_same_v<T, __nv_fp8_e4m3>) {
       if (!hasFP8(*device_)) {
-        throw std::runtime_error("FP8 is not supported on this GPU");
+        SKIP("FP8 is not supported on this GPU");
+        return;
       }
     }
 
