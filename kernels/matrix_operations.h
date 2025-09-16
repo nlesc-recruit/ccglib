@@ -11,8 +11,8 @@ namespace wmma = rocwmma;
 using namespace nvcuda;
 #endif
 
-// The following is a workaround for the lack of __syncwarp() in HIP
-#if defined(__HIP_PLATFORM_AMD__)
+// The following is a workaround for the lack of __syncwarp() in HIP<7
+#if defined(__HIP_PLATFORM_AMD__) && HIP_VERSION_MAJOR < 7
 inline __device__ void __syncwarp(){};
 #endif
 
