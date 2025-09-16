@@ -2,6 +2,10 @@
 #error "1-bit GEMM is only available for NVIDIA GPUs"
 #endif
 
+#include "ccglib/bf16.h"
+#include "ccglib/fp16.h"
+#include "ccglib/fp8.h"
+
 #include <cuda/pipeline>
 #include <cuda/std/limits>
 #include <mma.h>
