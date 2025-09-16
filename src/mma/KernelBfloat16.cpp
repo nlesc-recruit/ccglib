@@ -21,7 +21,7 @@ Kernel::Parameters Kernel::GetCompileParameters<ValueType::bfloat16>() const {
                             .n_per_warp = 16,
                             .n_per_wmma = 16,
                             
-                            .k_per_wmma = 32,
+                            .k_per_wmma = 16,
 #if defined(__HIP_PLATFORM_AMD__)
     .nbuffer = 1
 #else
