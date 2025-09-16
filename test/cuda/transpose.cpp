@@ -178,10 +178,22 @@ public:
   }
 };
 
+using TransposeTestFixtureFloat8e4m3 =
+    TransposeTestFixture<__nv_fp8_e4m3, ccglib::ValueType::float8e4m3>;
 using TransposeTestFixtureFloat16 =
     TransposeTestFixture<half, ccglib::ValueType::float16>;
 using TransposeTestFixtureInt1 =
     TransposeTestFixture<unsigned int, ccglib::ValueType::int1>;
+
+TEST_CASE_METHOD(TransposeTestFixtureFloat8e4m3, "Transpose Test - float8e4m3",
+                 "[transpose-test-float8e4m3]") {
+  SECTION("complex-planar") {
+    transpose(ccglib::ComplexAxisLocation::complex_planar);
+  }
+  SECTION("complex-interleaved") {
+    transpose(ccglib::ComplexAxisLocation::complex_interleaved);
+  }
+}
 
 TEST_CASE_METHOD(TransposeTestFixtureFloat16, "Transpose Test - float16",
                  "[transpose-test-float16]") {

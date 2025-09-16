@@ -529,6 +529,13 @@ TEMPLATE_LIST_TEST_CASE_METHOD(GemmTestBasic, "Complex GEMM Test",
 #endif
   }
 
+  if constexpr (std::is_same_v<typename GemmTestBasic<TestType>::InputType,
+                               __nv_fp8_e4m3>) {
+    if (!hasFP8(*GemmTestBasic<TestType>().device_)) {
+      SKIP("FP8 is not supported on this GPU");
+    }
+  }
+
   GemmTestBasic<TestType>().run_tests();
 }
 
@@ -546,6 +553,13 @@ TEMPLATE_LIST_TEST_CASE_METHOD(GemmTestOpt, "Complex GEMM Test",
     SKIP("Float32 is not available on Volta GPUs");
   }
 #endif
+
+  if constexpr (std::is_same_v<typename GemmTestBasic<TestType>::InputType,
+                               __nv_fp8_e4m3>) {
+    if (!hasFP8(*GemmTestBasic<TestType>().device_)) {
+      SKIP("FP8 is not supported on this GPU");
+    }
+  }
 
   GemmTestOpt<TestType>().run_tests();
 }

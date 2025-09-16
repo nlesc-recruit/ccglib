@@ -7,6 +7,7 @@
 #include <xtensor/xtensor.hpp>
 
 #include <ccglib/bf16.h>
+#include <ccglib/common/arch.h>
 #include <ccglib/common/precision.h>
 #include <ccglib/fp16.h>
 #include <ccglib/fp8.h>
@@ -68,6 +69,12 @@ private:
   }
 
   void init_memory() {
+    if constexpr (std::is_same_v<T, __nv_fp8_e4m3>) {
+      if (!hasFP8(*device_)) {
+        throw std::runtime_error("FP8 is not supported on this GPU");
+      }
+    }
+
     // initalize host memory
     h_a_ = std::make_unique<cu::HostMemory>(kBytesA);
     h_a_trans_ = std::make_unique<cu::HostMemory>(kBytesA);
@@ -124,10 +131,10 @@ private:
             float in;
             if (complex_axis_location ==
                 ccglib::ComplexAxisLocation::complex_planar) {
-              in = input(b, c, m, n);
+              in = static_cast<float>(input(b, c, m, n));
             } else if (complex_axis_location ==
                        ccglib::ComplexAxisLocation::complex_interleaved) {
-              in = input(b, m, n, c);
+              in = static_cast<float>(input(b, m, n, c));
             }
 
             const float out = static_cast<float>(
@@ -155,8 +162,8 @@ public:
 };
 
 // FIXME: fix types for float8.
-using TransposeTestFixtureFloat8 =
-    TransposeTestFixture<half, ccglib::ValueType::float8e4m3>;
+using TransposeTestFixtureFloat8e4m3 =
+    TransposeTestFixture<__nv_fp8_e4m3, ccglib::ValueType::float8e4m3>;
 using TransposeTestFixtureFloat16 =
     TransposeTestFixture<half, ccglib::ValueType::float16>;
 using TransposeTestFixtureBfloat16 =
@@ -164,14 +171,14 @@ using TransposeTestFixtureBfloat16 =
 using TransposeTestFixtureInt1 =
     TransposeTestFixture<unsigned int, ccglib::ValueType::int1>;
 
-TEST_CASE_METHOD(TransposeTestFixtureFloat8, "Transpose Test - float8",
-                 "[transpose-test-float8]") {
+TEST_CASE_METHOD(TransposeTestFixtureFloat8e4m3, "Transpose Test - float8e4m3",
+                 "[transpose-test-float8e4m3]") {
   SECTION("complex-planar") {
-    TransposeTestFixtureFloat8::transpose(
+    TransposeTestFixtureFloat8e4m3::transpose(
         ccglib::ComplexAxisLocation::complex_planar);
   }
   SECTION("complex-interleaved") {
-    TransposeTestFixtureFloat8::transpose(
+    TransposeTestFixtureFloat8e4m3::transpose(
         ccglib::ComplexAxisLocation::complex_interleaved);
   }
 }
