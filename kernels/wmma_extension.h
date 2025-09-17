@@ -30,7 +30,7 @@ template <>
 class fragment<matrix_b, 16, 8, 256, experimental::precision::b1, col_major>
     : public __frag_base<experimental::precision::b1, 32, 2> {};
 
-#if defined(__GFX9__) || defined(__GFX11__) || __CUDA_ARCH__ >= 890
+#if defined(__GFX9__) || defined(__GFX12__) || __CUDA_ARCH__ >= 890
 template <>
 class fragment<matrix_a, 16, 8, 32, __nv_fp8_e4m3, row_major>
     : public __frag_base<int, 4> {};
@@ -69,7 +69,7 @@ inline __device__ void bmma_sync(
   }
 }
 
-#if defined(__GFX9__) || defined(__GFX11__) || __CUDA_ARCH__ >= 890
+#if defined(__GFX9__) || defined(__GFX12__) || __CUDA_ARCH__ >= 890
 inline __device__ void
 mma_sync(fragment<accumulator, 16, 8, 32, float> &d,
          const fragment<matrix_a, 16, 8, 32, __nv_fp8_e4m3, row_major> &a,
