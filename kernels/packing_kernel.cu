@@ -7,7 +7,7 @@
 extern "C" __global__ void pack_bits(unsigned *output,
                                      const unsigned char *input) {
   size_t tid = threadIdx.x + blockIdx.x * static_cast<size_t>(blockDim.x);
-  if (tid >= N) {
+  if (tid >= N_GLOBAL) {
     return;
   }
 
@@ -16,8 +16,8 @@ extern "C" __global__ void pack_bits(unsigned *output,
   // map from real0, real1, .... imag0, imag1... indexing to
   // real0, imag0, real1, imag1, ...
   input_index *= 2;
-  if (input_index >= N) {
-    input_index -= N - 1;
+  if (input_index >= N_GLOBAL) {
+    input_index -= N_GLOBAL - 1;
   }
 #endif
 
@@ -37,7 +37,7 @@ extern "C" __global__ void pack_bits(unsigned *output,
     // case.
     const size_t index = 2 * (tid / WARP_SIZE);
     const unsigned nr_bits = sizeof(unsigned) * CHAR_BIT;
-    if (index == (N / nr_bits - 1)) {
+    if (index == (N_GLOBAL / nr_bits - 1)) {
       output[index] = output_value & 0xFFFFFFFF;
     } else {
       reinterpret_cast<unsigned long *>(output)[tid / WARP_SIZE] = output_value;
@@ -51,7 +51,7 @@ extern "C" __global__ void pack_bits(unsigned *output,
 extern "C" __global__ void unpack_bits(unsigned char *output,
                                        const unsigned *input) {
   size_t tid = threadIdx.x + blockIdx.x * static_cast<size_t>(blockDim.x);
-  if (tid >= N) {
+  if (tid >= N_GLOBAL) {
     return;
   }
 
