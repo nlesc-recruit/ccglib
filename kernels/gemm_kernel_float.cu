@@ -10,6 +10,9 @@ namespace wmma = rocwmma;
 using namespace nvcuda;
 #endif
 
+#define HAVE_ALHPA 1
+#define HAVE_BETA 1
+
 #include "ccglib/bf16.h"
 #include "ccglib/fp16.h"
 

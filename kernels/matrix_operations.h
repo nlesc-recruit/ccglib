@@ -38,6 +38,25 @@ store_matrix(Accumulator_t sum[COMPLEX][M_PER_WARP / M_PER_WMMA]
       for (size_t n = 0; n < (N_PER_WARP / N_PER_WMMA); n++) {
         const size_t idx_m = global_idx_m(blockM, warpM, m);
         const size_t idx_n = global_idx_n(blockN, warpN, n);
+#if defined(HAVE_ALPHA) || defined(HAVE_BETA)
+#if defined(HAVE_BETA)
+        wmma::fragment<wmma::accumulator, M_PER_WMMA, N_PER_WMMA, K_PER_WMMA,
+                       Tshared, wmma::row_major>
+            c_frag;
+#if defined(C_ROW_MAJOR)
+        wmma::load_matrix_sync(c_frag, &(C[batch][c][idx_m][idx_n]), N_GLOBAL);
+#else
+        wmma::load_matrix_sync(c_frag, &(C[batch][c][idx_n][idx_m]), M_GLOBAL);
+#endif
+#endif
+        for (size_t i = 0; i < sum[c][m][n].num_elements; i++) {
+          sum[c][m][n].x[i] = static_cast<Tshared>(ALPHA) * sum[c][m][n].x[i];
+#if defined(HAVE_BETA)
+          sum[c][m][n].x[i] += static_cast<Tshared>(BETA) * c_frag.x[i];
+#endif
+        }
+#endif
+
 #if defined(C_ROW_MAJOR)
         wmma::store_matrix_sync(&(C[batch][c][idx_m][idx_n]), sum[c][m][n],
                                 N_GLOBAL, wmma::mem_row_major);

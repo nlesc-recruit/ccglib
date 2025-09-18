@@ -25,13 +25,17 @@ TEST_CASE("HIP mma") {
   const size_t global_k = 512;
   const size_t batch_size = 3;
   const size_t COMPLEX = 2;
+  const float alpha = 1;
+  const float beta = 5;
 
   using Tin = half;
   using Tout = float;
 
   ccglib::mma::GEMM gemm(batch_size, global_m, global_n, global_k, device,
-                         stream, ccglib::ValueType::float16,
-                         ccglib::mma::basic);
+                         stream, ccglib::ValueType::float16, ccglib::mma::basic,
+                         ccglib::complex_planar, ccglib::mma::row_major,
+                         ccglib::mma::row_major, ccglib::mma::col_major, alpha,
+                         beta);
 
   const size_t bytes_a =
       sizeof(Tin) * batch_size * COMPLEX * global_m * global_k;
@@ -64,8 +68,13 @@ TEST_CASE("HIP mma") {
     h_b[i] = static_cast<Tin>(1);
   }
 
+  for (size_t i = 0; i < batch_size * COMPLEX * global_m * global_n; i++) {
+    h_c[i] = static_cast<Tout>(1);
+  }
+
   hip_check(hipMemcpy(d_a, h_a, bytes_a, hipMemcpyHostToDevice));
   hip_check(hipMemcpy(d_b, h_b, bytes_b, hipMemcpyHostToDevice));
+  hip_check(hipMemcpy(d_c, h_c, bytes_c, hipMemcpyHostToDevice));
 
   gemm.Run(reinterpret_cast<hipDeviceptr_t>(d_a),
            reinterpret_cast<hipDeviceptr_t>(d_b),
@@ -77,8 +86,8 @@ TEST_CASE("HIP mma") {
   // the imaginary part
   for (size_t i = 0; i < batch_size * COMPLEX * global_m * global_n; i++) {
     const size_t index = i % (global_m * global_n);
-    const Tout expected_value =
-        index < global_m * global_n ? 0.0f : 2.0f * global_k;
+    Tout expected_value = index < global_m * global_n ? 0.0f : 2.0f * global_k;
+    expected_value = alpha * expected_value + beta;
     ccglib::test::fpEquals(h_c[index], expected_value);
   }
 

@@ -31,7 +31,8 @@ public:
            ComplexAxisLocation::complex_planar,
        MemOrder c_mem_order = MemOrder::row_major,
        MemOrder a_mem_order = MemOrder::row_major,
-       MemOrder b_mem_order = MemOrder::col_major);
+       MemOrder b_mem_order = MemOrder::col_major, float alpha = 1,
+       float beta = 0);
   ~GEMM();
   void Run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b, cu::DeviceMemory &d_c);
   static dim3 GetDimensions(Precision precision,
@@ -43,7 +44,8 @@ public:
            ComplexAxisLocation::complex_planar,
        MemOrder c_mem_order = MemOrder::row_major,
        MemOrder a_mem_order = MemOrder::row_major,
-       MemOrder b_mem_order = MemOrder::col_major);
+       MemOrder b_mem_order = MemOrder::col_major, float alpha = 1,
+       float beta = 0);
   void Run(hipDeviceptr_t d_a, hipDeviceptr_t d_b, hipDeviceptr_t d_c);
 #else
   GEMM(size_t B_, size_t M_, size_t N_, size_t K_, CUdevice &device,
@@ -52,7 +54,8 @@ public:
            ComplexAxisLocation::complex_planar,
        MemOrder c_mem_order = MemOrder::row_major,
        MemOrder a_mem_order = MemOrder::row_major,
-       MemOrder b_mem_order = MemOrder::col_major);
+       MemOrder b_mem_order = MemOrder::col_major, float alpha = 1,
+       float beta = 0);
   void Run(CUdeviceptr d_a, CUdeviceptr d_b, CUdeviceptr d_c);
 #endif
 
