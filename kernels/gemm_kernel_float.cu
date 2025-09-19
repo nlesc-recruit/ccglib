@@ -1,16 +1,20 @@
+#include "ccglib/bf16.h"
+#include "ccglib/fp16.h"
+#include "ccglib/fp8.h"
+
 #if defined(__HIP_PLATFORM_AMD__)
 #include <rocwmma/rocwmma.hpp>
 namespace wmma = rocwmma;
 #include "sync_copies.h"
 #else
 #include "async_copies.h"
-#include "wmma_extension.h"
 #include <cuda/pipeline>
 #include <mma.h>
 using namespace nvcuda;
 #endif
 
 // clang-format off
+#include "wmma_extension.h"
 #include "type_selector.h"
 #include "matrix_operations.h"
 // clang-format on
@@ -146,7 +150,7 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
     __syncwarp();
     for (size_t n = 0; n < N_TILES; n++) {
       for (size_t element = 0; element < b[IMAG][n].num_elements; element++) {
-        if constexpr (std::is_same_v(Tin, fp8_e4m3)) {
+        if constexpr (sizeof(Tin) == 1) {
           unsigned tmp = static_cast<unsigned>(b[IMAG][n].x[element]);
           // Negate the sign for the the four FP8 values contained in tmp
           // by flipping the most signficant bit (the sign bit) of each byte.

@@ -84,7 +84,7 @@ template <> struct TypeSelector<ValueType::int1, ValueType::int32> {
 };
 
 template <> struct TypeSelector<ValueType::float8e4m3, ValueType::float32> {
-#if (!defined(__GFX9__) && !defined(__GFX11__) && __CUDA_ARCH__ < 890)
+#if defined(__HIP_PLATFORM_AMD__) || (__CUDA_ARCH__ < 890)
   using Tin = void;
   using Ttc = void;
 #else

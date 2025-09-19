@@ -20,7 +20,16 @@ inline __device__ unsigned laneid() {
 
 namespace nvcuda {
 namespace wmma {
-#if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 730
+
+#if defined(__HIP_PLATFORM_AMD__)
+// AMD HIP platform: enable AMD-specific fragments
+// (add AMD-specific fragments here if needed)
+
+#if defined(__gfx940__) ||                                                     \
+    defined(__gfx941__) && !defined(__gfx942__) && !defined(__GFX12__)
+
+#elif defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 730)
+// CUDA platform, architecture >= 730: enable CUDA fragments
 
 // 16x8x256, a row major, b col major, binary precision
 template <>
@@ -30,14 +39,14 @@ template <>
 class fragment<matrix_b, 16, 8, 256, experimental::precision::b1, col_major>
     : public __frag_base<experimental::precision::b1, 32, 2> {};
 
-#if defined(__GFX9__) || defined(__GFX12__) || __CUDA_ARCH__ >= 890
+#if (__CUDA_ARCH__ >= 890)
 template <>
 class fragment<matrix_a, 16, 8, 32, fp8_e4m3, row_major>
     : public __frag_base<int, 4> {};
 template <>
 class fragment<matrix_b, 16, 8, 32, fp8_e4m3, col_major>
     : public __frag_base<int, 2> {};
-#endif
+#endif // __CUDA_ARCH__ >= 890
 
 template <>
 class fragment<accumulator, 16, 8, 32, float> : public __frag_base<float, 4> {};
@@ -69,7 +78,7 @@ inline __device__ void bmma_sync(
   }
 }
 
-#if defined(__GFX9__) || defined(__GFX12__) || __CUDA_ARCH__ >= 890
+#if __CUDA_ARCH__ >= 890
 inline __device__ void
 mma_sync(fragment<accumulator, 16, 8, 32, float> &d,
          const fragment<matrix_a, 16, 8, 32, fp8_e4m3, row_major> &a,
@@ -97,7 +106,6 @@ load_matrix_sync(fragment<matrix_b, 16, 8, 32, fp8_e4m3, col_major> &b,
   b.x[0] = ((const int *)p)[ldm / 4 * (laneid() / 4) + laneid() % 4];
   b.x[1] = ((const int *)p)[ldm / 4 * (laneid() / 4) + laneid() % 4 + 4];
 }
-
 #endif
 
 inline __device__ void load_matrix_sync(
