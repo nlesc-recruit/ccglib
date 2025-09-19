@@ -88,8 +88,8 @@ template <> struct TypeSelector<ValueType::float8e4m3, ValueType::float32> {
   using Tin = void;
   using Ttc = void;
 #else
-  using Tin = __nv_fp8_e4m3;
-  using Ttc = __nv_fp8_e4m3;
+  using Tin = fp8_e4m3;
+  using Ttc = fp8_e4m3;
 #endif
   using Tshared = float;
   using Tout = float;

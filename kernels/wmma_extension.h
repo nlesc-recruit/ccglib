@@ -32,10 +32,10 @@ class fragment<matrix_b, 16, 8, 256, experimental::precision::b1, col_major>
 
 #if defined(__GFX9__) || defined(__GFX12__) || __CUDA_ARCH__ >= 890
 template <>
-class fragment<matrix_a, 16, 8, 32, __nv_fp8_e4m3, row_major>
+class fragment<matrix_a, 16, 8, 32, fp8_e4m3, row_major>
     : public __frag_base<int, 4> {};
 template <>
-class fragment<matrix_b, 16, 8, 32, __nv_fp8_e4m3, col_major>
+class fragment<matrix_b, 16, 8, 32, fp8_e4m3, col_major>
     : public __frag_base<int, 2> {};
 #endif
 
@@ -72,8 +72,8 @@ inline __device__ void bmma_sync(
 #if defined(__GFX9__) || defined(__GFX12__) || __CUDA_ARCH__ >= 890
 inline __device__ void
 mma_sync(fragment<accumulator, 16, 8, 32, float> &d,
-         const fragment<matrix_a, 16, 8, 32, __nv_fp8_e4m3, row_major> &a,
-         const fragment<matrix_b, 16, 8, 32, __nv_fp8_e4m3, col_major> &b,
+         const fragment<matrix_a, 16, 8, 32, fp8_e4m3, row_major> &a,
+         const fragment<matrix_b, 16, 8, 32, fp8_e4m3, col_major> &b,
          const fragment<accumulator, 16, 8, 32, float> &c) {
   asm("mma.sync.aligned.m16n8k32.row.col.f32.e4m3.e4m3.f32 {%0,%1,%2,%3}, "
       "{%4,%5,%6,%7}, {%8,%9}, {%10,%11,%12,%13};"
@@ -83,7 +83,7 @@ mma_sync(fragment<accumulator, 16, 8, 32, float> &d,
 }
 
 inline __device__ void
-load_matrix_sync(fragment<matrix_a, 16, 8, 32, __nv_fp8_e4m3, row_major> &a,
+load_matrix_sync(fragment<matrix_a, 16, 8, 32, fp8_e4m3, row_major> &a,
                  const void *p, size_t ldm) {
   a.x[0] = ((const int *)p)[ldm / 4 * (laneid() / 4) + laneid() % 4];
   a.x[1] = ((const int *)p)[ldm / 4 * (laneid() / 4 + 8) + laneid() % 4];
@@ -92,7 +92,7 @@ load_matrix_sync(fragment<matrix_a, 16, 8, 32, __nv_fp8_e4m3, row_major> &a,
 }
 
 inline __device__ void
-load_matrix_sync(fragment<matrix_b, 16, 8, 32, __nv_fp8_e4m3, col_major> &b,
+load_matrix_sync(fragment<matrix_b, 16, 8, 32, fp8_e4m3, col_major> &b,
                  const void *p, size_t ldm) {
   b.x[0] = ((const int *)p)[ldm / 4 * (laneid() / 4) + laneid() % 4];
   b.x[1] = ((const int *)p)[ldm / 4 * (laneid() / 4) + laneid() % 4 + 4];

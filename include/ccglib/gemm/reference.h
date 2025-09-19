@@ -10,8 +10,8 @@ namespace ccglib::reference {
 class GEMM {
 public:
   virtual void
-  Run(const __nv_fp8_e4m3 *a, const __nv_fp8_e4m3 *b, float *c, size_t M,
-      size_t N, size_t K,
+  Run(const fp8_e4m3 *a, const fp8_e4m3 *b, float *c, size_t M, size_t N,
+      size_t K,
       ccglib::mma::MemOrder output_mem_order = ccglib::mma::row_major);
   virtual void
   Run(const half *a, const half *b, half *c, size_t M, size_t N, size_t K,

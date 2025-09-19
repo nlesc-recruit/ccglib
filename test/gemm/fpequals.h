@@ -13,7 +13,7 @@
 namespace ccglib::test {
 
 template <typename T> constexpr float getEpsilon() {
-  if constexpr (std::is_same_v<T, __nv_fp8_e4m3>) {
+  if constexpr (std::is_same_v<T, fp8_e4m3>) {
     // fp8 uses a 3-bit mantissa
     // the precision for normal numbers is therefore 2^-3
     return 0.125;

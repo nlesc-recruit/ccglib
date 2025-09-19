@@ -22,7 +22,7 @@ using T = half;
 #elif NBIT_IN == 32
 using T = float;
 #elif NBIT_IN == 8
-using T = __nv_fp8_e4m3;
+using T = fp8_e4m3;
 #elif NBIT_IN == 1
 using T = unsigned int;
 #else

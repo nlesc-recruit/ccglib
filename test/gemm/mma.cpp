@@ -140,15 +140,15 @@ private:
 
   template <typename T> void init_input_matrices(T *a, T *b) {
     // fill a and b with random values (fixed seed), initalize c to zero
-    if constexpr (std::is_same_v<T, __nv_fp8_e4m3>) {
+    if constexpr (std::is_same_v<T, fp8_e4m3>) {
       unsigned int seed = 0;
       for (int idx = 0; idx < bytes_a_ / sizeof(T); idx++) {
-        a[idx] = static_cast<__nv_fp8_e4m3>(static_cast<float>(rand_r(&seed)) /
-                                            static_cast<float>(RAND_MAX));
+        a[idx] = static_cast<fp8_e4m3>(static_cast<float>(rand_r(&seed)) /
+                                       static_cast<float>(RAND_MAX));
       }
       for (int idx = 0; idx < bytes_b_ / sizeof(T); idx++) {
-        b[idx] = static_cast<__nv_fp8_e4m3>(static_cast<float>(rand_r(&seed)) /
-                                            static_cast<float>(RAND_MAX));
+        b[idx] = static_cast<fp8_e4m3>(static_cast<float>(rand_r(&seed)) /
+                                       static_cast<float>(RAND_MAX));
       }
     } else if constexpr (std::is_same_v<T, __half>) {
       unsigned int seed = 0;
@@ -345,7 +345,7 @@ using TestTypesComplexGemm = std::tuple<
     ComplexGemmTestFixture<bf16, float, ccglib::ValueType::bfloat16,
                            ccglib::ValueType::float32>,
 #endif
-    ComplexGemmTestFixture<__nv_fp8_e4m3, float, ccglib::ValueType::float8e4m3,
+    ComplexGemmTestFixture<fp8_e4m3, float, ccglib::ValueType::float8e4m3,
                            ccglib::ValueType::float32>,
     ComplexGemmTestFixture<half, half, ccglib::ValueType::float16,
                            ccglib::ValueType::float16>,
@@ -524,7 +524,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(GemmTestBasic, "Complex GEMM Test",
   }
 
   if constexpr (std::is_same_v<typename GemmTestBasic<TestType>::InputType,
-                               __nv_fp8_e4m3>) {
+                               fp8_e4m3>) {
     if (!hasFP8(*GemmTestBasic<TestType>().device_)) {
       SKIP("FP8 is not supported on this GPU");
     }
@@ -549,7 +549,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(GemmTestOpt, "Complex GEMM Test",
 #endif
 
   if constexpr (std::is_same_v<typename GemmTestBasic<TestType>::InputType,
-                               __nv_fp8_e4m3>) {
+                               fp8_e4m3>) {
     if (!hasFP8(*GemmTestBasic<TestType>().device_)) {
       SKIP("FP8 is not supported on this GPU");
     }

@@ -67,7 +67,7 @@ private:
   }
 
   void init_memory() {
-    if constexpr (std::is_same_v<T, __nv_fp8_e4m3>) {
+    if constexpr (std::is_same_v<T, fp8_e4m3>) {
       if (!hasFP8(*device_)) {
         SKIP("FP8 is not supported on this GPU");
         return;
@@ -161,7 +161,7 @@ public:
 };
 
 using TransposeTestFixtureFloat8e4m3 =
-    TransposeTestFixture<__nv_fp8_e4m3, ccglib::ValueType::float8e4m3>;
+    TransposeTestFixture<fp8_e4m3, ccglib::ValueType::float8e4m3>;
 using TransposeTestFixtureFloat16 =
     TransposeTestFixture<half, ccglib::ValueType::float16>;
 using TransposeTestFixtureBfloat16 =
