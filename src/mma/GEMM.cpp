@@ -112,7 +112,7 @@ void GEMM::Impl::check_support() {
 
   if (kernel_.GetPrecision().input_type == ValueType::float8e4m3) {
     if (!hasFP8(device_)) {
-      throw std::runtime_error("FP8 input is not supported on this device");
+      throw std::runtime_error("Float8 input is not supported on this device");
     }
   }
 }

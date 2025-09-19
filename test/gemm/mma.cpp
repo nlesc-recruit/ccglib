@@ -526,7 +526,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(GemmTestBasic, "Complex GEMM Test",
   if constexpr (std::is_same_v<typename GemmTestBasic<TestType>::InputType,
                                fp8_e4m3>) {
     if (!hasFP8(*GemmTestBasic<TestType>().device_)) {
-      SKIP("FP8 is not supported on this GPU");
+      SKIP("Float8 is not supported on this GPU");
     }
   }
 
@@ -551,7 +551,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(GemmTestOpt, "Complex GEMM Test",
   if constexpr (std::is_same_v<typename GemmTestBasic<TestType>::InputType,
                                fp8_e4m3>) {
     if (!hasFP8(*GemmTestBasic<TestType>().device_)) {
-      SKIP("FP8 is not supported on this GPU");
+      SKIP("Float8 is not supported on this GPU");
     }
   }
 
