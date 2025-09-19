@@ -32,7 +32,7 @@ bool isCDNA3(cu::Device &device) {
 
 bool isRDNA4(cu::Device &device) {
   const std::string arch(device.getArch());
-  return (arch.find("gfx11") != std::string::npos);
+  return (arch.find("gfx12") != std::string::npos);
 }
 
 bool isCDNA(cu::Device &device) {
