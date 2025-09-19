@@ -57,12 +57,13 @@ bool isBlackwell(const std::string &arch) {
 
 bool hasFP8(cu::Device &device) {
   const std::string arch(device.getArch());
-  return isBlackwell(arch) || isHopper(arch) || isAda(arch);
+  return (isBlackwell(arch) || isHopper(arch) || isAda(arch)) ||
+         isRDNA4(device) || isCDNA3(device);
 }
 
 bool hasFP4(cu::Device &device) {
   const std::string arch(device.getArch());
-  return isBlackwell(arch) || isHopper(arch) || isAda(arch);
+  return (isBlackwell(arch) || isHopper(arch) || isAda(arch));
 }
 
 } // namespace ccglib

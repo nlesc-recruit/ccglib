@@ -9,8 +9,6 @@ This header adds the missing code
 Based on John Romein's 1 bit mma code
 */
 
-#include <mma.h>
-
 inline __device__ unsigned laneid() {
   unsigned laneid;
 
@@ -25,8 +23,10 @@ namespace wmma {
 // AMD HIP platform: enable AMD-specific fragments
 // (add AMD-specific fragments here if needed)
 
-#if defined(__gfx940__) ||                                                     \
-    defined(__gfx941__) && !defined(__gfx942__) && !defined(__GFX12__)
+#if defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__) ||       \
+    defined(__GFX12__)
+
+#endif
 
 #elif defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 730)
 // CUDA platform, architecture >= 730: enable CUDA fragments
@@ -156,6 +156,7 @@ store_matrix_sync(int *p, const fragment<accumulator, 16, 8, 256, int> &d,
   }
 }
 #endif
+
 } // namespace wmma
 } // namespace nvcuda
 
