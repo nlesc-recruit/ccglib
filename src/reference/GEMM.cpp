@@ -60,22 +60,11 @@ void Run(const Tin *a, const Tin *b, Tout *c, size_t M, size_t N, size_t K,
       }
 
       if (output_mem_order == ccglib::mma::row_major) {
-        if constexpr (std::is_same_v<Tout, fp8_e4m3>) {
-          c_view(0, m, n) = Tout(sum_real);
-          c_view(1, m, n) = Tout(sum_imag);
-        } else {
-          c_view(0, m, n) = sum_real;
-          c_view(1, m, n) = sum_imag;
-        }
-
+        c_view(0, m, n) = static_cast<Tout>(sum_real);
+        c_view(1, m, n) = static_cast<Tout>(sum_imag);
       } else {
-        if constexpr (std::is_same_v<Tout, fp8_e4m3>) {
-          c_view(0, n, m) = Tout(sum_real);
-          c_view(1, n, m) = Tout(sum_imag);
-        } else {
-          c_view(0, n, m) = sum_real;
-          c_view(1, n, m) = sum_imag;
-        }
+        c_view(0, n, m) = static_cast<Tout>(sum_real);
+        c_view(1, n, m) = static_cast<Tout>(sum_imag);
       }
     }
   }
