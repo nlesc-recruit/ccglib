@@ -53,6 +53,7 @@ store_matrix(Accumulator_t sum[COMPLEX][M_PER_WARP / M_PER_WMMA]
       wmma::load_matrix_sync(c_frag[IMAG], &(C[batch][IMAG][idx_n][idx_m]),
                              M_GLOBAL, wmma::mem_col_major);
 #endif
+      __syncwarp();
 #endif
       for (size_t i = 0; i < sum[REAL][m][n].num_elements; i++) {
         const Tshared sum_real = sum[REAL][m][n].x[i];
@@ -70,6 +71,7 @@ store_matrix(Accumulator_t sum[COMPLEX][M_PER_WARP / M_PER_WMMA]
                                 static_cast<Tshared>(BETA_REAL) * c_imag;
 #endif
       }
+      __syncwarp();
     }
   }
 #endif
