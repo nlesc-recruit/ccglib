@@ -33,30 +33,52 @@ store_matrix(Accumulator_t sum[COMPLEX][M_PER_WARP / M_PER_WMMA]
              C_t C, const size_t &batch, const size_t &blockM,
              const size_t &warpM, const size_t &blockN, const size_t &warpN) {
 
+#if defined(HAVE_ALPHA) || defined(HAVE_BETA)
+  for (size_t m = 0; m < (M_PER_WARP / M_PER_WMMA); m++) {
+    for (size_t n = 0; n < (N_PER_WARP / N_PER_WMMA); n++) {
+      const size_t idx_m = global_idx_m(blockM, warpM, m);
+      const size_t idx_n = global_idx_n(blockN, warpN, n);
+#if defined(HAVE_BETA)
+      wmma::fragment<wmma::accumulator, M_PER_WMMA, N_PER_WMMA, K_PER_WMMA,
+                     Tshared>
+          c_frag[COMPLEX];
+#if defined(C_ROW_MAJOR)
+      wmma::load_matrix_sync(c_frag[REAL], &(C[batch][REAL][idx_m][idx_n]),
+                             N_GLOBAL, wmma::mem_row_major);
+      wmma::load_matrix_sync(c_frag[IMAG], &(C[batch][IMAG][idx_m][idx_n]),
+                             N_GLOBAL, wmma::mem_row_major);
+#else
+      wmma::load_matrix_sync(c_frag[REAL], &(C[batch][REAL][idx_n][idx_m]),
+                             M_GLOBAL, wmma::mem_col_major);
+      wmma::load_matrix_sync(c_frag[IMAG], &(C[batch][IMAG][idx_n][idx_m]),
+                             M_GLOBAL, wmma::mem_col_major);
+#endif
+#endif
+      for (size_t i = 0; i < sum[REAL][m][n].num_elements; i++) {
+        Tshared &sum_real = sum[REAL][m][n].x[i];
+        Tshared &sum_imag = sum[IMAG][m][n].x[i];
+        sum_real = static_cast<Tshared>(ALPHA_REAL) * sum_real -
+                   static_cast<Tshared>(ALPHA_IMAG) * sum_imag;
+        sum_imag = static_cast<Tshared>(ALPHA_IMAG) * sum_real +
+                   static_cast<Tshared>(ALPHA_REAL) * sum_imag;
+#if defined(HAVE_BETA)
+        Tshared &c_real = c_frag[REAL].x[i];
+        Tshared &c_imag = c_frag[IMAG].x[i];
+        sum_real += static_cast<Tshared>(BETA_REAL) * c_real -
+                    static_cast<Tshared>(BETA_IMAG) * c_imag;
+        sum_imag += static_cast<Tshared>(BETA_IMAG) * c_real +
+                    static_cast<Tshared>(BETA_REAL) * c_imag;
+#endif
+      }
+    }
+  }
+#endif
+
   for (size_t c = 0; c < COMPLEX; c++) {
     for (size_t m = 0; m < (M_PER_WARP / M_PER_WMMA); m++) {
       for (size_t n = 0; n < (N_PER_WARP / N_PER_WMMA); n++) {
         const size_t idx_m = global_idx_m(blockM, warpM, m);
         const size_t idx_n = global_idx_n(blockN, warpN, n);
-#if defined(HAVE_ALPHA) || defined(HAVE_BETA)
-#if defined(HAVE_BETA)
-        wmma::fragment<wmma::accumulator, M_PER_WMMA, N_PER_WMMA, K_PER_WMMA,
-                       Tshared, wmma::row_major>
-            c_frag;
-#if defined(C_ROW_MAJOR)
-        wmma::load_matrix_sync(c_frag, &(C[batch][c][idx_m][idx_n]), N_GLOBAL);
-#else
-        wmma::load_matrix_sync(c_frag, &(C[batch][c][idx_n][idx_m]), M_GLOBAL);
-#endif
-#endif
-        for (size_t i = 0; i < sum[c][m][n].num_elements; i++) {
-          sum[c][m][n].x[i] = static_cast<Tshared>(ALPHA) * sum[c][m][n].x[i];
-#if defined(HAVE_BETA)
-          sum[c][m][n].x[i] += static_cast<Tshared>(BETA) * c_frag.x[i];
-#endif
-        }
-#endif
-
 #if defined(C_ROW_MAJOR)
         wmma::store_matrix_sync(&(C[batch][c][idx_m][idx_n]), sum[c][m][n],
                                 N_GLOBAL, wmma::mem_row_major);
