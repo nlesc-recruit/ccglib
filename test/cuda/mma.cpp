@@ -4,7 +4,6 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 
-#include "ccglib/common/value_type.h"
 #include "fpequals.h"
 
 static inline void cuda_check(cudaError_t err) {
