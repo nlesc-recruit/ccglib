@@ -55,19 +55,19 @@ store_matrix(Accumulator_t sum[COMPLEX][M_PER_WARP / M_PER_WMMA]
 #endif
 #endif
       for (size_t i = 0; i < sum[REAL][m][n].num_elements; i++) {
-        Tshared &sum_real = sum[REAL][m][n].x[i];
-        Tshared &sum_imag = sum[IMAG][m][n].x[i];
-        sum_real = static_cast<Tshared>(ALPHA_REAL) * sum_real -
-                   static_cast<Tshared>(ALPHA_IMAG) * sum_imag;
-        sum_imag = static_cast<Tshared>(ALPHA_IMAG) * sum_real +
-                   static_cast<Tshared>(ALPHA_REAL) * sum_imag;
+        const Tshared sum_real = sum[REAL][m][n].x[i];
+        const Tshared sum_imag = sum[IMAG][m][n].x[i];
+        sum[REAL][m][n].x[i] = static_cast<Tshared>(ALPHA_REAL) * sum_real -
+                               static_cast<Tshared>(ALPHA_IMAG) * sum_imag;
+        sum[IMAG][m][n].x[i] = static_cast<Tshared>(ALPHA_IMAG) * sum_real +
+                               static_cast<Tshared>(ALPHA_REAL) * sum_imag;
 #if defined(HAVE_BETA)
-        Tshared &c_real = c_frag[REAL].x[i];
-        Tshared &c_imag = c_frag[IMAG].x[i];
-        sum_real += static_cast<Tshared>(BETA_REAL) * c_real -
-                    static_cast<Tshared>(BETA_IMAG) * c_imag;
-        sum_imag += static_cast<Tshared>(BETA_IMAG) * c_real +
-                    static_cast<Tshared>(BETA_REAL) * c_imag;
+        const Tshared c_real = c_frag[REAL].x[i];
+        const Tshared c_imag = c_frag[IMAG].x[i];
+        sum[REAL][m][n].x[i] += static_cast<Tshared>(BETA_REAL) * c_real -
+                                static_cast<Tshared>(BETA_IMAG) * c_imag;
+        sum[IMAG][m][n].x[i] += static_cast<Tshared>(BETA_IMAG) * c_real +
+                                static_cast<Tshared>(BETA_REAL) * c_imag;
 #endif
       }
     }
