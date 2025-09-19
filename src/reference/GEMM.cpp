@@ -63,20 +63,29 @@ void Run(const Tin *a, const Tin *b, Tout *c, size_t M, size_t N, size_t K,
       const ComputeType beta_real = beta.x;
       const ComputeType beta_imag = beta.y;
 
-      const ComputeType sum_real_copy = sum_real;
-      sum_real = alpha_real * sum_real - alpha_imag * sum_imag;
-      sum_imag = alpha_imag * sum_real_copy + alpha_real * sum_imag;
-
+      if (alpha_real != 1 || alpha_imag != 0) {
+        const ComputeType sum_real_copy = sum_real;
+        sum_real = alpha_real * sum_real - alpha_imag * sum_imag;
+        sum_imag = alpha_imag * sum_real_copy + alpha_real * sum_imag;
+      }
       if (output_mem_order == ccglib::mma::row_major) {
-        const ComputeType c_real = c_view(0, m, n);
-        const ComputeType c_imag = c_view(1, m, n);
-        c_view(0, m, n) = sum_real + beta_real * c_real - beta_imag * c_imag;
-        c_view(1, m, n) = sum_imag + beta_imag * c_real + beta_real * c_imag;
+        if (beta_real != 0 || beta_imag != 0) {
+          const ComputeType c_real = c_view(0, m, n);
+          const ComputeType c_imag = c_view(1, m, n);
+          sum_real += beta_real * c_real - beta_imag * c_imag;
+          sum_imag += beta_imag * c_real + beta_real * c_imag;
+        }
+        c_view(0, m, n) = sum_real;
+        c_view(1, m, n) = sum_imag;
       } else {
-        const ComputeType c_real = c_view(0, n, m);
-        const ComputeType c_imag = c_view(1, n, m);
-        c_view(0, n, m) = sum_real + beta_real * c_real - beta_imag * c_imag;
-        c_view(1, n, m) = sum_imag + beta_imag * c_real + beta_real * c_imag;
+        if (beta_real != 0 || beta_imag != 0) {
+          const ComputeType c_real = c_view(0, n, m);
+          const ComputeType c_imag = c_view(1, n, m);
+          sum_real += beta_real * c_real - beta_imag * c_imag;
+          sum_imag += beta_imag * c_real + beta_real * c_imag;
+        }
+        c_view(0, n, m) = sum_real;
+        c_view(1, n, m) = sum_imag;
       }
     }
   }
