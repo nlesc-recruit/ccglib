@@ -595,4 +595,72 @@ TEST_CASE("Unsupported matrix layout") {
 #endif
 }
 
+TEST_CASE("Alpha/beta scaling") {
+  const size_t batch_size = 16;
+  const size_t m = 16;
+  const size_t n = 64;
+  const size_t k = 256;
+
+  cu::init();
+  cu::Device device(0);
+  cu::Context context(CU_CTX_BLOCKING_SYNC, device);
+  cu::Stream stream;
+
+  SECTION("float16") {
+    using Tin = half;
+    using Tout = float;
+    const float2 alpha = {0.3, 1.6};
+    const float2 beta = {0.8, -1.1};
+
+    ccglib::mma::GEMM gemm(
+        batch_size, m, n, k, device, stream,
+        {ccglib::ValueType::float16, ccglib::ValueType::float32},
+        ccglib::mma::basic, ccglib::complex_planar, ccglib::mma::row_major,
+        ccglib::mma::row_major, ccglib::mma::col_major, alpha, beta);
+
+    const size_t bytes_a = COMPLEX * m * k * sizeof(Tin);
+    const size_t bytes_b = COMPLEX * n * k * sizeof(Tin);
+    const size_t bytes_c = COMPLEX * m * n * sizeof(Tout);
+
+    cu::HostMemory h_a(bytes_a);
+    cu::HostMemory h_b(bytes_b);
+    cu::HostMemory h_c_in(bytes_c);
+    cu::HostMemory h_c_out(bytes_c);
+
+    unsigned int seed = 0;
+    for (int idx = 0; idx < bytes_a / sizeof(Tin); idx++) {
+      static_cast<Tin *>(h_a)[idx] = __float2half(
+          static_cast<float>(rand_r(&seed)) / static_cast<float>(RAND_MAX));
+    }
+
+    for (int idx = 0; idx < bytes_b / sizeof(Tin); idx++) {
+      static_cast<Tin *>(h_b)[idx] = __float2half(
+          static_cast<float>(rand_r(&seed)) / static_cast<float>(RAND_MAX));
+    }
+
+    for (int idx = 0; idx < bytes_c / sizeof(Tout); idx++) {
+      static_cast<Tout *>(h_c_in)[idx] =
+          static_cast<float>(rand_r(&seed)) / static_cast<float>(RAND_MAX);
+    }
+
+    cu::DeviceMemory d_a(bytes_a);
+    cu::DeviceMemory d_b(bytes_b);
+    cu::DeviceMemory d_c(bytes_c);
+
+    stream.memcpyHtoDAsync(d_a, h_a, bytes_a);
+    stream.memcpyHtoDAsync(d_b, h_b, bytes_b);
+    stream.memcpyHtoDAsync(d_c, h_c_in, bytes_c);
+
+    gemm.Run(d_a, d_b, d_c);
+
+    stream.memcpyDtoHAsync(h_c_out, d_c, bytes_c);
+    stream.synchronize();
+
+    verify<Tin, Tout, ccglib::ValueType::float16>(
+        static_cast<const Tin *>(h_a), static_cast<const Tin *>(h_b),
+        static_cast<Tout *>(h_c_out), batch_size, m, n, k,
+        ccglib::mma::row_major, alpha, beta, static_cast<Tout *>(h_c_in));
+  }
+}
+
 } // namespace ccglib::test

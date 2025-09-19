@@ -87,4 +87,27 @@ TEST_CASE("Reference complex binary") {
   REQUIRE(c_ref_col_major == c_test);
 }
 
+TEST_CASE("Reference alpha/beta scaling") {
+  const size_t M = 2;
+  const size_t N = 2;
+  const size_t K = 8;
+  const size_t COMPLEX = 2;
+  const float2 alpha = {0.5, 2.5};
+  const float2 beta = {0.25, -1.5};
+
+  const half a[COMPLEX * M * K] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10,
+                                   11, 12, 13, 14, 15, 16, 15, 14, 13, 12, 11,
+                                   10, 9,  8,  7,  6,  5,  4,  3,  2,  1};
+  const half b[COMPLEX * N * K] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10,
+                                   11, 12, 13, 14, 15, 16, 15, 14, 13, 12, 11,
+                                   10, 9,  8,  7,  6,  5,  4,  3,  2,  1};
+  std::array<float, COMPLEX * M * N> c_test = {0, 1, 2, 3, 4, 3, 2, 1};
+  const std::array<float, COMPLEX * M * N> c_ref = {
+      -2110, -3039.25, -3040.5, -1409.75, -2571, 275.25, 273.5, 2607.75};
+
+  ccglib::reference::GEMM gemm;
+  gemm.Run(a, b, &c_test[0], M, N, K, ccglib::mma::row_major, alpha, beta);
+  REQUIRE(c_ref == c_test);
+}
+
 } // namespace ccglib::test

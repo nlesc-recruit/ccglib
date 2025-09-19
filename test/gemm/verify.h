@@ -13,7 +13,9 @@
 
 template <typename Tin, typename Tout, ccglib::ValueType InputPrecision>
 void verify(const Tin *a, const Tin *b, const Tout *c, size_t B, size_t M,
-            size_t N, size_t K, ccglib::mma::MemOrder output_mem_order) {
+            size_t N, size_t K, ccglib::mma::MemOrder output_mem_order,
+            float2 alpha = {1, 0}, float2 beta = {0, 0},
+            const Tout *c_in = nullptr) {
   const size_t kPackingFactor =
       sizeof(Tin) * CHAR_BIT /
       ccglib::ValuePrecision{InputPrecision}.GetBitWidth();
@@ -27,6 +29,10 @@ void verify(const Tin *a, const Tin *b, const Tout *c, size_t B, size_t M,
     c_shape = {B, 2, N, M};
   }
 
+  if (c_in == nullptr) {
+    c_in = c;
+  }
+
   const size_t a_size = B * 2 * M * K / kPackingFactor;
   const size_t b_size = B * 2 * N * K / kPackingFactor;
   const size_t c_size = B * 2 * M * N;
@@ -35,7 +41,13 @@ void verify(const Tin *a, const Tin *b, const Tout *c, size_t B, size_t M,
   auto b_view = xt::adapt(b, b_size, xt::no_ownership(), b_shape);
   auto c_view = xt::adapt(c, c_size, xt::no_ownership(), c_shape);
 
-  xt::xtensor<Tout, 4> c_ref = xt::zeros_like(c_view);
+  xt::xtensor<Tout, 4> c_ref;
+  if (c_in != nullptr) {
+    auto c_in_view = xt::adapt(c_in, c_size, xt::no_ownership(), c_shape);
+    c_ref = c_in_view;
+  } else {
+    c_ref = xt::zeros_like(c_view);
+  }
 
   ccglib::reference::GEMM gemm;
   for (size_t batch = 0; batch < B; ++batch) {
@@ -43,7 +55,7 @@ void verify(const Tin *a, const Tin *b, const Tout *c, size_t B, size_t M,
     size_t boffset = batch * 2 * N * K / kPackingFactor;
     size_t coffset = batch * 2 * M * N;
     gemm.Run(a + aoffset, b + boffset, c_ref.data() + coffset, M, N, K,
-             output_mem_order);
+             output_mem_order, alpha, beta);
   }
 
   for (size_t b = 0; b < B; b++) {
