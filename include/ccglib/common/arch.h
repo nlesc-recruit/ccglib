@@ -44,10 +44,6 @@ bool isVolta(cu::Device &device) {
   return (arch.find("sm_70") != std::string::npos);
 }
 
-bool isAmpereOrin(const std::string &arch) {
-  return (arch.find("sm_87") != std::string::npos);
-}
-
 bool isAda(const std::string &arch) {
   return (arch.find("sm_89") != std::string::npos);
 }
@@ -69,14 +65,12 @@ bool isBlackwell(const std::string &arch) {
 
 bool hasFP8(cu::Device &device) {
   const std::string arch(device.getArch());
-  return isBlackwell(arch) || isHopper(arch) || isAda(arch) ||
-         isAmpereOrin(arch);
+  return isBlackwell(arch) || isHopper(arch) || isAda(arch);
 }
 
 bool hasFP4(cu::Device &device) {
   const std::string arch(device.getArch());
-  return isBlackwell(arch) || isHopper(arch) || isAda(arch) ||
-         isAmpereOrin(arch);
+  return isBlackwell(arch) || isHopper(arch) || isAda(arch);
 }
 
 } // namespace ccglib
