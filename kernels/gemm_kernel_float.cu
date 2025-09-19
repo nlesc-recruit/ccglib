@@ -1,7 +1,3 @@
-#include "ccglib/bf16.h"
-#include "ccglib/fp16.h"
-#include "ccglib/fp8.h"
-
 #if defined(__HIP_PLATFORM_AMD__)
 #include <rocwmma/rocwmma.hpp>
 namespace wmma = rocwmma;
