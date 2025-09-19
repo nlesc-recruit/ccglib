@@ -150,7 +150,7 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
     __syncwarp();
     for (size_t n = 0; n < N_TILES; n++) {
       for (size_t element = 0; element < b[IMAG][n].num_elements; element++) {
-        if constexpr (sizeof(Tin) == 1) {
+        if constexpr (std::is_same_v(Tin, fp8_e4m3)) {
           unsigned tmp = static_cast<unsigned>(b[IMAG][n].x[element]);
           // Negate the sign for the the four FP8 values contained in tmp
           // by flipping the most signficant bit (the sign bit) of each byte.
