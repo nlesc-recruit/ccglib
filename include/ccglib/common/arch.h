@@ -44,17 +44,39 @@ bool isVolta(cu::Device &device) {
   return (arch.find("sm_70") != std::string::npos);
 }
 
+bool isAmpereOrin(const std::string &arch) {
+  return (arch.find("sm_87") != std::string::npos);
+}
+
+bool isAda(const std::string &arch) {
+  return (arch.find("sm_89") != std::string::npos);
+}
+
+bool isHopper(const std::string &arch) {
+  return (arch.find("sm_90") != std::string::npos);
+}
+
+bool isBlackwell(const std::string &arch) {
+  static const std::vector<std::string> blackwell_archs = {"sm_100", "sm_101",
+                                                           "sm_120"};
+  for (const auto &bw_arch : blackwell_archs) {
+    if (arch.find(bw_arch) != std::string::npos) {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool hasFP8(cu::Device &device) {
-  // In case of AMD, FP8 is only supported in software on CDNA3 GPUs.
-  // RDMA4 offers hardware support for FP8.
-  return ((getComputeVersion(device) >= 89) || isRDNA4(device) ||
-          isCDNA3(device));
+  const std::string arch(device.getArch());
+  return isBlackwell(arch) || isHopper(arch) || isAda(arch) ||
+         isAmpereOrin(arch);
 }
 
 bool hasFP4(cu::Device &device) {
-  // Only supported in hardware from compute capability 10.0 (Hopper) onwards.
-  // Emulated in software on earlier architectures (>= 89).
-  return (getComputeVersion(device) >= 89);
+  const std::string arch(device.getArch());
+  return isBlackwell(arch) || isHopper(arch) || isAda(arch) ||
+         isAmpereOrin(arch);
 }
 
 } // namespace ccglib
