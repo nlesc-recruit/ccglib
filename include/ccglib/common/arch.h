@@ -5,14 +5,6 @@
 
 namespace ccglib {
 
-int getComputeVersion(cu::Device &device) {
-  const int major =
-      device.getAttribute(CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR);
-  const int minor =
-      device.getAttribute(CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR);
-  return (10 * major + minor);
-}
-
 bool isCDNA1(cu::Device &device) {
   const std::string arch(device.getArch());
   return (arch.find("gfx908") != std::string::npos);
