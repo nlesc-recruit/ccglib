@@ -8,11 +8,16 @@
 #include <catch2/catch_test_macros.hpp>
 #include <ccglib/bf16.h>
 #include <ccglib/fp16.h>
+#include <ccglib/fp8.h>
 
 namespace ccglib::test {
 
 template <typename T> constexpr float getEpsilon() {
-  if constexpr (std::is_same_v<T, __half> || std::is_same_v<T, float>) {
+  if constexpr (std::is_same_v<T, fp8_e4m3>) {
+    // fp8 uses a 3-bit mantissa
+    // the precision for normal numbers is therefore 2^-3
+    return 0.125;
+  } else if constexpr (std::is_same_v<T, __half> || std::is_same_v<T, float>) {
     // float16 uses an 11-bit mantissa (of which 10 bits are stored)
     // within the kernel, float32 is converted to tf32
     // fp16 and tf32 use an 10-bit mantissa
@@ -23,14 +28,14 @@ template <typename T> constexpr float getEpsilon() {
     // the precision for normal numbers is therefore 2^-7
     return 0.0078125;
   }
-  return std::numeric_limits<T>::epsilon();
+  return static_cast<float>(std::numeric_limits<T>::epsilon());
 }
 
-template <typename T> void fpEquals(T x, T y) {
+template <typename T, typename T_EPSILON = T> void fpEquals(T x, T y) {
   // Follow the same approach as rocWMMA: the max relative error should be
   // < 10 * epsilon. If the output is a narrow type, the downcast results in a
   // loss of precision and the tolerance is increased to 100 * epsilon.
-  constexpr double epsilon = static_cast<double>(getEpsilon<T>());
+  constexpr double epsilon = static_cast<double>(getEpsilon<T_EPSILON>());
   constexpr double max_rel_error =
       (sizeof(T) < sizeof(float32) ? 100 : 10) * epsilon;
 
@@ -43,9 +48,10 @@ template <typename T> void fpEquals(T x, T y) {
   REQUIRE(rel_error <= max_rel_error);
 }
 
-template <typename T> void fpEquals(std::complex<T> x, std::complex<T> y) {
-  fpEquals(x.real(), y.real());
-  fpEquals(x.imag(), y.imag());
+template <typename T, typename T_EPSILON = T>
+void fpEquals(const std::complex<T> &x, const std::complex<T> &y) {
+  fpEquals<T, T_EPSILON>(x.real(), y.real());
+  fpEquals<T, T_EPSILON>(x.imag(), y.imag());
 }
 
 } // namespace ccglib::test

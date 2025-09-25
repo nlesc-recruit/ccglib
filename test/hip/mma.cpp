@@ -79,7 +79,7 @@ TEST_CASE("HIP mma") {
     const size_t index = i % (global_m * global_n);
     const Tout expected_value =
         index < global_m * global_n ? 0.0f : 2.0f * global_k;
-    ccglib::test::fpEquals(h_c[index], expected_value);
+    ccglib::test::fpEquals<Tout, Tout>(h_c[index], expected_value);
   }
 
   hip_check(hipFree(d_a));

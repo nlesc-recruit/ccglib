@@ -9,6 +9,7 @@
 #include <ccglib/bf16.h>
 #include <ccglib/common/helper.h>
 #include <ccglib/fp16.h>
+#include <ccglib/fp8.h>
 #include <ccglib/gemm/reference.h>
 
 namespace ccglib::test {

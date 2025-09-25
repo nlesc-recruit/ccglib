@@ -5,6 +5,7 @@
 #endif
 
 #include "ccglib/fp16.h"
+#include "ccglib/fp8.h"
 
 #ifndef COMPLEX
 #define COMPLEX 2
@@ -20,10 +21,12 @@
 using T = half;
 #elif NBIT_IN == 32
 using T = float;
+#elif NBIT_IN == 8
+using T = fp8_e4m3;
 #elif NBIT_IN == 1
 using T = unsigned int;
 #else
-#error NBIT_IN must be 1, 16, 32
+#error NBIT_IN must be 1, 8, 16, 32
 #endif
 
 #define PACKING_FACTOR (sizeof(T) * CHAR_BIT / NBIT_IN)
@@ -72,8 +75,8 @@ __global__ void transpose(Output out, const Input in) {
       out[b][m][n][IMAG][m_c][n_c] = in[b][idx_M][idx_N][IMAG];
 #endif
     } else {
-      out[b][m][n][REAL][m_c][n_c] = 0;
-      out[b][m][n][IMAG][m_c][n_c] = 0;
+      out[b][m][n][REAL][m_c][n_c] = static_cast<T>(0.0f);
+      out[b][m][n][IMAG][m_c][n_c] = static_cast<T>(0.0f);
     }
   }
 };

@@ -20,7 +20,8 @@ void Run(const Tin *a, const Tin *b, Tout *c, size_t M, size_t N, size_t K,
   // Tout.
   using ComputeType =
       typename std::conditional<std::is_same<Tout, half>::value ||
-                                    std::is_same<Tout, bf16>::value,
+                                    std::is_same<Tout, bf16>::value ||
+                                    std::is_same<Tout, fp8_e4m3>::value,
                                 float, Tout>::type;
   const std::array<size_t, 3> a_shape = {2, M, K};
   const std::array<size_t, 3> b_shape = {2, N, K};
@@ -59,11 +60,11 @@ void Run(const Tin *a, const Tin *b, Tout *c, size_t M, size_t N, size_t K,
       }
 
       if (output_mem_order == ccglib::mma::row_major) {
-        c_view(0, m, n) = sum_real;
-        c_view(1, m, n) = sum_imag;
+        c_view(0, m, n) = static_cast<Tout>(sum_real);
+        c_view(1, m, n) = static_cast<Tout>(sum_imag);
       } else {
-        c_view(0, n, m) = sum_real;
-        c_view(1, n, m) = sum_imag;
+        c_view(0, n, m) = static_cast<Tout>(sum_real);
+        c_view(1, n, m) = static_cast<Tout>(sum_imag);
       }
     }
   }
@@ -187,6 +188,11 @@ void run_binary(const unsigned *a, const unsigned *b, int *c, size_t M,
 } // namespace
 
 namespace ccglib::reference {
+
+void GEMM::Run(const fp8_e4m3 *a, const fp8_e4m3 *b, float *c, size_t M,
+               size_t N, size_t K, ccglib::mma::MemOrder output_mem_order) {
+  ::Run<fp8_e4m3, float>(a, b, c, M, N, K, output_mem_order);
+}
 
 void GEMM::Run(const half *a, const half *b, half *c, size_t M, size_t N,
                size_t K, ccglib::mma::MemOrder output_mem_order) {
