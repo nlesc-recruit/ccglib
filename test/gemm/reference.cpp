@@ -1,5 +1,6 @@
 #include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <complex>
 #include <limits.h>
 #include <xtensor/xadapt.hpp>
 #include <xtensor/xcomplex.hpp>
@@ -93,8 +94,8 @@ TEST_CASE("Reference alpha/beta scaling") {
     const size_t N = 2;
     const size_t K = 8;
     const size_t COMPLEX = 2;
-    const float2 alpha = {0.5, 2.5};
-    const float2 beta = {0.25, -1.5};
+    const std::complex<float> alpha = {0.5, 2.5};
+    const std::complex<float> beta = {0.25, -1.5};
 
     const half a[COMPLEX * M * K] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10,
                                      11, 12, 13, 14, 15, 16, 15, 14, 13, 12, 11,
@@ -116,8 +117,8 @@ TEST_CASE("Reference alpha/beta scaling") {
     const size_t N = 2;
     const size_t K = 32;
     const size_t COMPLEX = 2;
-    const float2 alpha = {2, 3};
-    const float2 beta = {-1, 2};
+    const std::complex<float> alpha = {2, 3};
+    const std::complex<float> beta = {-1, 2};
     const size_t bits_per_sample = sizeof(unsigned) * CHAR_BIT;
     const size_t K_PACKED = ccglib::helper::ceildiv(K, bits_per_sample);
 

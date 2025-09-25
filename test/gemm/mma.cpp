@@ -1,3 +1,4 @@
+#include <complex>
 #include <limits.h>
 #include <math.h>
 
@@ -609,8 +610,8 @@ TEST_CASE("Alpha/beta scaling") {
   SECTION("float16") {
     using Tin = half;
     using Tout = float;
-    const float2 alpha = {0.3, 1.6};
-    const float2 beta = {0.8, -1.1};
+    const std::complex<float> alpha = {0.3, 1.6};
+    const std::complex<float> beta = {0.8, -1.1};
 
     ccglib::mma::GEMM gemm(
         batch_size, m, n, k, device, stream,
@@ -669,8 +670,8 @@ TEST_CASE("Alpha/beta scaling") {
     }
     using Tin = unsigned int;
     using Tout = int;
-    const float2 alpha = {2, -3};
-    const float2 beta = {3, -2};
+    const std::complex<float> alpha = {2, -3};
+    const std::complex<float> beta = {3, -2};
 
     ccglib::mma::GEMM gemm(batch_size, m, n, k, device, stream,
                            {ccglib::ValueType::int1, ccglib::ValueType::int32},

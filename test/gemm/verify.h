@@ -1,6 +1,7 @@
 #ifndef VERIFY_H_
 #define VERIFY_H_
 
+#include <complex>
 #include <limits.h>
 #include <xtensor/xadapt.hpp>
 #include <xtensor/xtensor.hpp>
@@ -14,8 +15,8 @@
 template <typename Tin, typename Tout, ccglib::ValueType InputPrecision>
 void verify(const Tin *a, const Tin *b, const Tout *c_test, size_t B, size_t M,
             size_t N, size_t K, ccglib::mma::MemOrder output_mem_order,
-            float2 alpha = {1, 0}, float2 beta = {0, 0},
-            const Tout *c_in = nullptr) {
+            std::complex<float> alpha = {1, 0},
+            std::complex<float> beta = {0, 0}, const Tout *c_in = nullptr) {
   const size_t kPackingFactor =
       sizeof(Tin) * CHAR_BIT /
       ccglib::ValuePrecision{InputPrecision}.GetBitWidth();
@@ -39,7 +40,7 @@ void verify(const Tin *a, const Tin *b, const Tout *c_test, size_t B, size_t M,
 
   xt::xtensor<Tout, 4> c_ref(c_shape);
   if (c_in == nullptr) {
-    if (beta.x != 0 || beta.y != 0) {
+    if (beta.real() != 0 || beta.imag() != 0) {
       throw std::runtime_error("c_in must be given as argument when beta != 0");
     }
     c_ref = xt::zeros_like(c_test_view);

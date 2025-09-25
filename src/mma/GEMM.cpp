@@ -1,5 +1,6 @@
 #include <cassert>
 #include <cmath>
+#include <complex>
 #include <iostream>
 
 #include <cudawrappers/cu.hpp>
@@ -19,7 +20,8 @@ public:
   Impl(size_t B_, size_t M_, size_t N_, size_t K_, cu::Device &device_,
        cu::Stream &stream_, Precision precision, Variant variant,
        ComplexAxisLocation c_complex_axis_location, MemOrder c_mem_order,
-       MemOrder a_mem_order, MemOrder b_mem_order, float2 alpha, float2 beta);
+       MemOrder a_mem_order, MemOrder b_mem_order, std::complex<float> alpha,
+       std::complex<float> beta);
 
   void Run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b, cu::DeviceMemory &d_c);
 
@@ -38,8 +40,8 @@ private:
   size_t K_;
   size_t M_;
   size_t N_;
-  float2 alpha_;
-  float2 beta_;
+  std::complex<float> alpha_;
+  std::complex<float> beta_;
 
   dim3 threads_;
   dim3 grid_;
@@ -55,7 +57,8 @@ GEMM::Impl::Impl(size_t B_, size_t M_, size_t N_, size_t K_,
                  cu::Device &device_, cu::Stream &stream_, Precision precision,
                  Variant variant, ComplexAxisLocation c_complex_axis_location,
                  MemOrder a_mem_order, MemOrder b_mem_order,
-                 MemOrder c_mem_order, float2 alpha, float2 beta)
+                 MemOrder c_mem_order, std::complex<float> alpha,
+                 std::complex<float> beta)
     : B_(B_), M_(M_), N_(N_), K_(K_), device_(device_), stream_(stream_),
       c_complex_axis_location_(c_complex_axis_location), variant_(variant),
       c_mem_order_(c_mem_order), a_mem_order_(a_mem_order),
@@ -140,10 +143,10 @@ void GEMM::Impl::compile_kernel() {
     "-DK_GLOBAL=" + std::to_string(K_) + "UL",
     "-DK_PADDING=" + std::to_string(0) +
         "UL", // will be required when K is not a multiple of K_PER_WMMA
-    "-DALPHA_REAL=" + std::to_string(alpha_.x),
-    "-DALPHA_IMAG=" + std::to_string(alpha_.y),
-    "-DBETA_REAL=" + std::to_string(beta_.x),
-    "-DBETA_IMAG=" + std::to_string(beta_.y),
+    "-DALPHA_REAL=" + std::to_string(alpha_.real()),
+    "-DALPHA_IMAG=" + std::to_string(alpha_.imag()),
+    "-DBETA_REAL=" + std::to_string(beta_.real()),
+    "-DBETA_IMAG=" + std::to_string(beta_.imag()),
     "-DTYPE_IN=" + std::to_string(static_cast<ValueType>(
                        kernel_.GetPrecision().input_type)),
     "-DTYPE_OUT=" + std::to_string(static_cast<ValueType>(
@@ -186,11 +189,11 @@ void GEMM::Impl::compile_kernel() {
     options.push_back("-DC_COL_MAJOR");
   }
 
-  if (alpha_.x != 1 || alpha_.y != 0) {
+  if (alpha_.real() != 1 || alpha_.imag() != 0) {
     options.push_back("-DHAVE_ALPHA");
   }
 
-  if (beta_.x != 0 || beta_.y != 0) {
+  if (beta_.real() != 0 || beta_.imag() != 0) {
     options.push_back("-DHAVE_BETA");
   }
 
@@ -214,7 +217,8 @@ GEMM::GEMM(const size_t B_, const size_t M_, const size_t N_, const size_t K_,
            const Variant variant,
            const ComplexAxisLocation c_complex_axis_location,
            const MemOrder c_mem_order, const MemOrder a_mem_order,
-           const MemOrder b_mem_order, const float2 alpha, const float2 beta)
+           const MemOrder b_mem_order, const std::complex<float> alpha,
+           const std::complex<float> beta)
     : impl_(std::make_unique<Impl>(B_, M_, N_, K_, device, stream, precision,
                                    variant, c_complex_axis_location,
                                    a_mem_order, b_mem_order, c_mem_order, alpha,
@@ -225,7 +229,8 @@ GEMM::GEMM(const size_t B_, const size_t M_, const size_t N_, const size_t K_,
            const Variant variant,
            const ComplexAxisLocation c_complex_axis_location,
            const MemOrder c_mem_order, const MemOrder a_mem_order,
-           const MemOrder b_mem_order, const float2 alpha, const float2 beta)
+           const MemOrder b_mem_order, const std::complex<float> alpha,
+           const std::complex<float> beta)
     : device_(new cu::Device(device)), stream_(new cu::Stream(stream)) {
   impl_ = std::make_unique<Impl>(B_, M_, N_, K_, *device_, *stream_, precision,
                                  variant, c_complex_axis_location, a_mem_order,
