@@ -56,12 +56,14 @@ store_matrix(Accumulator_t sum[COMPLEX][M_PER_WARP / M_PER_WMMA]
       __syncwarp();
 #endif
       for (size_t i = 0; i < sum[REAL][m][n].num_elements; i++) {
+#if defined(HAVE_ALPHA)
         const Tshared sum_real = sum[REAL][m][n].x[i];
         const Tshared sum_imag = sum[IMAG][m][n].x[i];
         sum[REAL][m][n].x[i] = static_cast<Tshared>(ALPHA_REAL) * sum_real -
                                static_cast<Tshared>(ALPHA_IMAG) * sum_imag;
         sum[IMAG][m][n].x[i] = static_cast<Tshared>(ALPHA_IMAG) * sum_real +
                                static_cast<Tshared>(ALPHA_REAL) * sum_imag;
+#endif
 #if defined(HAVE_BETA)
         const Tshared c_real = c_frag[REAL].x[i];
         const Tshared c_imag = c_frag[IMAG].x[i];
@@ -119,30 +121,46 @@ store_matrix_padded(Accumulator_t sum[COMPLEX][M_PER_WARP / M_PER_WMMA]
         size_t j = t % N_PER_WMMA;
         // store the submatrix, padded values are set to zero
         if (m_index + i < M_GLOBAL && n_index + j < N_GLOBAL) {
+#if defined(HAVE_ALPHA)
+          const Tshared sum_real = C_s[REAL][warpM][warpN][i][j];
+          const Tshared sum_imag = C_s[IMAG][warpM][warpN][i][j];
+          C_s[REAL][warpM][warpN][i][j] =
+              static_cast<Tshared>(ALPHA_REAL) * sum_real -
+              static_cast<Tshared>(ALPHA_IMAG) * sum_imag;
+          C_s[IMAG][warpM][warpN][i][j] =
+              static_cast<Tshared>(ALPHA_IMAG) * sum_real +
+              static_cast<Tshared>(ALPHA_REAL) * sum_imag;
+#endif
+
 #if defined(C_ROW_MAJOR)
 #if defined(C_COMPLEX_PLANAR)
-          C[batch][REAL][m_index + i][n_index + j] =
-              C_s[REAL][warpM][warpN][i][j];
-          C[batch][IMAG][m_index + i][n_index + j] =
-              C_s[IMAG][warpM][warpN][i][j];
+          Tout &c_real = C[batch][REAL][m_index + i][n_index + j];
+          Tout &c_imag = C[batch][IMAG][m_index + i][n_index + j];
 #else
-          C[batch][m_index + i][n_index + j][REAL] =
-              C_s[REAL][warpM][warpN][i][j];
-          C[batch][m_index + i][n_index + j][IMAG] =
-              C_s[IMAG][warpM][warpN][i][j];
+          Tout &c_real = C[batch][m_index + i][n_index + j][REAL];
+          Tout &c_imag = C[batch][m_index + i][n_index + j][IMAG];
 #endif
 #else
 #if defined(C_COMPLEX_PLANAR)
-          C[batch][REAL][n_index + j][m_index + i] =
-              C_s[REAL][warpM][warpN][i][j];
-          C[batch][IMAG][n_index + j][m_index + i] =
-              C_s[IMAG][warpM][warpN][i][j];
+          Tout &c_real = C[batch][REAL][n_index + j][m_index + i];
+          Tout &c_imag = C[batch][IMAG][n_index + j][m_index + i];
 #else
-          C[batch][n_index + j][m_index + i][REAL] =
-              C_s[IMAG][warpM][warpN][i][j];
-          C[batch][n_index + j][m_index + i][IMAG] =
-              C_s[IMAG][warpM][warpN][i][j];
+          Tout &c_real = C[batch][n_index + j][m_index + i][REAL];
+          Tout &c_imag = C[batch][n_index + j][m_index + i][IMAG];
 #endif
+#endif
+
+#if defined(HAVE_BETA)
+          const Tout c_real_copy = c_real;
+          c_real = C_s[REAL][warpM][warpN][i][j] +
+                   static_cast<Tout>(BETA_REAL) * c_real -
+                   static_cast<Tout>(BETA_IMAG) * c_imag;
+          c_imag = C_s[IMAG][warpM][warpN][i][j] +
+                   static_cast<Tout>(BETA_IMAG) * c_real_copy +
+                   static_cast<Tout>(BETA_REAL) * c_imag;
+#else
+          c_real = C_s[REAL][warpM][warpN][i][j];
+          c_imag = C_s[IMAG][warpM][warpN][i][j];
 #endif
         }
       }
