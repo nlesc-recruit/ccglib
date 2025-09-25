@@ -12,7 +12,7 @@
 #include <ccglib/common/precision.h>
 
 template <typename Tin, typename Tout, ccglib::ValueType InputPrecision>
-void verify(const Tin *a, const Tin *b, const Tout *c, size_t B, size_t M,
+void verify(const Tin *a, const Tin *b, const Tout *c_test, size_t B, size_t M,
             size_t N, size_t K, ccglib::mma::MemOrder output_mem_order,
             float2 alpha = {1, 0}, float2 beta = {0, 0},
             const Tout *c_in = nullptr) {
@@ -29,24 +29,23 @@ void verify(const Tin *a, const Tin *b, const Tout *c, size_t B, size_t M,
     c_shape = {B, 2, N, M};
   }
 
-  if (c_in == nullptr) {
-    c_in = c;
-  }
-
   const size_t a_size = B * 2 * M * K / kPackingFactor;
   const size_t b_size = B * 2 * N * K / kPackingFactor;
   const size_t c_size = B * 2 * M * N;
 
   auto a_view = xt::adapt(a, a_size, xt::no_ownership(), a_shape);
   auto b_view = xt::adapt(b, b_size, xt::no_ownership(), b_shape);
-  auto c_view = xt::adapt(c, c_size, xt::no_ownership(), c_shape);
+  auto c_test_view = xt::adapt(c_test, c_size, xt::no_ownership(), c_shape);
 
-  xt::xtensor<Tout, 4> c_ref;
-  if (c_in != nullptr) {
+  xt::xtensor<Tout, 4> c_ref(c_shape);
+  if (c_in == nullptr) {
+    if (beta.x != 0 || beta.y != 0) {
+      throw std::runtime_error("c_in must be given as argument when beta != 0");
+    }
+    c_ref = xt::zeros_like(c_test_view);
+  } else {
     auto c_in_view = xt::adapt(c_in, c_size, xt::no_ownership(), c_shape);
     c_ref = c_in_view;
-  } else {
-    c_ref = xt::zeros_like(c_view);
   }
 
   ccglib::reference::GEMM gemm;
@@ -65,10 +64,10 @@ void verify(const Tin *a, const Tin *b, const Tout *c, size_t B, size_t M,
         std::complex<Tout> tst;
         if (output_mem_order == ccglib::mma::row_major) {
           ref = {c_ref(b, 0, m, n), c_ref(b, 1, m, n)};
-          tst = {c_view(b, 0, m, n), c_view(b, 1, m, n)};
+          tst = {c_test_view(b, 0, m, n), c_test_view(b, 1, m, n)};
         } else {
           ref = {c_ref(b, 0, n, m), c_ref(b, 1, n, m)};
-          tst = {c_view(b, 0, n, m), c_view(b, 1, n, m)};
+          tst = {c_test_view(b, 0, n, m), c_test_view(b, 1, n, m)};
         }
         ccglib::test::fpEquals(ref, tst);
       }

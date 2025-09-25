@@ -618,9 +618,9 @@ TEST_CASE("Alpha/beta scaling") {
         ccglib::mma::basic, ccglib::complex_planar, ccglib::mma::row_major,
         ccglib::mma::row_major, ccglib::mma::col_major, alpha, beta);
 
-    const size_t bytes_a = COMPLEX * m * k * sizeof(Tin);
-    const size_t bytes_b = COMPLEX * n * k * sizeof(Tin);
-    const size_t bytes_c = COMPLEX * m * n * sizeof(Tout);
+    const size_t bytes_a = batch_size * COMPLEX * m * k * sizeof(Tin);
+    const size_t bytes_b = batch_size * COMPLEX * n * k * sizeof(Tin);
+    const size_t bytes_c = batch_size * COMPLEX * m * n * sizeof(Tout);
 
     cu::HostMemory h_a(bytes_a);
     cu::HostMemory h_b(bytes_b);
