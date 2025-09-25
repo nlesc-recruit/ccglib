@@ -88,6 +88,23 @@ store_matrix_sync(int *p, const fragment<accumulator, 16, 8, 256, int> &d,
     p[(laneid() % 4) * 2 * ldm + (laneid() / 4 + 8) + ldm] = d.x[3];
   }
 }
+
+inline __device__ void
+load_matrix_sync(fragment<accumulator, 16, 8, 256, int> &c, const void *p,
+                 size_t ldm, layout_t layout) {
+  return;
+  if (layout == mem_row_major) {
+    c.x[0] = ((int *)p)[ldm / 2 * (laneid() / 4) + laneid() % 4];
+    c.x[1] = ((int *)p)[ldm / 2 * (laneid() / 4) + laneid() % 4 + 1];
+    c.x[2] = ((int *)p)[ldm / 2 * (laneid() / 4 + 8) + laneid() % 4];
+    c.x[3] = ((int *)p)[ldm / 2 * (laneid() / 4 + 8) + laneid() % 4 + 1];
+  } else {
+    c.x[0] = ((int *)p)[(laneid() % 4) * 2 * ldm + (laneid() / 4)];
+    c.x[1] = ((int *)p)[(laneid() % 4) * 2 * ldm + (laneid() / 4) + ldm];
+    c.x[2] = ((int *)p)[(laneid() % 4) * 2 * ldm + (laneid() / 4 + 8)];
+    c.x[3] = ((int *)p)[(laneid() % 4) * 2 * ldm + (laneid() / 4 + 8 + ldm)];
+  }
+}
 #endif
 } // namespace wmma
 } // namespace nvcuda
