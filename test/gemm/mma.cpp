@@ -598,7 +598,6 @@ TEST_CASE("Unsupported matrix layout") {
 
 TEST_CASE("Alpha/beta scaling") {
   const size_t batch_size = 16;
-  const size_t m = GENERATE(255, 256); // aligned and padded case
   const size_t n = 128;
   const size_t k = 256;
 
@@ -608,6 +607,8 @@ TEST_CASE("Alpha/beta scaling") {
   cu::Stream stream;
 
   SECTION("float16") {
+    const size_t m = GENERATE(255, 256); // aligned and padded case
+
     using Tin = half;
     using Tout = float;
     const std::complex<float> alpha = {0.3, 1.6};
@@ -670,11 +671,14 @@ TEST_CASE("Alpha/beta scaling") {
     if (isVolta(device)) {
       SKIP("Int1 is not available on Volta GPUs");
     }
+    const size_t m = 256; // int1 does not support padded
 
     using Tin = unsigned int;
     using Tout = int;
     const std::complex<float> alpha = {2, -3};
     const std::complex<float> beta = {3, -2};
+    // const std::complex<float> alpha = {1, 0};
+    // const std::complex<float> beta = {0, 0};
 
     ccglib::mma::GEMM gemm(batch_size, m, n, k, device, stream,
                            {ccglib::ValueType::int1, ccglib::ValueType::int32},
@@ -696,15 +700,15 @@ TEST_CASE("Alpha/beta scaling") {
 
     unsigned int seed = 0;
     for (int idx = 0; idx < bytes_a / sizeof(Tin); idx++) {
-      static_cast<Tin *>(h_a)[idx] = static_cast<unsigned int>(rand_r(&seed));
+      static_cast<Tin *>(h_a)[idx] = static_cast<Tin>(rand_r(&seed));
     }
 
     for (int idx = 0; idx < bytes_b / sizeof(Tin); idx++) {
-      static_cast<Tin *>(h_b)[idx] = static_cast<unsigned int>(rand_r(&seed));
+      static_cast<Tin *>(h_b)[idx] = static_cast<Tin>(rand_r(&seed));
     }
 
     for (int idx = 0; idx < bytes_c / sizeof(Tout); idx++) {
-      static_cast<Tout *>(h_c_in)[idx] = static_cast<int>(rand_r(&seed));
+      static_cast<Tout *>(h_c_in)[idx] = static_cast<Tout>(.5 * rand_r(&seed));
     }
 
     cu::DeviceMemory d_a(bytes_a);
