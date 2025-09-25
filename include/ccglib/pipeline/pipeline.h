@@ -69,7 +69,7 @@ private:
   std::unique_ptr<Impl> impl_;
   std::unique_ptr<cu::Device> device_;
   std::unique_ptr<cu::Stream> stream_;
-  const bool need_copy_in_c_;
+  const bool need_copyin_c_;
 };
 
 } // namespace ccglib::pipeline

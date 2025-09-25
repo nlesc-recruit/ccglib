@@ -133,7 +133,7 @@ Pipeline::Pipeline(size_t B, size_t M, size_t N, size_t K, cu::Device &device,
                    mma::MemOrder c_mem_order, ValuePrecision input_precision,
                    ValuePrecision output_precision, mma::Variant variant,
                    std::complex<float> alpha, std::complex<float> beta)
-    : need_copy_in_c_(beta.real() != 0 || beta.imag() != 0),
+    : need_copyin_c_(beta.real() != 0 || beta.imag() != 0),
       device_(std::make_unique<cu::Device>(device)),
       stream_(std::make_unique<cu::Stream>(stream)) {
   impl_ = std::make_unique<Impl>(
@@ -150,7 +150,7 @@ Pipeline::Pipeline(size_t B, size_t M, size_t N, size_t K, CUdevice &device,
                    mma::MemOrder c_mem_order, ValuePrecision input_precision,
                    ValuePrecision output_precision, mma::Variant variant,
                    std::complex<float> alpha, std::complex<float> beta)
-    : need_copy_in_c_(beta.real() != 0 || beta.imag() != 0),
+    : need_copyin_c_(beta.real() != 0 || beta.imag() != 0),
       device_(std::make_unique<cu::Device>(device)),
       stream_(std::make_unique<cu::Stream>(stream)) {
   impl_ = std::make_unique<Impl>(
@@ -165,7 +165,7 @@ void Pipeline::Run(cu::HostMemory &a, cu::HostMemory &b, cu::HostMemory &c) {
   cu::DeviceMemory d_c(c.size());
   stream_->memcpyHtoDAsync(d_a, a, a.size());
   stream_->memcpyHtoDAsync(d_b, b, b.size());
-  if (need_copy_in_c_) {
+  if (need_copyin_c_) {
     stream_->memcpyHtoDAsync(d_c, c, c.size());
   } else {
     d_c.zero(d_c.size());
