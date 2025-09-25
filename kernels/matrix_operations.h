@@ -12,8 +12,13 @@ using namespace nvcuda;
 #endif
 
 // The following is a workaround for the lack of __syncwarp() in HIP<7
+// The implementation is identical to that in HIP 7.0
 #if defined(__HIP_PLATFORM_AMD__) && HIP_VERSION_MAJOR < 7
-inline __device__ void __syncwarp(){};
+inline __device__ void __syncwarp() {
+  __builtin_amdgcn_fence(__ATOMIC_RELEASE, "wavefront");
+  __builtin_amdgcn_wave_barrier();
+  __builtin_amdgcn_fence(__ATOMIC_ACQUIRE, "wavefront");
+}
 #endif
 
 inline __device__ size_t global_idx_m(const size_t &blockM, const size_t &warpM,
