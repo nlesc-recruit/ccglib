@@ -205,8 +205,9 @@ void run_binary(const unsigned *a, const unsigned *b, int *c, size_t M,
       const int beta_real = static_cast<int>(beta.x);
       const int beta_imag = static_cast<int>(beta.y);
 
+      const int sum_real_copy = sum_real;
       sum_real = alpha_real * sum_real - alpha_imag * sum_imag;
-      sum_imag = alpha_imag * sum_real + alpha_real * sum_imag;
+      sum_imag = alpha_imag * sum_real_copy + alpha_real * sum_imag;
 
       if (output_mem_order == ccglib::mma::row_major) {
         const int c_real = c_view(0, m, n);
