@@ -677,8 +677,6 @@ TEST_CASE("Alpha/beta scaling") {
     using Tout = int;
     const std::complex<float> alpha = {2, -3};
     const std::complex<float> beta = {3, -2};
-    // const std::complex<float> alpha = {1, 0};
-    // const std::complex<float> beta = {0, 0};
 
     ccglib::mma::GEMM gemm(batch_size, m, n, k, device, stream,
                            {ccglib::ValueType::int1, ccglib::ValueType::int32},
