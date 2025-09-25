@@ -661,6 +661,60 @@ TEST_CASE("Alpha/beta scaling") {
         static_cast<Tout *>(h_c_out), batch_size, m, n, k,
         ccglib::mma::row_major, alpha, beta, static_cast<Tout *>(h_c_in));
   }
+
+  SECTION("int1") {
+    using Tin = unsigned int;
+    using Tout = int;
+    const float2 alpha = {2, -3};
+    const float2 beta = {3, -2};
+
+    ccglib::mma::GEMM gemm(batch_size, m, n, k, device, stream,
+                           {ccglib::ValueType::int1, ccglib::ValueType::int32},
+                           ccglib::mma::basic, ccglib::complex_planar,
+                           ccglib::mma::row_major, ccglib::mma::row_major,
+                           ccglib::mma::col_major, alpha, beta);
+
+    const size_t packing_factor = sizeof(Tin) * CHAR_BIT;
+    const size_t bytes_a = batch_size * COMPLEX * m * k / packing_factor;
+    const size_t bytes_b = batch_size * COMPLEX * n * k / packing_factor;
+    const size_t bytes_c = batch_size * COMPLEX * m * n;
+
+    cu::HostMemory h_a(bytes_a);
+    cu::HostMemory h_b(bytes_b);
+    cu::HostMemory h_c_in(bytes_c);
+    cu::HostMemory h_c_out(bytes_c);
+
+    unsigned int seed = 0;
+    for (int idx = 0; idx < bytes_a / sizeof(Tin); idx++) {
+      static_cast<Tin *>(h_a)[idx] = static_cast<unsigned int>(rand_r(&seed));
+    }
+
+    for (int idx = 0; idx < bytes_b / sizeof(Tin); idx++) {
+      static_cast<Tin *>(h_b)[idx] = static_cast<unsigned int>(rand_r(&seed));
+    }
+
+    for (int idx = 0; idx < bytes_c / sizeof(Tout); idx++) {
+      static_cast<Tout *>(h_c_in)[idx] = static_cast<int>(rand_r(&seed));
+    }
+
+    cu::DeviceMemory d_a(bytes_a);
+    cu::DeviceMemory d_b(bytes_b);
+    cu::DeviceMemory d_c(bytes_c);
+
+    stream.memcpyHtoDAsync(d_a, h_a, bytes_a);
+    stream.memcpyHtoDAsync(d_b, h_b, bytes_b);
+    stream.memcpyHtoDAsync(d_c, h_c_in, bytes_c);
+
+    gemm.Run(d_a, d_b, d_c);
+
+    stream.memcpyDtoHAsync(h_c_out, d_c, bytes_c);
+    stream.synchronize();
+
+    verify<Tin, Tout, ccglib::ValueType::float16>(
+        static_cast<const Tin *>(h_a), static_cast<const Tin *>(h_b),
+        static_cast<Tout *>(h_c_out), batch_size, m, n, k,
+        ccglib::mma::row_major, alpha, beta, static_cast<Tout *>(h_c_in));
+  }
 }
 
 } // namespace ccglib::test
