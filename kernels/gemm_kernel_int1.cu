@@ -245,8 +245,8 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
   A_s_t &A_s = *reinterpret_cast<A_s_t *>(shmem.ab);
   B_s_t &B_s = *reinterpret_cast<B_s_t *>(&shmem.ab[A_s_size]);
 #if defined(C_COMPLEX_INTERLEAVED)
-  using C_s_t = Tout[M_PER_BLOCK / M_PER_WARP][N_PER_BLOCK / N_PER_WARP]
-                    [M_PER_WMMA][N_PER_WMMA];
+  using C_s_t = Tout[COMPLEX][M_PER_BLOCK / M_PER_WARP]
+                    [N_PER_BLOCK / N_PER_WARP][M_PER_WMMA][N_PER_WMMA];
   C_s_t &C_s = *reinterpret_cast<C_s_t *>(shmem.c);
 #endif
 

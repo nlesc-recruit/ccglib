@@ -212,7 +212,7 @@ constexpr size_t A_s_size =
 constexpr size_t B_s_size =
     NBUFFER * COMPLEX * N_PER_BLOCK * K_PER_WMMA / DeviceTraits::PACKING_FACTOR;
 
-constexpr size_t C_s_size = (M_PER_BLOCK / M_PER_WARP) *
+constexpr size_t C_s_size = COMPLEX * (M_PER_BLOCK / M_PER_WARP) *
                             (N_PER_BLOCK / N_PER_WARP) * M_PER_WMMA *
                             N_PER_WMMA;
 static_assert((A_s_size + B_s_size) * sizeof(Tin) >= C_s_size * sizeof(Tout),

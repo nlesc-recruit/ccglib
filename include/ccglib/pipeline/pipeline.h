@@ -1,6 +1,7 @@
 #ifndef PIPELINE_H_
 #define PIPELINE_H_
 
+#include <complex>
 #include <memory>
 
 #ifdef __HIP__
@@ -32,7 +33,9 @@ public:
            mma::MemOrder a_mem_order, mma::MemOrder b_mem_order,
            mma::MemOrder c_mem_order, ValuePrecision input_precision,
            ValuePrecision output_precision,
-           mma::Variant variant = mma::Variant::opt);
+           mma::Variant variant = mma::Variant::opt,
+           std::complex<float> alpha = {1, 0},
+           std::complex<float> beta = {0, 0});
   ~Pipeline();
   void Run(cu::HostMemory &a, cu::HostMemory &b, cu::HostMemory &c);
   void Run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b, cu::DeviceMemory &d_c);
@@ -44,7 +47,9 @@ public:
            mma::MemOrder a_mem_order, mma::MemOrder b_mem_order,
            mma::MemOrder c_mem_order, ValuePrecision input_precision,
            ValuePrecision output_precision,
-           mma::Variant variant = mma::Variant::opt);
+           mma::Variant variant = mma::Variant::opt,
+           std::complex<float> alpha = {1, 0},
+           std::complex<float> beta = {0, 0});
   void Run(hipDeviceptr_t a, hipDeviceptr_t b, hipDeviceptr_t c);
 #else
   Pipeline(size_t B, size_t M, size_t N, size_t K, CUdevice &device,
@@ -53,7 +58,9 @@ public:
            mma::MemOrder a_mem_order, mma::MemOrder b_mem_order,
            mma::MemOrder c_mem_order, ValuePrecision input_precision,
            ValuePrecision output_precision,
-           mma::Variant variant = mma::Variant::opt);
+           mma::Variant variant = mma::Variant::opt,
+           std::complex<float> alpha = {1, 0},
+           std::complex<float> beta = {0, 0});
   void Run(CUdeviceptr a, CUdeviceptr b, CUdeviceptr c);
 #endif
 
@@ -62,6 +69,7 @@ private:
   std::unique_ptr<Impl> impl_;
   std::unique_ptr<cu::Device> device_;
   std::unique_ptr<cu::Stream> stream_;
+  const bool need_copyin_c_;
 };
 
 } // namespace ccglib::pipeline
