@@ -174,7 +174,7 @@ TEST_CASE("Pipeline int1 - int32") {
   ccglib::pipeline::Pipeline pipeline(
       B, M, N, K, device, stream, input_complex_axis_location,
       output_complex_axis_location, a_mem_order, b_mem_order, c_mem_order,
-      input_precision, output_precision, variant);
+      input_precision, output_precision, variant, alpha, beta);
 
   pipeline.Run(d_a, d_b, d_c);
   stream.memcpyDtoHAsync(h_c_out, d_c, d_c.size());
