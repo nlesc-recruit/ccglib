@@ -663,11 +663,14 @@ TEST_CASE("Alpha/beta scaling") {
         ccglib::mma::row_major, alpha, beta, static_cast<Tout *>(h_c_in));
   }
 
-#if !defined(__HIP_PLATFORM_AMD__)
   SECTION("int1") {
+#ifdef __HIP_PLATFORM_AMD__
+    SKIP("int1 is not available on AMD GPUs");
+#endif
     if (isVolta(device)) {
       SKIP("Int1 is not available on Volta GPUs");
     }
+
     using Tin = unsigned int;
     using Tout = int;
     const std::complex<float> alpha = {2, -3};
@@ -682,9 +685,9 @@ TEST_CASE("Alpha/beta scaling") {
     const size_t bits_per_sample = sizeof(Tin) * CHAR_BIT;
     const size_t k_packed = ccglib::helper::ceildiv(k, bits_per_sample);
 
-    const size_t bytes_a = batch_size * COMPLEX * m * k_packed;
-    const size_t bytes_b = batch_size * COMPLEX * n * k_packed;
-    const size_t bytes_c = batch_size * COMPLEX * m * n;
+    const size_t bytes_a = batch_size * COMPLEX * m * k_packed * sizeof(Tin);
+    const size_t bytes_b = batch_size * COMPLEX * n * k_packed * sizeof(Tin);
+    const size_t bytes_c = batch_size * COMPLEX * m * n * sizeof(Tout);
 
     cu::HostMemory h_a(bytes_a);
     cu::HostMemory h_b(bytes_b);
@@ -722,7 +725,6 @@ TEST_CASE("Alpha/beta scaling") {
         static_cast<Tout *>(h_c_out), batch_size, m, n, k,
         ccglib::mma::row_major, alpha, beta, static_cast<Tout *>(h_c_in));
   }
-#endif
 }
 
 } // namespace ccglib::test
