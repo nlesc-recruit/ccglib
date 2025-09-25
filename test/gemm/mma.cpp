@@ -662,7 +662,11 @@ TEST_CASE("Alpha/beta scaling") {
         ccglib::mma::row_major, alpha, beta, static_cast<Tout *>(h_c_in));
   }
 
+#if !defined(__HIP_PLATFORM_AMD__)
   SECTION("int1") {
+    if (isVolta(device)) {
+      SKIP("Int1 is not available on Volta GPUs");
+    }
     using Tin = unsigned int;
     using Tout = int;
     const float2 alpha = {2, -3};
@@ -674,9 +678,11 @@ TEST_CASE("Alpha/beta scaling") {
                            ccglib::mma::row_major, ccglib::mma::row_major,
                            ccglib::mma::col_major, alpha, beta);
 
-    const size_t packing_factor = sizeof(Tin) * CHAR_BIT;
-    const size_t bytes_a = batch_size * COMPLEX * m * k / packing_factor;
-    const size_t bytes_b = batch_size * COMPLEX * n * k / packing_factor;
+    const size_t bits_per_sample = sizeof(Tin) * CHAR_BIT;
+    const size_t k_packed = ccglib::helper::ceildiv(k, bits_per_sample);
+
+    const size_t bytes_a = batch_size * COMPLEX * m * k_packed;
+    const size_t bytes_b = batch_size * COMPLEX * n * k_packed;
     const size_t bytes_c = batch_size * COMPLEX * m * n;
 
     cu::HostMemory h_a(bytes_a);
@@ -710,11 +716,12 @@ TEST_CASE("Alpha/beta scaling") {
     stream.memcpyDtoHAsync(h_c_out, d_c, bytes_c);
     stream.synchronize();
 
-    verify<Tin, Tout, ccglib::ValueType::float16>(
+    verify<Tin, Tout, ccglib::ValueType::int1>(
         static_cast<const Tin *>(h_a), static_cast<const Tin *>(h_b),
         static_cast<Tout *>(h_c_out), batch_size, m, n, k,
         ccglib::mma::row_major, alpha, beta, static_cast<Tout *>(h_c_in));
   }
+#endif
 }
 
 } // namespace ccglib::test
