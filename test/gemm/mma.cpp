@@ -597,8 +597,8 @@ TEST_CASE("Unsupported matrix layout") {
 
 TEST_CASE("Alpha/beta scaling") {
   const size_t batch_size = 16;
-  const size_t m = 16;
-  const size_t n = 64;
+  const size_t m = GENERATE(255, 256); // aligned and padded case
+  const size_t n = 128;
   const size_t k = 256;
 
   cu::init();
