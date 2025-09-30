@@ -109,6 +109,9 @@ void GEMM::Impl::check_support() {
       throw std::runtime_error("Float32 input is not supported on Volta");
     }
   }
+  if (isUnsupported(device_)) {
+    throw std::runtime_error("This architecture is not supported");
+  }
 }
 
 void GEMM::Impl::compile_kernel() {
