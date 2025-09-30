@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 
 project(
   ccglib
-  DESCRIPTION "Complex CUDA GEMM"
+  DESCRIPTION "Complex Common GEMM Library"
   VERSION 0.2.0
   LANGUAGES CXX)
 
