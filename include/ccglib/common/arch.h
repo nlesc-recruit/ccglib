@@ -36,18 +36,18 @@ bool isVolta(cu::Device &device) {
 
 bool isUnsupported(cu::Device &device) {
   const std::string arch(device.getArch());
-  // AMD: unsupported are gfx < 8, Vega gfx9, RDNA2=gfx10
+  // AMD: only architectures with matrix cores are supported: CDNA or newer,
+  // RDNA3 or newer
 #if defined(__HIP_PLATFORM_AMD__)
-  if (arch.find("gfx6") != std::string::npos)
+  const std::vector<std::string> prefixes = {"gfx6", "gfx7", "gfx8", "gfx10"};
+  if (std::any_of(prefixes.begin(), prefixes.end(), [&](const std::string &p) {
+        return arch.find(p) != std::string::npos;
+      })) {
     return true;
-  if (arch.find("gfx7") != std::string::npos)
-    return true;
-  if (arch.find("gfx8") != std::string::npos)
-    return true;
-  if ((arch.find("gfx9") != std::string::npos) && !isCDNA(device))
-    return true;
-  if (arch.find("gfx10") != std::string::npos)
-    return true;
+  }
+
+  // gfx9 is supported if it is CDNA
+  return ((arch.find("gfx9") != std::string::npos) && !isCDNA(device));
 #else
   // NVIDIA: older than Volta is not supported
   const int arch_numeric = std::stoi(arch.substr(3));
