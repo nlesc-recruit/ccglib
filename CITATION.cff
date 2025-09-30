@@ -7,7 +7,7 @@ type: software
 repository-code: "https://github.com/nlesc-recruit/ccglib"
 license: Apache-2.0
 #software version
-version: 0.1.0
+version: 0.2.0
 authors:
   - given-names: Leon
     family-names: Oostrum
