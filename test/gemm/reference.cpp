@@ -1,5 +1,6 @@
 #include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <complex>
 #include <limits.h>
 #include <xtensor/xadapt.hpp>
 #include <xtensor/xcomplex.hpp>
@@ -85,6 +86,55 @@ TEST_CASE("Reference complex binary") {
 
   gemm.Run(a, b, &c_test[0], M, N, K, ccglib::mma::col_major);
   REQUIRE(c_ref_col_major == c_test);
+}
+
+TEST_CASE("Reference alpha/beta scaling") {
+  SECTION("float16") {
+    const size_t M = 2;
+    const size_t N = 2;
+    const size_t K = 8;
+    const size_t COMPLEX = 2;
+    const std::complex<float> alpha = {0.5, 2.5};
+    const std::complex<float> beta = {0.25, -1.5};
+
+    const half a[COMPLEX * M * K] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10,
+                                     11, 12, 13, 14, 15, 16, 15, 14, 13, 12, 11,
+                                     10, 9,  8,  7,  6,  5,  4,  3,  2,  1};
+    const half b[COMPLEX * N * K] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10,
+                                     11, 12, 13, 14, 15, 16, 15, 14, 13, 12, 11,
+                                     10, 9,  8,  7,  6,  5,  4,  3,  2,  1};
+    std::array<float, COMPLEX * M * N> c_test = {0, 1, 2, 3, 4, 3, 2, 1};
+    const std::array<float, COMPLEX * M * N> c_ref = {
+        -2110, -3039.25, -3040.5, -1409.75, -2571, 275.25, 273.5, 2607.75};
+
+    ccglib::reference::GEMM gemm;
+    gemm.Run(a, b, &c_test[0], M, N, K, ccglib::mma::row_major, alpha, beta);
+    REQUIRE(c_ref == c_test);
+  }
+
+  SECTION("int1") {
+    const size_t M = 2;
+    const size_t N = 2;
+    const size_t K = 32;
+    const size_t COMPLEX = 2;
+    const std::complex<float> alpha = {2, 3};
+    const std::complex<float> beta = {-1, 2};
+    const size_t bits_per_sample = sizeof(unsigned) * CHAR_BIT;
+    const size_t K_PACKED = ccglib::helper::ceildiv(K, bits_per_sample);
+
+    const auto a = new unsigned[COMPLEX * M * K_PACKED]{4007499276, 2587246816,
+                                                        2368114480, 2180517764};
+    const auto b = new unsigned[COMPLEX * N * K_PACKED]{3172811225, 4156143586,
+                                                        144478092, 808068269};
+
+    std::array<int, COMPLEX * M * N> c_test = {1, 2, 3, 4, 5, 6, 7, 8};
+    const std::array<int, COMPLEX * M * N> c_ref = {-51, 38, -19, -50,
+                                                    -11, -2, -43, -6};
+
+    ccglib::reference::GEMM gemm;
+    gemm.Run(a, b, &c_test[0], M, N, K, ccglib::mma::row_major, alpha, beta);
+    REQUIRE(c_ref == c_test);
+  }
 }
 
 } // namespace ccglib::test

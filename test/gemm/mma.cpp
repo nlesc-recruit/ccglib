@@ -1,3 +1,4 @@
+#include <complex>
 #include <limits.h>
 #include <math.h>
 
@@ -593,6 +594,139 @@ TEST_CASE("Unsupported matrix layout") {
         Catch::Matchers::ContainsSubstring(error_name));
   }
 #endif
+}
+
+TEST_CASE("Alpha/beta scaling") {
+  const size_t batch_size = 16;
+  const size_t n = 128;
+  const size_t k = 256;
+
+  cu::init();
+  cu::Device device(0);
+  cu::Context context(CU_CTX_BLOCKING_SYNC, device);
+  cu::Stream stream;
+
+  SECTION("float16") {
+    const size_t m = GENERATE(255, 256); // aligned and padded case
+
+    using Tin = half;
+    using Tout = float;
+    const std::complex<float> alpha = {0.3, 1.6};
+    const std::complex<float> beta = {0.8, -1.1};
+
+    ccglib::mma::GEMM gemm(
+        batch_size, m, n, k, device, stream,
+        {ccglib::ValueType::float16, ccglib::ValueType::float32},
+        ccglib::mma::basic, ccglib::complex_planar, ccglib::mma::row_major,
+        ccglib::mma::row_major, ccglib::mma::col_major, alpha, beta);
+
+    const size_t bytes_a = batch_size * COMPLEX * m * k * sizeof(Tin);
+    const size_t bytes_b = batch_size * COMPLEX * n * k * sizeof(Tin);
+    const size_t bytes_c = batch_size * COMPLEX * m * n * sizeof(Tout);
+
+    cu::HostMemory h_a(bytes_a);
+    cu::HostMemory h_b(bytes_b);
+    cu::HostMemory h_c_in(bytes_c);
+    cu::HostMemory h_c_out(bytes_c);
+
+    unsigned int seed = 0;
+    for (int idx = 0; idx < bytes_a / sizeof(Tin); idx++) {
+      static_cast<Tin *>(h_a)[idx] = __float2half(
+          static_cast<float>(rand_r(&seed)) / static_cast<float>(RAND_MAX));
+    }
+
+    for (int idx = 0; idx < bytes_b / sizeof(Tin); idx++) {
+      static_cast<Tin *>(h_b)[idx] = __float2half(
+          static_cast<float>(rand_r(&seed)) / static_cast<float>(RAND_MAX));
+    }
+
+    for (int idx = 0; idx < bytes_c / sizeof(Tout); idx++) {
+      static_cast<Tout *>(h_c_in)[idx] =
+          static_cast<float>(rand_r(&seed)) / static_cast<float>(RAND_MAX);
+    }
+
+    cu::DeviceMemory d_a(bytes_a);
+    cu::DeviceMemory d_b(bytes_b);
+    cu::DeviceMemory d_c(bytes_c);
+
+    stream.memcpyHtoDAsync(d_a, h_a, bytes_a);
+    stream.memcpyHtoDAsync(d_b, h_b, bytes_b);
+    stream.memcpyHtoDAsync(d_c, h_c_in, bytes_c);
+
+    gemm.Run(d_a, d_b, d_c);
+
+    stream.memcpyDtoHAsync(h_c_out, d_c, bytes_c);
+    stream.synchronize();
+
+    verify<Tin, Tout, ccglib::ValueType::float16>(
+        static_cast<const Tin *>(h_a), static_cast<const Tin *>(h_b),
+        static_cast<Tout *>(h_c_out), batch_size, m, n, k,
+        ccglib::mma::row_major, alpha, beta, static_cast<Tout *>(h_c_in));
+  }
+
+  SECTION("int1") {
+#ifdef __HIP_PLATFORM_AMD__
+    SKIP("int1 is not available on AMD GPUs");
+#endif
+    if (isVolta(device)) {
+      SKIP("Int1 is not available on Volta GPUs");
+    }
+    const size_t m = 256; // int1 does not support padded
+
+    using Tin = unsigned int;
+    using Tout = int;
+    const std::complex<float> alpha = {2, -3};
+    const std::complex<float> beta = {3, -2};
+
+    ccglib::mma::GEMM gemm(batch_size, m, n, k, device, stream,
+                           {ccglib::ValueType::int1, ccglib::ValueType::int32},
+                           ccglib::mma::basic, ccglib::complex_planar,
+                           ccglib::mma::row_major, ccglib::mma::row_major,
+                           ccglib::mma::col_major, alpha, beta);
+
+    const size_t bits_per_sample = sizeof(Tin) * CHAR_BIT;
+    const size_t k_packed = ccglib::helper::ceildiv(k, bits_per_sample);
+
+    const size_t bytes_a = batch_size * COMPLEX * m * k_packed * sizeof(Tin);
+    const size_t bytes_b = batch_size * COMPLEX * n * k_packed * sizeof(Tin);
+    const size_t bytes_c = batch_size * COMPLEX * m * n * sizeof(Tout);
+
+    cu::HostMemory h_a(bytes_a);
+    cu::HostMemory h_b(bytes_b);
+    cu::HostMemory h_c_in(bytes_c);
+    cu::HostMemory h_c_out(bytes_c);
+
+    unsigned int seed = 0;
+    for (int idx = 0; idx < bytes_a / sizeof(Tin); idx++) {
+      static_cast<Tin *>(h_a)[idx] = static_cast<Tin>(rand_r(&seed));
+    }
+
+    for (int idx = 0; idx < bytes_b / sizeof(Tin); idx++) {
+      static_cast<Tin *>(h_b)[idx] = static_cast<Tin>(rand_r(&seed));
+    }
+
+    for (int idx = 0; idx < bytes_c / sizeof(Tout); idx++) {
+      static_cast<Tout *>(h_c_in)[idx] = static_cast<Tout>(.5 * rand_r(&seed));
+    }
+
+    cu::DeviceMemory d_a(bytes_a);
+    cu::DeviceMemory d_b(bytes_b);
+    cu::DeviceMemory d_c(bytes_c);
+
+    stream.memcpyHtoDAsync(d_a, h_a, bytes_a);
+    stream.memcpyHtoDAsync(d_b, h_b, bytes_b);
+    stream.memcpyHtoDAsync(d_c, h_c_in, bytes_c);
+
+    gemm.Run(d_a, d_b, d_c);
+
+    stream.memcpyDtoHAsync(h_c_out, d_c, bytes_c);
+    stream.synchronize();
+
+    verify<Tin, Tout, ccglib::ValueType::int1>(
+        static_cast<const Tin *>(h_a), static_cast<const Tin *>(h_b),
+        static_cast<Tout *>(h_c_out), batch_size, m, n, k,
+        ccglib::mma::row_major, alpha, beta, static_cast<Tout *>(h_c_in));
+  }
 }
 
 } // namespace ccglib::test

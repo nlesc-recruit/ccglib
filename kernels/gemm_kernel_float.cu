@@ -65,8 +65,8 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
 #endif
 
 #if REQUIRES_SHARED_MEMORY
-  __shared__ Tshared C_s[M_PER_BLOCK / M_PER_WARP][N_PER_BLOCK / N_PER_WARP]
-                        [M_PER_WMMA][N_PER_WMMA];
+  __shared__ Tshared C_s[COMPLEX][M_PER_BLOCK / M_PER_WARP]
+                        [N_PER_BLOCK / N_PER_WARP][M_PER_WMMA][N_PER_WMMA];
 #endif
 
   for (size_t k = 0; k < K_TILES; k++) {
@@ -218,7 +218,8 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
                      [K_PER_WMMA];
   A_s_t A_s = reinterpret_cast<A_s_t>(&shmem[0]);
   B_s_t B_s = reinterpret_cast<B_s_t>(&shmem[A_s_size]);
-  typedef Tshared(*C_s_t)[N_PER_BLOCK / N_PER_WARP][M_PER_WMMA][N_PER_WMMA];
+  typedef Tshared(*C_s_t)[M_PER_BLOCK / M_PER_WARP][N_PER_BLOCK / N_PER_WARP]
+                         [M_PER_WMMA][N_PER_WMMA];
 #if REQUIRES_SHARED_MEMORY
   C_s_t C_s = reinterpret_cast<C_s_t>(&shmem[0]);
 #endif
