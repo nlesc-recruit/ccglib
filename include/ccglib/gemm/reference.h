@@ -1,6 +1,8 @@
 #ifndef REFERENCE_GEMM_H_
 #define REFERENCE_GEMM_H_
 
+#include <complex>
+
 #include <ccglib/bf16.h>
 #include <ccglib/fp16.h>
 #include <ccglib/fp8.h>
@@ -11,33 +13,40 @@ class GEMM {
 public:
   virtual void
   Run(const fp8_e4m3 *a, const fp8_e4m3 *b, float *c, size_t M, size_t N,
-      size_t K,
-      ccglib::mma::MemOrder output_mem_order = ccglib::mma::row_major);
+      size_t K, ccglib::mma::MemOrder output_mem_order = ccglib::mma::row_major,
+      std::complex<float> alpha = {1, 0}, std::complex<float> beta = {0, 0});
   virtual void
   Run(const half *a, const half *b, half *c, size_t M, size_t N, size_t K,
-      ccglib::mma::MemOrder output_mem_order = ccglib::mma::row_major);
+      ccglib::mma::MemOrder output_mem_order = ccglib::mma::row_major,
+      std::complex<float> alpha = {1, 0}, std::complex<float> beta = {0, 0});
   virtual void
   Run(const half *a, const half *b, float *c, size_t M, size_t N, size_t K,
-      ccglib::mma::MemOrder output_mem_order = ccglib::mma::row_major);
+      ccglib::mma::MemOrder output_mem_order = ccglib::mma::row_major,
+      std::complex<float> alpha = {1, 0}, std::complex<float> beta = {0, 0});
   virtual void
   Run(const float *a, const float *b, half *c, size_t M, size_t N, size_t K,
-      ccglib::mma::MemOrder output_mem_order = ccglib::mma::row_major);
+      ccglib::mma::MemOrder output_mem_order = ccglib::mma::row_major,
+      std::complex<float> alpha = {1, 0}, std::complex<float> beta = {0, 0});
   virtual void
   Run(const bf16 *a, const bf16 *b, bf16 *c, size_t M, size_t N, size_t K,
-      ccglib::mma::MemOrder output_mem_order = ccglib::mma::row_major);
+      ccglib::mma::MemOrder output_mem_order = ccglib::mma::row_major,
+      std::complex<float> alpha = {1, 0}, std::complex<float> beta = {0, 0});
   virtual void
   Run(const bf16 *a, const bf16 *b, float *c, size_t M, size_t N, size_t K,
-      ccglib::mma::MemOrder output_mem_order = ccglib::mma::row_major);
+      ccglib::mma::MemOrder output_mem_order = ccglib::mma::row_major,
+      std::complex<float> alpha = {1, 0}, std::complex<float> beta = {0, 0});
   virtual void
   Run(const float *a, const float *b, bf16 *c, size_t M, size_t N, size_t K,
-      ccglib::mma::MemOrder output_mem_order = ccglib::mma::row_major);
+      ccglib::mma::MemOrder output_mem_order = ccglib::mma::row_major,
+      std::complex<float> alpha = {1, 0}, std::complex<float> beta = {0, 0});
   virtual void
   Run(const float *a, const float *b, float *c, size_t M, size_t N, size_t K,
-      ccglib::mma::MemOrder output_mem_order = ccglib::mma::row_major);
+      ccglib::mma::MemOrder output_mem_order = ccglib::mma::row_major,
+      std::complex<float> alpha = {1, 0}, std::complex<float> beta = {0, 0});
   virtual void
   Run(const unsigned *a, const unsigned *b, int *c, size_t M, size_t N,
-      size_t K,
-      ccglib::mma::MemOrder output_mem_order = ccglib::mma::row_major);
+      size_t K, ccglib::mma::MemOrder output_mem_order = ccglib::mma::row_major,
+      std::complex<float> alpha = {1, 0}, std::complex<float> beta = {0, 0});
 };
 
 } // namespace ccglib::reference

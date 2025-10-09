@@ -1,5 +1,6 @@
 
 #include <catch2/catch_test_macros.hpp>
+#include <complex>
 #include <cudawrappers/cu.hpp>
 #include <functional>
 #include <limits.h>
@@ -18,6 +19,8 @@ TEST_CASE("Pipeline float16 - float32") {
   const size_t M = 300;
   const size_t N = 200;
   const size_t K = 100;
+  const std::complex<float> alpha = {1.5, -1.5};
+  const std::complex<float> beta = {0.5, -0.5};
 
   using Tin = half;
   using Tout = float;
@@ -43,7 +46,8 @@ TEST_CASE("Pipeline float16 - float32") {
 
   cu::HostMemory h_a(num_a * sizeof(Tin));
   cu::HostMemory h_b(num_b * sizeof(Tin));
-  cu::HostMemory h_c(num_c * sizeof(Tout));
+  cu::HostMemory h_c_in(num_c * sizeof(Tout));
+  cu::HostMemory h_c_out(num_c * sizeof(Tout));
 
   auto generator = std::bind(std::uniform_real_distribution<float>(-10, 10),
                              std::default_random_engine());
@@ -55,25 +59,30 @@ TEST_CASE("Pipeline float16 - float32") {
     static_cast<Tin *>(h_b)[i] = generator();
   }
 
+  for (int i = 0; i < num_c; i++) {
+    static_cast<Tout *>(h_c_in)[i] = generator();
+  }
+
   cu::DeviceMemory d_a(h_a.size());
   cu::DeviceMemory d_b(h_b.size());
-  cu::DeviceMemory d_c(h_c.size());
+  cu::DeviceMemory d_c(h_c_in.size());
   stream.memcpyHtoDAsync(d_a, h_a, d_a.size());
   stream.memcpyHtoDAsync(d_b, h_b, d_b.size());
-  d_c.zero(d_c.size());
+  stream.memcpyHtoDAsync(d_c, h_c_in, d_c.size());
 
   ccglib::pipeline::Pipeline pipeline(
       B, M, N, K, device, stream, input_complex_axis_location,
       output_complex_axis_location, a_mem_order, b_mem_order, c_mem_order,
-      input_precision, output_precision, variant);
+      input_precision, output_precision, variant, alpha, beta);
 
   pipeline.Run(d_a, d_b, d_c);
-  stream.memcpyDtoHAsync(h_c, d_c, d_c.size());
+  stream.memcpyDtoHAsync(h_c_out, d_c, d_c.size());
   stream.synchronize();
 
   verify<Tin, Tin, Tout, input_precision>(
       static_cast<const Tin *>(h_a), static_cast<const Tin *>(h_b),
-      static_cast<Tout *>(h_c), B, M, N, K, c_mem_order);
+      static_cast<Tout *>(h_c_out), B, M, N, K, c_mem_order, alpha, beta,
+      static_cast<Tout *>(h_c_in));
 }
 
 TEST_CASE("Pipeline int1 - int32") {
@@ -85,6 +94,8 @@ TEST_CASE("Pipeline int1 - int32") {
   const size_t M = 512;
   const size_t N = 512;
   const size_t K = 512;
+  const std::complex<float> alpha = {2, 3};
+  const std::complex<float> beta = {1, -3};
 
   using Tin = unsigned char;
   using Tpacked = unsigned;
@@ -112,6 +123,7 @@ TEST_CASE("Pipeline int1 - int32") {
       sizeof(Tpacked) *
       ccglib::helper::ceildiv(num_b / CHAR_BIT, sizeof(Tpacked));
   const size_t bytes_b = bytes_b_packed * CHAR_BIT;
+  const size_t bytes_c = num_c * sizeof(Tout);
 
   cu::init();
   cu::Device device(0);
@@ -120,7 +132,8 @@ TEST_CASE("Pipeline int1 - int32") {
 
   cu::HostMemory h_a_packed(bytes_a_packed);
   cu::HostMemory h_b_packed(bytes_b_packed);
-  cu::HostMemory h_c(num_c * sizeof(Tout));
+  cu::HostMemory h_c_in(bytes_c);
+  cu::HostMemory h_c_out(bytes_c);
 
   // the reference GEMM used in output verification does not support packing.
   // As a workaround, we generate random packed data and use the unpacking
@@ -134,6 +147,10 @@ TEST_CASE("Pipeline int1 - int32") {
 
   for (int i = 0; i < bytes_b_packed / sizeof(Tpacked); i++) {
     static_cast<Tpacked *>(h_b_packed)[i] = generator();
+  }
+
+  for (int i = 0; i < bytes_c / sizeof(Tout); i++) {
+    static_cast<Tout *>(h_c_in)[i] = generator();
   }
 
   cu::DeviceMemory d_a_packed(h_a_packed.size());
@@ -151,22 +168,22 @@ TEST_CASE("Pipeline int1 - int32") {
   unpack_a.Run(d_a_packed, d_a);
   unpack_b.Run(d_b_packed, d_b);
 
-  cu::DeviceMemory d_c(h_c.size());
-  d_c.zero(d_c.size());
+  cu::DeviceMemory d_c(h_c_in.size());
+  stream.memcpyHtoDAsync(d_c, h_c_in, d_c.size());
 
   ccglib::pipeline::Pipeline pipeline(
       B, M, N, K, device, stream, input_complex_axis_location,
       output_complex_axis_location, a_mem_order, b_mem_order, c_mem_order,
-      input_precision, output_precision, variant);
+      input_precision, output_precision, variant, alpha, beta);
 
   pipeline.Run(d_a, d_b, d_c);
-  stream.memcpyDtoHAsync(h_c, d_c, d_c.size());
+  stream.memcpyDtoHAsync(h_c_out, d_c, d_c.size());
   stream.synchronize();
 
   verify<Tpacked, Tout, Tout, input_precision>(
       static_cast<const Tpacked *>(h_a_packed),
-      static_cast<const Tpacked *>(h_b_packed), static_cast<Tout *>(h_c), B, M,
-      N, K, c_mem_order);
+      static_cast<const Tpacked *>(h_b_packed), static_cast<Tout *>(h_c_out), B,
+      M, N, K, c_mem_order, alpha, beta, static_cast<Tout *>(h_c_in));
 }
 
 } // namespace ccglib::test

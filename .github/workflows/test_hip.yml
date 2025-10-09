@@ -16,8 +16,7 @@ jobs:
           gres: gpu:W7700
           time: "00:10:00"
           commands: |
-            # HIP is installed locally
-            cmake -S . -B build -DCCGLIB_BUILD_TESTING=1 -DCCGLIB_BACKEND=HIP
+            CXX=hipcc PATH=$PATH:/opt/rocm/bin cmake -S . -B build -DCCGLIB_BUILD_TESTING=1 -DCCGLIB_BACKEND=HIP
             make -C build -j
             cd build
             ctest --output-on-failure

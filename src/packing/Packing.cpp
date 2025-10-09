@@ -87,12 +87,12 @@ void Packing::Impl::compile_kernel() {
 #else
     "-arch=" + arch,
 #endif
-#if defined(__HIP_PLATFORM_AMD__)
-    // HIP does not enable warp sync functions by default (yet) in ROCm 6.2
+#if defined(__HIP_PLATFORM_AMD__) && HIP_VERSION_MAJOR < 7
+    // HIP does not enable warp sync functions by default (yet) in ROCm 6.x
     "-DHIP_ENABLE_WARP_SYNC_BUILTINS",
 #endif
     "-I" + cuda_include_path,
-    "-DN=" + std::to_string(N_) + "UL",
+    "-DN_GLOBAL=" + std::to_string(N_) + "UL",
     "-DWARP_SIZE=" + std::to_string(warp_size)
   };
 

@@ -1,4 +1,5 @@
 # ccglib
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17233122.svg)](https://doi.org/10.5281/zenodo.17233122)
 [![CI status linting](https://img.shields.io/github/actions/workflow/status/nlesc-recruit/ccglib/linting.yml?label=linting)](https://github.com/nlesc-recruit/ccglib/actions/workflows/linting.yml)
 [![CI status cuda](https://img.shields.io/github/actions/workflow/status/nlesc-recruit/ccglib/test_cuda.yml?label=test%20CUDA%20%28A4000%29)](https://github.com/nlesc-recruit/ccglib/actions/workflows/test_cuda.yml)
 [![CI status hip](https://img.shields.io/github/actions/workflow/status/nlesc-recruit/ccglib/test_hip.yml?label=test%20HIP%20%28W7700%29)](https://github.com/nlesc-recruit/ccglib/actions/workflows/test_hip.yml)

@@ -16,7 +16,8 @@ public:
        ComplexAxisLocation output_complex_axis_location,
        mma::MemOrder a_mem_order, mma::MemOrder b_mem_order,
        mma::MemOrder c_mem_order, ValuePrecision input_precision,
-       ValuePrecision output_precision, mma::Variant variant);
+       ValuePrecision output_precision, mma::Variant variant,
+       std::complex<float> alpha, std::complex<float> beta);
 
   void Run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b, cu::DeviceMemory &d_c);
 
@@ -46,7 +47,8 @@ Pipeline::Impl::Impl(size_t B, size_t M, size_t N, size_t K, cu::Device &device,
                      ComplexAxisLocation output_complex_axis_location,
                      mma::MemOrder a_mem_order, mma::MemOrder b_mem_order,
                      mma::MemOrder c_mem_order, ValuePrecision input_precision,
-                     ValuePrecision output_precision, mma::Variant variant)
+                     ValuePrecision output_precision, mma::Variant variant,
+                     std::complex<float> alpha, std::complex<float> beta)
     : requires_packing_(input_precision == ccglib::int1),
       requires_transpose_(variant == ccglib::mma::opt), device_(device),
       stream_(stream) {
@@ -99,7 +101,8 @@ Pipeline::Impl::Impl(size_t B, size_t M, size_t N, size_t K, cu::Device &device,
 
   gemm_ = std::make_unique<ccglib::mma::GEMM>(
       B, M, N, K, device_, stream_, precision, variant,
-      output_complex_axis_location, c_mem_order, a_mem_order, b_mem_order);
+      output_complex_axis_location, c_mem_order, a_mem_order, b_mem_order,
+      alpha, beta);
 }
 
 void Pipeline::Impl::Run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b,
@@ -128,13 +131,15 @@ Pipeline::Pipeline(size_t B, size_t M, size_t N, size_t K, cu::Device &device,
                    ComplexAxisLocation output_complex_axis_location,
                    mma::MemOrder a_mem_order, mma::MemOrder b_mem_order,
                    mma::MemOrder c_mem_order, ValuePrecision input_precision,
-                   ValuePrecision output_precision, mma::Variant variant)
-    : device_(std::make_unique<cu::Device>(device)),
+                   ValuePrecision output_precision, mma::Variant variant,
+                   std::complex<float> alpha, std::complex<float> beta)
+    : need_copyin_c_(beta.real() != 0 || beta.imag() != 0),
+      device_(std::make_unique<cu::Device>(device)),
       stream_(std::make_unique<cu::Stream>(stream)) {
   impl_ = std::make_unique<Impl>(
       B, M, N, K, *device_, *stream_, input_complex_axis_location,
       output_complex_axis_location, a_mem_order, b_mem_order, c_mem_order,
-      input_precision, output_precision, variant);
+      input_precision, output_precision, variant, alpha, beta);
 }
 
 Pipeline::Pipeline(size_t B, size_t M, size_t N, size_t K, CUdevice &device,
@@ -143,13 +148,15 @@ Pipeline::Pipeline(size_t B, size_t M, size_t N, size_t K, CUdevice &device,
                    ComplexAxisLocation output_complex_axis_location,
                    mma::MemOrder a_mem_order, mma::MemOrder b_mem_order,
                    mma::MemOrder c_mem_order, ValuePrecision input_precision,
-                   ValuePrecision output_precision, mma::Variant variant)
-    : device_(std::make_unique<cu::Device>(device)),
+                   ValuePrecision output_precision, mma::Variant variant,
+                   std::complex<float> alpha, std::complex<float> beta)
+    : need_copyin_c_(beta.real() != 0 || beta.imag() != 0),
+      device_(std::make_unique<cu::Device>(device)),
       stream_(std::make_unique<cu::Stream>(stream)) {
   impl_ = std::make_unique<Impl>(
       B, M, N, K, *device_, *stream_, input_complex_axis_location,
       output_complex_axis_location, a_mem_order, b_mem_order, c_mem_order,
-      input_precision, output_precision, variant);
+      input_precision, output_precision, variant, alpha, beta);
 }
 
 void Pipeline::Run(cu::HostMemory &a, cu::HostMemory &b, cu::HostMemory &c) {
@@ -158,6 +165,11 @@ void Pipeline::Run(cu::HostMemory &a, cu::HostMemory &b, cu::HostMemory &c) {
   cu::DeviceMemory d_c(c.size());
   stream_->memcpyHtoDAsync(d_a, a, a.size());
   stream_->memcpyHtoDAsync(d_b, b, b.size());
+  if (need_copyin_c_) {
+    stream_->memcpyHtoDAsync(d_c, c, c.size());
+  } else {
+    d_c.zero(d_c.size());
+  }
   impl_->Run(d_a, d_b, d_c);
   stream_->memcpyDtoHAsync(c, d_c, c.size());
   stream_->synchronize();

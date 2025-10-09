@@ -14,7 +14,8 @@
 namespace {
 template <typename Tin, typename Tout>
 void Run(const Tin *a, const Tin *b, Tout *c, size_t M, size_t N, size_t K,
-         ccglib::mma::MemOrder output_mem_order) {
+         ccglib::mma::MemOrder output_mem_order, std::complex<float> alpha,
+         std::complex<float> beta) {
   // Use float as the compute type when Tout is half or bf16 because tensor core
   // multiply-add operations execute in float precision. Otherwise, preserve
   // Tout.
@@ -59,13 +60,31 @@ void Run(const Tin *a, const Tin *b, Tout *c, size_t M, size_t N, size_t K,
         sum_imag += term_imag;
       }
 
-      if (output_mem_order == ccglib::mma::row_major) {
-        c_view(0, m, n) = static_cast<Tout>(sum_real);
-        c_view(1, m, n) = static_cast<Tout>(sum_imag);
-      } else {
-        c_view(0, n, m) = static_cast<Tout>(sum_real);
-        c_view(1, n, m) = static_cast<Tout>(sum_imag);
+      const ComputeType alpha_real = alpha.real();
+      const ComputeType alpha_imag = alpha.imag();
+      const ComputeType beta_real = beta.real();
+      const ComputeType beta_imag = beta.imag();
+
+      if (alpha_real != 1 || alpha_imag != 0) {
+        const ComputeType sum_real_copy = sum_real;
+        sum_real = alpha_real * sum_real - alpha_imag * sum_imag;
+        sum_imag = alpha_imag * sum_real_copy + alpha_real * sum_imag;
       }
+
+      const size_t idx_major =
+          (output_mem_order == ccglib::mma::row_major) ? m : n;
+      const size_t idx_minor =
+          (output_mem_order == ccglib::mma::row_major) ? n : m;
+
+      if (beta_real != 0 || beta_imag != 0) {
+        const ComputeType c_real = c_view(0, idx_major, idx_minor);
+        const ComputeType c_imag = c_view(1, idx_major, idx_minor);
+        sum_real += beta_real * c_real - beta_imag * c_imag;
+        sum_imag += beta_imag * c_real + beta_real * c_imag;
+      }
+
+      c_view(0, idx_major, idx_minor) = sum_real;
+      c_view(1, idx_major, idx_minor) = sum_imag;
     }
   }
 }
@@ -84,7 +103,8 @@ template <typename T> inline int popcount(T x) {
 }
 
 void run_binary(const unsigned *a, const unsigned *b, int *c, size_t M,
-                size_t N, size_t K, ccglib::mma::MemOrder output_mem_order) {
+                size_t N, size_t K, ccglib::mma::MemOrder output_mem_order,
+                std::complex<float> alpha, std::complex<float> beta) {
   // M, N, K are the number of 1-bit samples
   // the actual shape of the input data is different along the fastest changing
   // axis (=K) because values are packed into unsigned ints
@@ -175,12 +195,28 @@ void run_binary(const unsigned *a, const unsigned *b, int *c, size_t M,
                     popcount(bitwise_xor(a_imag, b_real));
       }
 
+      sum_real = 2 * (K_PADDED - sum_real);
+      sum_imag = 2 * (K_PADDED - K_PADDING - sum_imag);
+
+      const int alpha_real = static_cast<int>(alpha.real());
+      const int alpha_imag = static_cast<int>(alpha.imag());
+      const int beta_real = static_cast<int>(beta.real());
+      const int beta_imag = static_cast<int>(beta.imag());
+
+      const int sum_real_copy = sum_real;
+      sum_real = alpha_real * sum_real - alpha_imag * sum_imag;
+      sum_imag = alpha_imag * sum_real_copy + alpha_real * sum_imag;
+
       if (output_mem_order == ccglib::mma::row_major) {
-        c_view(0, m, n) = 2 * (K_PADDED - sum_real);
-        c_view(1, m, n) = 2 * (K_PADDED - K_PADDING - sum_imag);
+        const int c_real = c_view(0, m, n);
+        const int c_imag = c_view(1, m, n);
+        c_view(0, m, n) = sum_real + beta_real * c_real - beta_imag * c_imag;
+        c_view(1, m, n) = sum_imag + beta_imag * c_real + beta_real * c_imag;
       } else {
-        c_view(0, n, m) = 2 * (K_PADDED - sum_real);
-        c_view(1, n, m) = 2 * (K_PADDED - K_PADDING - sum_imag);
+        const int c_real = c_view(0, n, m);
+        const int c_imag = c_view(1, n, m);
+        c_view(0, n, m) = sum_real + beta_real * c_real - beta_imag * c_imag;
+        c_view(1, n, m) = sum_imag + beta_imag * c_real + beta_real * c_imag;
       }
     }
   }
@@ -190,48 +226,57 @@ void run_binary(const unsigned *a, const unsigned *b, int *c, size_t M,
 namespace ccglib::reference {
 
 void GEMM::Run(const fp8_e4m3 *a, const fp8_e4m3 *b, float *c, size_t M,
-               size_t N, size_t K, ccglib::mma::MemOrder output_mem_order) {
-  ::Run<fp8_e4m3, float>(a, b, c, M, N, K, output_mem_order);
+               size_t N, size_t K, ccglib::mma::MemOrder output_mem_order,
+               std::complex<float> alpha, std::complex<float> beta) {
+  ::Run<fp8_e4m3, float>(a, b, c, M, N, K, output_mem_order, alpha, beta);
 }
 
 void GEMM::Run(const half *a, const half *b, half *c, size_t M, size_t N,
-               size_t K, ccglib::mma::MemOrder output_mem_order) {
-  ::Run<half, half>(a, b, c, M, N, K, output_mem_order);
+               size_t K, ccglib::mma::MemOrder output_mem_order,
+               std::complex<float> alpha, std::complex<float> beta) {
+  ::Run<half, half>(a, b, c, M, N, K, output_mem_order, alpha, beta);
 }
 
 void GEMM::Run(const half *a, const half *b, float *c, size_t M, size_t N,
-               size_t K, ccglib::mma::MemOrder output_mem_order) {
-  ::Run<half, float>(a, b, c, M, N, K, output_mem_order);
+               size_t K, ccglib::mma::MemOrder output_mem_order,
+               std::complex<float> alpha, std::complex<float> beta) {
+  ::Run<half, float>(a, b, c, M, N, K, output_mem_order, alpha, beta);
 }
 
 void GEMM::Run(const float *a, const float *b, half *c, size_t M, size_t N,
-               size_t K, ccglib::mma::MemOrder output_mem_order) {
-  ::Run<float, half>(a, b, c, M, N, K, output_mem_order);
+               size_t K, ccglib::mma::MemOrder output_mem_order,
+               std::complex<float> alpha, std::complex<float> beta) {
+  ::Run<float, half>(a, b, c, M, N, K, output_mem_order, alpha, beta);
 }
 
 void GEMM::Run(const bf16 *a, const bf16 *b, bf16 *c, size_t M, size_t N,
-               size_t K, ccglib::mma::MemOrder output_mem_order) {
-  ::Run<bf16, bf16>(a, b, c, M, N, K, output_mem_order);
+               size_t K, ccglib::mma::MemOrder output_mem_order,
+               std::complex<float> alpha, std::complex<float> beta) {
+  ::Run<bf16, bf16>(a, b, c, M, N, K, output_mem_order, alpha, beta);
 }
 
 void GEMM::Run(const bf16 *a, const bf16 *b, float *c, size_t M, size_t N,
-               size_t K, ccglib::mma::MemOrder output_mem_order) {
-  ::Run<bf16, float>(a, b, c, M, N, K, output_mem_order);
+               size_t K, ccglib::mma::MemOrder output_mem_order,
+               std::complex<float> alpha, std::complex<float> beta) {
+  ::Run<bf16, float>(a, b, c, M, N, K, output_mem_order, alpha, beta);
 }
 
 void GEMM::Run(const float *a, const float *b, bf16 *c, size_t M, size_t N,
-               size_t K, ccglib::mma::MemOrder output_mem_order) {
-  ::Run<float, bf16>(a, b, c, M, N, K, output_mem_order);
+               size_t K, ccglib::mma::MemOrder output_mem_order,
+               std::complex<float> alpha, std::complex<float> beta) {
+  ::Run<float, bf16>(a, b, c, M, N, K, output_mem_order, alpha, beta);
 }
 
 void GEMM::Run(const float *a, const float *b, float *c, size_t M, size_t N,
-               size_t K, ccglib::mma::MemOrder output_mem_order) {
-  ::Run<float, float>(a, b, c, M, N, K, output_mem_order);
+               size_t K, ccglib::mma::MemOrder output_mem_order,
+               std::complex<float> alpha, std::complex<float> beta) {
+  ::Run<float, float>(a, b, c, M, N, K, output_mem_order, alpha, beta);
 }
 
 void GEMM::Run(const unsigned *a, const unsigned *b, int *c, size_t M, size_t N,
-               size_t K, ccglib::mma::MemOrder output_mem_order) {
-  ::run_binary(a, b, c, M, N, K, output_mem_order);
+               size_t K, ccglib::mma::MemOrder output_mem_order,
+               std::complex<float> alpha, std::complex<float> beta) {
+  ::run_binary(a, b, c, M, N, K, output_mem_order, alpha, beta);
 }
 
 } // end namespace ccglib::reference
