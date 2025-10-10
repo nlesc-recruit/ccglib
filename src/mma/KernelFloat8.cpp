@@ -13,12 +13,12 @@ Kernel::Parameters Kernel::GetCompileParameters<ValueType::float8e4m3>() const {
   // format. To be consistent with the rest of the code, it is temporarily
   // disabled.
   // clang-format off
-  return Kernel::Parameters{.m_per_block = 128,
-                            .m_per_warp = 128,
+  return Kernel::Parameters{.m_per_block = 256,
+                            .m_per_warp = 64,
                             .m_per_wmma = 16,
 
-                            .n_per_block = 64,
-                            .n_per_warp = 16,
+                            .n_per_block = 32,
+                            .n_per_warp = 32,
                             .n_per_wmma = 8,
                             
                             .k_per_wmma = 32,

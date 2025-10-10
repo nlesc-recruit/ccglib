@@ -5,7 +5,7 @@
 
 #ifndef CCGLIB_HIP_MOCK_FP8_TYPE
 #define CCGLIB_HIP_MOCK_FP8_TYPE
-// Mock definition of fp8_e4m3 based on __hip_fp8_e4m
+// Mock definition of fp8_e4m3 based on __hip_fp8_e4m3_fnuz
 struct __hip_fp8_e4m3_fnuz {
   char x;
 
@@ -29,7 +29,7 @@ using fp8_e4m3 = __hip_fp8_e4m3;
 #elif HIP_FP8_TYPE_FNUZ
 using fp8_e4m3 = __hip_fp8_e4m3_fnuz;
 #else
-// Either HIP_FP8_TYPE_OCP or HIP_FP8_TYPE_FNUZ should be defined.
+// Either HIP_FP8_TYPE_OCP or HIP_FP8_TYPE_FNUZ should be set.
 // https://github.com/ROCm/clr/blob/a3e329ad8a92d94bb8cdd431ab8e3ccb275a0102/hipamd/include/hip/amd_detail/amd_hip_fp8.h#L49
 #error                                                                         \
     "Unexpected, ether HIP_FP8_TYPE_OCP or HIP_FP8_TYPE_FNUZ should be defined"
