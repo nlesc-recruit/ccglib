@@ -5,11 +5,16 @@
 
 #include <ccglib/bf16.h>
 #include <ccglib/fp16.h>
+#include <ccglib/fp8.h>
 #include <ccglib/gemm/mem_order.h>
 
 namespace ccglib::reference {
 class GEMM {
 public:
+  virtual void
+  Run(const fp8_e4m3 *a, const fp8_e4m3 *b, float *c, size_t M, size_t N,
+      size_t K, ccglib::mma::MemOrder output_mem_order = ccglib::mma::row_major,
+      std::complex<float> alpha = {1, 0}, std::complex<float> beta = {0, 0});
   virtual void
   Run(const half *a, const half *b, half *c, size_t M, size_t N, size_t K,
       ccglib::mma::MemOrder output_mem_order = ccglib::mma::row_major,

@@ -12,7 +12,8 @@
 #include "fpequals.h"
 #include <ccglib/common/precision.h>
 
-template <typename Tin, typename Tout, ccglib::ValueType InputPrecision>
+template <typename Tin, typename Ttc, typename Tout,
+          ccglib::ValueType InputPrecision>
 void verify(const Tin *a, const Tin *b, const Tout *c_test, size_t B, size_t M,
             size_t N, size_t K, ccglib::mma::MemOrder output_mem_order,
             std::complex<float> alpha = {1, 0},
@@ -70,7 +71,7 @@ void verify(const Tin *a, const Tin *b, const Tout *c_test, size_t B, size_t M,
           ref = {c_ref(b, 0, n, m), c_ref(b, 1, n, m)};
           tst = {c_test_view(b, 0, n, m), c_test_view(b, 1, n, m)};
         }
-        ccglib::test::fpEquals(ref, tst);
+        ccglib::test::fpEquals<Tout, Ttc>(ref, tst);
       }
     }
   }

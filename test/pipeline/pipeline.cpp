@@ -79,7 +79,7 @@ TEST_CASE("Pipeline float16 - float32") {
   stream.memcpyDtoHAsync(h_c_out, d_c, d_c.size());
   stream.synchronize();
 
-  verify<Tin, Tout, input_precision>(
+  verify<Tin, Tin, Tout, input_precision>(
       static_cast<const Tin *>(h_a), static_cast<const Tin *>(h_b),
       static_cast<Tout *>(h_c_out), B, M, N, K, c_mem_order, alpha, beta,
       static_cast<Tout *>(h_c_in));
@@ -180,7 +180,7 @@ TEST_CASE("Pipeline int1 - int32") {
   stream.memcpyDtoHAsync(h_c_out, d_c, d_c.size());
   stream.synchronize();
 
-  verify<Tpacked, Tout, input_precision>(
+  verify<Tpacked, Tout, Tout, input_precision>(
       static_cast<const Tpacked *>(h_a_packed),
       static_cast<const Tpacked *>(h_b_packed), static_cast<Tout *>(h_c_out), B,
       M, N, K, c_mem_order, alpha, beta, static_cast<Tout *>(h_c_in));

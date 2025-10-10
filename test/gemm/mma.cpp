@@ -10,6 +10,7 @@
 #include <ccglib/common/helper.h>
 #include <ccglib/common/precision.h>
 #include <ccglib/fp16.h>
+#include <ccglib/fp8.h>
 #include <ccglib/gemm/mma.h>
 #include <ccglib/gemm/reference.h>
 #include <ccglib/transpose/transpose.h>
@@ -42,6 +43,8 @@ static inline std::string type_to_string(ccglib::ValueType type) {
     return "int1";
   case ccglib::int32:
     return "int32";
+  case ccglib::float8e4m3:
+    return "float8e4m3";
   case ccglib::bfloat16:
     return "bfloat16";
   case ccglib::float16:
@@ -90,7 +93,6 @@ public:
         helper::ceildiv(n, n_per_block_) * n_per_block_;
     const size_t global_k_padded_ =
         helper::ceildiv(k, k_per_wmma_) * k_per_wmma_;
-
     const size_t kPackingFactor =
         sizeof(Tin) * CHAR_BIT /
         ccglib::ValuePrecision{InputPrecision}.GetBitWidth();
@@ -139,7 +141,17 @@ private:
 
   template <typename T> void init_input_matrices(T *a, T *b) {
     // fill a and b with random values (fixed seed), initalize c to zero
-    if constexpr (std::is_same_v<T, __half>) {
+    if constexpr (std::is_same_v<T, fp8_e4m3>) {
+      unsigned int seed = 0;
+      for (int idx = 0; idx < bytes_a_ / sizeof(T); idx++) {
+        a[idx] = static_cast<fp8_e4m3>(static_cast<float>(rand_r(&seed)) /
+                                       static_cast<float>(RAND_MAX));
+      }
+      for (int idx = 0; idx < bytes_b_ / sizeof(T); idx++) {
+        b[idx] = static_cast<fp8_e4m3>(static_cast<float>(rand_r(&seed)) /
+                                       static_cast<float>(RAND_MAX));
+      }
+    } else if constexpr (std::is_same_v<T, __half>) {
       unsigned int seed = 0;
       for (int idx = 0; idx < bytes_a_ / sizeof(T); idx++) {
         a[idx] = __float2half(static_cast<float>(rand_r(&seed)) /
@@ -218,7 +230,7 @@ private:
     stream_->synchronize();
 
     // verify output
-    verify<Tin, Tout, InputPrecision>(
+    verify<Tin, Tin, Tout, InputPrecision>(
         static_cast<const Tin *>(*h_a_), static_cast<const Tin *>(*h_b_),
         static_cast<Tout *>(*h_c_), kBatchSize, global_m_, global_n_, global_k_,
         output_mem_order);
@@ -314,7 +326,7 @@ public:
           xt::transpose(h_c_complex_interleaved, {0, 2, 1});
 
       // verify output
-      verify<Tin, Tout, InputPrecision>(
+      verify<Tin, Tin, Tout, InputPrecision>(
           static_cast<const Tin *>(*h_a_), static_cast<const Tin *>(*h_b_),
           static_cast<Tout *>(h_c_complex_planar.data()), kBatchSize, global_m_,
           global_n_, global_k_, output_mem_order);
@@ -329,10 +341,12 @@ using TestTypesComplexGemm = std::tuple<
 #ifdef __HIP_PLATFORM_AMD__
     ComplexGemmTestFixture<bf16, bf16, ccglib::ValueType::bfloat16,
                            ccglib::ValueType::bfloat16>,
-#endif
     ComplexGemmTestFixture<float, bf16, ccglib::ValueType::float32,
                            ccglib::ValueType::bfloat16>,
     ComplexGemmTestFixture<bf16, float, ccglib::ValueType::bfloat16,
+                           ccglib::ValueType::float32>,
+#endif
+    ComplexGemmTestFixture<fp8_e4m3, float, ccglib::ValueType::float8e4m3,
                            ccglib::ValueType::float32>,
     ComplexGemmTestFixture<half, half, ccglib::ValueType::float16,
                            ccglib::ValueType::float16>,
@@ -431,9 +445,9 @@ template <typename Fixture> struct GemmTestBasic : public Fixture {
                  Traits::K_col_major.aligned);
       this->complex_gemm_basic(ccglib::mma::col_major);
 
-      this->init(Traits::M_row_major.unaligned, Traits::N_row_major.unaligned,
-                 Traits::K_row_major.unaligned);
-      this->complex_gemm_basic(ccglib::mma::row_major);
+      this->init(Traits::M_col_major.unaligned, Traits::N_col_major.unaligned,
+                 Traits::K_col_major.unaligned);
+      this->complex_gemm_basic(ccglib::mma::col_major);
     }
   }
 };
@@ -510,6 +524,13 @@ TEMPLATE_LIST_TEST_CASE_METHOD(GemmTestBasic, "Complex GEMM Test",
 #endif
   }
 
+  if constexpr (std::is_same_v<typename GemmTestBasic<TestType>::InputType,
+                               fp8_e4m3>) {
+    if (!hasFP8(*GemmTestBasic<TestType>().device_)) {
+      SKIP("Float8 is not supported on this GPU");
+    }
+  }
+
   GemmTestBasic<TestType>().run_tests();
 }
 
@@ -527,6 +548,13 @@ TEMPLATE_LIST_TEST_CASE_METHOD(GemmTestOpt, "Complex GEMM Test",
     SKIP("Float32 is not available on Volta GPUs");
   }
 #endif
+
+  if constexpr (std::is_same_v<typename GemmTestBasic<TestType>::InputType,
+                               fp8_e4m3>) {
+    if (!hasFP8(*GemmTestBasic<TestType>().device_)) {
+      SKIP("Float8 is not supported on this GPU");
+    }
+  }
 
   GemmTestOpt<TestType>().run_tests();
 }
@@ -658,7 +686,7 @@ TEST_CASE("Alpha/beta scaling") {
     stream.memcpyDtoHAsync(h_c_out, d_c, bytes_c);
     stream.synchronize();
 
-    verify<Tin, Tout, ccglib::ValueType::float16>(
+    verify<Tin, Tin, Tout, ccglib::ValueType::float16>(
         static_cast<const Tin *>(h_a), static_cast<const Tin *>(h_b),
         static_cast<Tout *>(h_c_out), batch_size, m, n, k,
         ccglib::mma::row_major, alpha, beta, static_cast<Tout *>(h_c_in));
@@ -722,7 +750,7 @@ TEST_CASE("Alpha/beta scaling") {
     stream.memcpyDtoHAsync(h_c_out, d_c, bytes_c);
     stream.synchronize();
 
-    verify<Tin, Tout, ccglib::ValueType::int1>(
+    verify<Tin, Tin, Tout, ccglib::ValueType::int1>(
         static_cast<const Tin *>(h_a), static_cast<const Tin *>(h_b),
         static_cast<Tout *>(h_c_out), batch_size, m, n, k,
         ccglib::mma::row_major, alpha, beta, static_cast<Tout *>(h_c_in));

@@ -83,6 +83,22 @@ template <> struct TypeSelector<ValueType::int1, ValueType::int32> {
   static constexpr bool IS_DOWNCAST_OP = false;
 };
 
+template <> struct TypeSelector<ValueType::float8e4m3, ValueType::float32> {
+#if defined(__HIP_PLATFORM_AMD__) || (__CUDA_ARCH__ < 890)
+  using Tin = void;
+  using Ttc = void;
+#else
+  using Tin = fp8_e4m3;
+  using Ttc = fp8_e4m3;
+#endif
+  using Tshared = float;
+  using Tout = float;
+
+  static constexpr unsigned PACKING_FACTOR = 1;
+  static constexpr size_t OVERRIDE_K_PER_WMMA = 0;
+  static constexpr bool IS_DOWNCAST_OP = false;
+};
+
 template <> struct TypeSelector<ValueType::bfloat16, ValueType::bfloat16> {
   using Tin = bf16;
   using Ttc = bf16;

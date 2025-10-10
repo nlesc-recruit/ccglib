@@ -115,6 +115,13 @@ void GEMM::Impl::check_support() {
       throw std::runtime_error("Float32 input is not supported on Volta");
     }
   }
+
+  if (kernel_.GetPrecision().input_type == ValueType::float8e4m3) {
+    if (!hasFP8(device_)) {
+      throw std::runtime_error("Float8 input is not supported on this device");
+    }
+  }
+
   if (isUnsupported(device_)) {
     throw std::runtime_error("This architecture is not supported");
   }

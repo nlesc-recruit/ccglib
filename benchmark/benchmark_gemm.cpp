@@ -28,7 +28,8 @@ cxxopts::Options create_commandline_parser(const char *argv[]) {
           cxxopts::value<float>()->default_value("4"))(
           "csv", "Format output to CSV",
           cxxopts::value<bool>()->default_value(std::to_string(false)))(
-          "precision_in", "GEMM input precision (float32, float16, or int1)",
+          "precision_in",
+          "GEMM input precision (float32, float16, float8e4m3, or int1)",
           cxxopts::value<std::string>()->default_value("float32"))(
           "precision_out", "GEMM output precision (float32, float16, or int1)",
           cxxopts::value<std::string>()->default_value("float32"))(
@@ -105,9 +106,16 @@ int main(int argc, const char *argv[]) {
   const std::map<const std::string, const ccglib::ValueType> map_gemm_precision{
       {"float32", ccglib::ValueType::float32},
       {"float16", ccglib::ValueType::float16},
+      {"float8e4m3", ccglib::ValueType::float8e4m3},
       {"int32", ccglib::ValueType::int32},
       {"int1", ccglib::ValueType::int1}};
 
+  if (map_gemm_precision.find(precision_in) == map_gemm_precision.end() ||
+      map_gemm_precision.find(precision_out) == map_gemm_precision.end()) {
+    std::cerr << "Invalid precision provided: input=" << precision_in
+              << ", output=" << precision_out << std::endl;
+    exit(EXIT_FAILURE);
+  }
   const ccglib::Precision gemm_precision(map_gemm_precision.at(precision_in),
                                          map_gemm_precision.at(precision_out));
 
