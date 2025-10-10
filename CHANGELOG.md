@@ -7,8 +7,8 @@ project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- Support for FP8 e4m3 data type ([#24](https://github.com/nlesc-recruit/ccglib/pull/24))
-- Hardware support checks for FP8 ([#35](https://github.com/nlesc-recruit/ccglib/pull/35))
+- Add support for FP8 e4m3 data type ([#24](https://github.com/nlesc-recruit/ccglib/pull/24))
+- Add hardware support checks for FP8 ([#35](https://github.com/nlesc-recruit/ccglib/pull/35))
 - Implement scaling with alpha/beta ([#31](https://github.com/nlesc-recruit/ccglib/pull/31))
 - Add support for bfloat16 ([#20](https://github.com/nlesc-recruit/ccglib/pull/20))
 - Add start-to-end pipeline class ([#17](https://github.com/nlesc-recruit/ccglib/pull/17))
