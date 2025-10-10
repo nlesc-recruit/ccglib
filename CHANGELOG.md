@@ -7,7 +7,7 @@ project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- Support for FP8 e4m3 data type
+- Support for FP8 e4m3 data type ([#24](https://github.com/nlesc-recruit/ccglib/pull/24))
 - Hardware support checks for FP8
 
 ### Changed
