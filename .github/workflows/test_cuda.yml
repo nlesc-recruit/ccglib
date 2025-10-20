@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astron-rd/slurm-action@v1.1
         with:
-          partition: defq
+          partition: fatq
           gres: gpu:AD4000
           time: "00:10:00"
           commands: |
