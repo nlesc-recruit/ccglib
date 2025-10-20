@@ -5,15 +5,23 @@
 
 #ifndef CCGLIB_HIP_MOCK_FP8_TYPE
 #define CCGLIB_HIP_MOCK_FP8_TYPE
-// Mock definition of fp8_e4m3 based on __hip_fp8_e4m3_fnuz
-struct __hip_fp8_e4m3_fnuz {
-  char x;
 
-  __host__ __device__ __hip_fp8_e4m3_fnuz() : x(0) {}
-  __host__ __device__ explicit __hip_fp8_e4m3_fnuz(float a) {}
-  __host__ __device__ explicit operator float() const { return 0; }
-};
+// Helper to define mock HIP FP8 types
+#define CCGLIB_HIP_DEFINE_MOCK_FP8_TYPE(TYPE_NAME)                             \
+  struct __hip_##TYPE_NAME {                                                   \
+    char x;                                                                    \
+    __host__ __device__ __hip_##TYPE_NAME() : x(0) {}                          \
+    __host__ __device__ explicit __hip_##TYPE_NAME(float) {}                   \
+    __host__ __device__ explicit operator float() const { return 0.0f; }       \
+  }
+
+CCGLIB_HIP_DEFINE_MOCK_FP8_TYPE(fp8_e5m2_fnuz);
+CCGLIB_HIP_DEFINE_MOCK_FP8_TYPE(fp8_e4m3_fnuz);
+
+#undef CCGLIB_HIP_DEFINE_MOCK_FP8_TYPE
+
 #endif // CCGLIB_HIP_MOCK_FP8_TYPE
+using fp8_e5m2 = __hip_fp8_e5m3_fnuz;
 using fp8_e4m3 = __hip_fp8_e4m3_fnuz;
 #else
 
@@ -25,8 +33,10 @@ using fp8_e4m3 = __hip_fp8_e4m3_fnuz;
 // Since HIP 6.3, the HIP_FP8_TYPE_FNUZ macro can be used probed for
 // availability of FP8
 #if HIP_FP8_TYPE_OCP
+using fp8_e5m2 = __hip_fp8_e5m2;
 using fp8_e4m3 = __hip_fp8_e4m3;
 #elif HIP_FP8_TYPE_FNUZ
+using fp8_e5m2 = __hip_fp8_e5m2_fnuz;
 using fp8_e4m3 = __hip_fp8_e4m3_fnuz;
 #else
 // Either HIP_FP8_TYPE_OCP or HIP_FP8_TYPE_FNUZ should be set.
@@ -38,5 +48,6 @@ using fp8_e4m3 = __hip_fp8_e4m3_fnuz;
 #endif
 #else
 #include <cuda_fp8.h>
+using fp8_e5m2 = __nv_fp8_e5m2;
 using fp8_e4m3 = __nv_fp8_e4m3;
 #endif

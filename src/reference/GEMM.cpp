@@ -19,10 +19,12 @@ void Run(const Tin *a, const Tin *b, Tout *c, size_t M, size_t N, size_t K,
   // Use float as the compute type when Tout is half or bf16 because tensor core
   // multiply-add operations execute in float precision. Otherwise, preserve
   // Tout.
+
   using ComputeType =
       typename std::conditional<std::is_same<Tout, half>::value ||
                                     std::is_same<Tout, bf16>::value ||
-                                    std::is_same<Tout, fp8_e4m3>::value,
+                                    std::is_same<Tout, fp8_e4m3>::value ||
+                                    std::is_same<Tout, fp8_e5m2>::value,
                                 float, Tout>::type;
   const std::array<size_t, 3> a_shape = {2, M, K};
   const std::array<size_t, 3> b_shape = {2, N, K};
@@ -224,6 +226,12 @@ void run_binary(const unsigned *a, const unsigned *b, int *c, size_t M,
 } // namespace
 
 namespace ccglib::reference {
+
+void GEMM::Run(const fp8_e5m2 *a, const fp8_e5m2 *b, float *c, size_t M,
+               size_t N, size_t K, ccglib::mma::MemOrder output_mem_order,
+               std::complex<float> alpha, std::complex<float> beta) {
+  ::Run<fp8_e5m2, float>(a, b, c, M, N, K, output_mem_order, alpha, beta);
+}
 
 void GEMM::Run(const fp8_e4m3 *a, const fp8_e4m3 *b, float *c, size_t M,
                size_t N, size_t K, ccglib::mma::MemOrder output_mem_order,
