@@ -7,10 +7,10 @@
 #include <mma.h>
 
 #include "async_copies.h"
-#include "wmma_extension.h"
 
 // clang-format off
 #include "type_selector.h"
+#include "wmma_extension.h"
 #include "matrix_operations.h"
 // clang-format on
 

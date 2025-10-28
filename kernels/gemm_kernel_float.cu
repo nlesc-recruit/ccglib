@@ -14,8 +14,8 @@ using namespace nvcuda;
 #endif
 
 // clang-format off
-#include "wmma_extension.h"
 #include "type_selector.h"
+#include "wmma_extension.h"
 #include "matrix_operations.h"
 // clang-format on
 

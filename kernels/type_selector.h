@@ -13,6 +13,7 @@ using namespace nvcuda;
 
 #include "ccglib/bf16.h"
 #include "ccglib/fp16.h"
+#include "ccglib/fp8.h"
 
 #include "value_type.h"
 using ccglib::ValueType;
