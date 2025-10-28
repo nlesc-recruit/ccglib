@@ -5,15 +5,15 @@ on:
   workflow_dispatch:
 
 jobs:
-  test-a4000:
-    name: NVIDIA A4000
+  test-ad4000:
+    name: NVIDIA AD4000
     runs-on: [slurm]
     steps:
       - uses: actions/checkout@v4
       - uses: astron-rd/slurm-action@v1.1
         with:
-          partition: defq
-          gres: gpu:A4000
+          partition: fatq
+          gres: gpu:AD4000
           time: "00:10:00"
           commands: |
             module load spack/20250403
