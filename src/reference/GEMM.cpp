@@ -19,7 +19,6 @@ void Run(const Tin *a, const Tin *b, Tout *c, size_t M, size_t N, size_t K,
   // Use float as the compute type when Tout is half or bf16 because tensor core
   // multiply-add operations execute in float precision. Otherwise, preserve
   // Tout.
-
   using ComputeType =
       typename std::conditional<std::is_same<Tout, half>::value ||
                                     std::is_same<Tout, bf16>::value ||

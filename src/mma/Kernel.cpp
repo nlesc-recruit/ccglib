@@ -17,11 +17,11 @@ dim3 Kernel::GetThreads(cu::Device &device) const {
 
 void Kernel::SetParameters(Precision precision) {
   switch (precision.input_type) {
-  case ValueType::float8e5m2:
-    parameters_ = Kernel::GetCompileParameters<ValueType::float8e5m2>();
-    break;
   case ValueType::float8e4m3:
     parameters_ = Kernel::GetCompileParameters<ValueType::float8e4m3>();
+    break;
+  case ValueType::float8e5m2:
+    parameters_ = Kernel::GetCompileParameters<ValueType::float8e5m2>();
     break;
   case ValueType::float16:
     parameters_ = Kernel::GetCompileParameters<ValueType::float16>();
@@ -44,10 +44,10 @@ void Kernel::SetParameters(Precision precision) {
 std::string Kernel::GetSource() const {
   // precision determines in which file the kernel resides
   switch (precision_.input_type) {
-  case ValueType::float8e5m2:
-    return Kernel::GetSource<ValueType::float8e5m2>();
   case ValueType::float8e4m3:
     return Kernel::GetSource<ValueType::float8e4m3>();
+  case ValueType::float8e5m2:
+    return Kernel::GetSource<ValueType::float8e5m2>();
   case ValueType::float16:
     return Kernel::GetSource<ValueType::float16>();
   case ValueType::bfloat16:

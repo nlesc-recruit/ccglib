@@ -67,7 +67,7 @@ private:
   }
 
   void init_memory() {
-    if constexpr (std::is_same_v<T, fp8_e5m2> || std::is_same_v<T, fp8_e4m3>) {
+    if constexpr (std::is_same_v<T, fp8_e4m3> || std::is_same_v<T, fp8_e5m2>) {
       if (!hasFP8(*device_)) {
         SKIP("Float8 is not supported on this GPU");
         return;

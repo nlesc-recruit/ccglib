@@ -43,10 +43,10 @@ static inline std::string type_to_string(const ccglib::ValueType type) {
     return "int1";
   case ccglib::int32:
     return "int32";
-  case ccglib::float8e5m2:
-    return "float8e5m2";
   case ccglib::float8e4m3:
     return "float8e4m3";
+  case ccglib::float8e5m2:
+    return "float8e5m2";
   case ccglib::bfloat16:
     return "bfloat16";
   case ccglib::float16:
@@ -358,9 +358,9 @@ using TestTypesComplexGemm = std::tuple<
     ComplexGemmTestFixture<bf16, float, ccglib::ValueType::bfloat16,
                            ccglib::ValueType::float32>,
 #endif
-    ComplexGemmTestFixture<fp8_e5m2, float, ccglib::ValueType::float8e5m2,
-                           ccglib::ValueType::float32>,
     ComplexGemmTestFixture<fp8_e4m3, float, ccglib::ValueType::float8e4m3,
+                           ccglib::ValueType::float32>,
+    ComplexGemmTestFixture<fp8_e5m2, float, ccglib::ValueType::float8e5m2,
                            ccglib::ValueType::float32>,
     ComplexGemmTestFixture<half, half, ccglib::ValueType::float16,
                            ccglib::ValueType::float16>,
