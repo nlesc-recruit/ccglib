@@ -56,14 +56,14 @@ Option                      | Description | Default
 ## Supported data types and matrix layouts
 ccglib supports a range of input/output data types, depending on the available hardware:
 
-Input type  | Output type      | NVIDIA | AMD | Notes
-----------  | -----------      | ------ | - | -
-float8e4m3  | float32          | Ada or newer | CDNA3 and RDNA4 only | On AMD, only RDNA4 implements float8 in hardware
-bfloat16    | bfloat16/float32 | float32 output only             | ✅ | -
-float16     | float32/float16  | ✅              | ✅ | -
-float32     | float32/bfloat16/float16\* | ❌              | CDNA only  | | -
-tensorfloat | float32/float16\* | Ampere or newer | ❌ | Input data must be in float32 format, conversion to tensorfloat is automatic
-int1        | int32            | ✅              | ❌ | Input bits must be packed into int32 values. ccglib provides a tool to do this
+Input type             | Output type                | NVIDIA              | AMD | Notes
+----------             | -----------                | ------              | -   | -
+float8e4m3/float8e5m2  | float32                    | Ada or newer        | CDNA3 and RDNA4 only | On AMD, only RDNA4 implements float8 in hardware
+bfloat16               | bfloat16/float32           | float32 output only | ✅ | -
+float16                | float32/float16            | ✅                  | ✅ | -
+float32                | float32/bfloat16/float16\* | ❌                  | CDNA only  | | -
+tensorfloat            | float32/float16\*          | Ampere or newer     | ❌ | Input data must be in float32 format, conversion to tensorfloat is automatic
+int1                   | int32                      | ✅                  | ❌ | Input bits must be packed into int32 values. ccglib provides a tool to do this
 
 \* bfloat16/float16 output is native float32 output downcasted to bfloat16/float16.
 
