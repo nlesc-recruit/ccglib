@@ -143,17 +143,7 @@ private:
 
   template <typename T> void init_input_matrices(T *a, T *b) {
     // fill a and b with random values (fixed seed), initalize c to zero
-    if constexpr (std::is_same_v<T, fp8_e5m2>) {
-      unsigned int seed = 0;
-      for (int idx = 0; idx < bytes_a_ / sizeof(T); idx++) {
-        a[idx] = static_cast<fp8_e5m2>(static_cast<float>(rand_r(&seed)) /
-                                       static_cast<float>(RAND_MAX));
-      }
-      for (int idx = 0; idx < bytes_b_ / sizeof(T); idx++) {
-        b[idx] = static_cast<fp8_e5m2>(static_cast<float>(rand_r(&seed)) /
-                                       static_cast<float>(RAND_MAX));
-      }
-    } else if constexpr (std::is_same_v<T, fp8_e4m3>) {
+    if constexpr (std::is_same_v<T, fp8_e4m3>) {
       unsigned int seed = 0;
       for (int idx = 0; idx < bytes_a_ / sizeof(T); idx++) {
         a[idx] = static_cast<fp8_e4m3>(static_cast<float>(rand_r(&seed)) /
@@ -161,6 +151,16 @@ private:
       }
       for (int idx = 0; idx < bytes_b_ / sizeof(T); idx++) {
         b[idx] = static_cast<fp8_e4m3>(static_cast<float>(rand_r(&seed)) /
+                                       static_cast<float>(RAND_MAX));
+      }
+    } else if constexpr (std::is_same_v<T, fp8_e5m2>) {
+      unsigned int seed = 0;
+      for (int idx = 0; idx < bytes_a_ / sizeof(T); idx++) {
+        a[idx] = static_cast<fp8_e5m2>(static_cast<float>(rand_r(&seed)) /
+                                       static_cast<float>(RAND_MAX));
+      }
+      for (int idx = 0; idx < bytes_b_ / sizeof(T); idx++) {
+        b[idx] = static_cast<fp8_e5m2>(static_cast<float>(rand_r(&seed)) /
                                        static_cast<float>(RAND_MAX));
       }
     } else if constexpr (std::is_same_v<T, __half>) {
@@ -539,9 +539,9 @@ TEMPLATE_LIST_TEST_CASE_METHOD(GemmTestBasic, "Complex GEMM Test",
   }
 
   if constexpr (std::is_same_v<typename GemmTestBasic<TestType>::InputType,
-                               fp8_e5m2> ||
+                               fp8_e4m3> ||
                 std::is_same_v<typename GemmTestBasic<TestType>::InputType,
-                               fp8_e4m3>) {
+                               fp8_e5m2>) {
     if (!hasFP8(*GemmTestBasic<TestType>().device_)) {
       SKIP("Float8 is not supported on this GPU");
     }
@@ -566,9 +566,9 @@ TEMPLATE_LIST_TEST_CASE_METHOD(GemmTestOpt, "Complex GEMM Test",
 #endif
 
   if constexpr (std::is_same_v<typename GemmTestBasic<TestType>::InputType,
-                               fp8_e5m2> ||
+                               fp8_e4m3> ||
                 std::is_same_v<typename GemmTestBasic<TestType>::InputType,
-                               fp8_e4m3>) {
+                               fp8_e5m2>) {
     if (!hasFP8(*GemmTestBasic<TestType>().device_)) {
       SKIP("Float8 is not supported on this GPU");
     }

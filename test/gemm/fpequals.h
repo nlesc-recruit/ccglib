@@ -13,14 +13,14 @@
 namespace ccglib::test {
 
 template <typename T> constexpr float getEpsilon() {
-  if constexpr (std::is_same_v<T, fp8_e5m2>) {
-    // fp8 uses a 2-bit mantissa
-    // the precision for normal numbers is therefore 2^-2
-    return 0.25f;
-  } else if constexpr (std::is_same_v<T, fp8_e4m3>) {
-    // fp8 uses a 3-bit mantissa
+  if constexpr (std::is_same_v<T, fp8_e4m3>) {
+    // fp8_e4m3 uses a 3-bit mantissa
     // the precision for normal numbers is therefore 2^-3
     return 0.125f;
+  } else if constexpr (std::is_same_v<T, fp8_e5m2>) {
+    // fp8_e5m2 uses a 2-bit mantissa
+    // the precision for normal numbers is therefore 2^-2
+    return 0.25f;
   } else if constexpr (std::is_same_v<T, __half> || std::is_same_v<T, float>) {
     // float16 uses an 11-bit mantissa (of which 10 bits are stored)
     // within the kernel, float32 is converted to tf32
