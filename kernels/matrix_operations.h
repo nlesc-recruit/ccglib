@@ -11,6 +11,9 @@ namespace wmma = rocwmma;
 using namespace nvcuda;
 #endif
 
+#include "type_selector.h"
+#include "wmma_extension.h"
+
 // The following is a workaround for the lack of __syncwarp() in HIP<7
 // The implementation is identical to that in HIP 7.0
 #if defined(__HIP_PLATFORM_AMD__) && HIP_VERSION_MAJOR < 7

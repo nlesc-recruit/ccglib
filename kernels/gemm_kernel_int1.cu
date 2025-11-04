@@ -6,13 +6,8 @@
 #include <cuda/std/limits>
 #include <mma.h>
 
-#include "async_copies.h"
-
-// clang-format off
-#include "type_selector.h"
-#include "wmma_extension.h"
 #include "matrix_operations.h"
-// clang-format on
+#include "type_selector.h"
 
 #if NBIT_IN != 1
 #error NBIT_IN must be 1
