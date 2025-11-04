@@ -29,7 +29,7 @@ cxxopts::Options create_commandline_parser(const char *argv[]) {
           "csv", "Format output to CSV",
           cxxopts::value<bool>()->default_value(std::to_string(false)))(
           "precision_in",
-          "GEMM input precision (float32, float16, float8e5m2, float8e4m3, or "
+          "GEMM input precision (float32, float16, float8e4m3, float8e5m2, or "
           "int1)",
           cxxopts::value<std::string>()->default_value("float32"))(
           "precision_out", "GEMM output precision (float32, float16, or int1)",
