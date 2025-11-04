@@ -118,8 +118,8 @@ void GEMM::Impl::check_support() {
     }
   }
 
-  if (input_type == ValueType::float8e5m2 ||
-      input_type == ValueType::float8e4m3) {
+  if (input_type == ValueType::float8e4m3 ||
+      input_type == ValueType::float8e5m2) {
     if (!hasFP8(device_)) {
       throw std::runtime_error("Float8 input is not supported on this device");
     }
