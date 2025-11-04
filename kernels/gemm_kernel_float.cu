@@ -13,11 +13,8 @@ namespace wmma = rocwmma;
 using namespace nvcuda;
 #endif
 
-// clang-format off
-#include "wmma_extension.h"
-#include "type_selector.h"
 #include "matrix_operations.h"
-// clang-format on
+#include "type_selector.h"
 
 // Check memory layout of A and B matrix
 #ifdef A_COL_MAJOR

@@ -97,6 +97,7 @@ int main(int argc, const char *argv[]) {
       {"float32", ccglib::ValueType::float32},
       {"float16", ccglib::ValueType::float16},
       {"float8e4m3", ccglib::ValueType::float8e4m3},
+      {"float8e5m2", ccglib::ValueType::float8e5m2},
       {"int32", ccglib::ValueType::int32},
       {"int1", ccglib::ValueType::int1}};
 

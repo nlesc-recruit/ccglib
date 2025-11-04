@@ -108,15 +108,18 @@ void GEMM::Impl::Run(cu::DeviceMemory &d_a, cu::DeviceMemory &d_b,
 }
 
 void GEMM::Impl::check_support() {
+  const ValuePrecision input_type = kernel_.GetPrecision().input_type;
+
   if (isVolta(device_)) {
-    if (kernel_.GetPrecision().input_type == ValueType::int1) {
+    if (input_type == ValueType::int1) {
       throw std::runtime_error("Int1 input is not supported on Volta");
-    } else if (kernel_.GetPrecision().input_type == ValueType::float32) {
+    } else if (input_type == ValueType::float32) {
       throw std::runtime_error("Float32 input is not supported on Volta");
     }
   }
 
-  if (kernel_.GetPrecision().input_type == ValueType::float8e4m3) {
+  if (input_type == ValueType::float8e4m3 ||
+      input_type == ValueType::float8e5m2) {
     if (!hasFP8(device_)) {
       throw std::runtime_error("Float8 input is not supported on this device");
     }
