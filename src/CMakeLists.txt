@@ -10,11 +10,17 @@ add_subdirectory(packing)
 add_subdirectory(pipeline)
 
 # Link the main library
+if(${CCGLIB_BUILD_STATIC})
+  set(CCGLIB_LIBRARY_TYPE STATIC)
+else()
+  set(CCGLIB_LIBRARY_TYPE SHARED)
+endif()
+
 add_library(
-  ${PROJECT_NAME} SHARED
-  $<TARGET_OBJECTS:gemm-reference> $<TARGET_OBJECTS:transpose>
-  $<TARGET_OBJECTS:gemm-mma> $<TARGET_OBJECTS:packing>
-  $<TARGET_OBJECTS:pipeline>)
+  ${PROJECT_NAME}
+  ${CCGLIB_LIBRARY_TYPE} $<TARGET_OBJECTS:gemm-reference>
+  $<TARGET_OBJECTS:transpose> $<TARGET_OBJECTS:gemm-mma>
+  $<TARGET_OBJECTS:packing> $<TARGET_OBJECTS:pipeline>)
 
 target_link_libraries(ccglib PUBLIC cudawrappers::cu cudawrappers::nvrtc)
 target_link_libraries(ccglib PRIVATE OpenMP::OpenMP_CXX xtensor)
