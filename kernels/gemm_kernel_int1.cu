@@ -6,7 +6,7 @@
 #include <cuda/std/limits>
 #include <mma.h>
 
-#include "copy_async.h"
+#include "async_copies.h"
 #include "matrix_operations.h"
 #include "type_selector.h"
 
