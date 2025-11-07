@@ -5,50 +5,50 @@
 
 namespace ccglib {
 
-bool isCDNA1(cu::Device &device) {
+static inline bool isCDNA1(cu::Device &device) {
   const std::string arch(device.getArch());
   return (arch.find("gfx908") != std::string::npos);
 }
 
-bool isCDNA2(cu::Device &device) {
+static inline bool isCDNA2(cu::Device &device) {
   const std::string arch(device.getArch());
   return (arch.find("gfx90a") != std::string::npos);
 }
 
-bool isCDNA3(cu::Device &device) {
+static inline bool isCDNA3(cu::Device &device) {
   const std::string arch(device.getArch());
   return (arch.find("gfx94") != std::string::npos);
 }
 
-bool isCDNA4(cu::Device &device) {
+static inline bool isCDNA4(cu::Device &device) {
   const std::string arch(device.getArch());
   return (arch.find("gfx95") != std::string::npos);
 }
 
-bool isRDNA4(cu::Device &device) {
+static inline bool isRDNA4(cu::Device &device) {
   const std::string arch(device.getArch());
   return (arch.find("gfx12") != std::string::npos);
 }
 
-bool isCDNA(cu::Device &device) {
+static inline bool isCDNA(cu::Device &device) {
   return (isCDNA1(device) || isCDNA2(device) || isCDNA3(device) ||
           isCDNA4(device));
 }
 
-bool isVolta(cu::Device &device) {
+static inline bool isVolta(cu::Device &device) {
   const std::string arch(device.getArch());
   return (arch.find("sm_70") != std::string::npos);
 }
 
-bool isAda(const std::string &arch) {
+static inline bool isAda(const std::string &arch) {
   return (arch.find("sm_89") != std::string::npos);
 }
 
-bool isHopper(const std::string &arch) {
+static inline bool isHopper(const std::string &arch) {
   return (arch.find("sm_90") != std::string::npos);
 }
 
-bool isBlackwell(const std::string &arch) {
+static inline bool isBlackwell(const std::string &arch) {
   static const std::vector<std::string> blackwell_archs = {"sm_100", "sm_101",
                                                            "sm_120"};
   for (const auto &bw_arch : blackwell_archs) {
@@ -59,18 +59,18 @@ bool isBlackwell(const std::string &arch) {
   return false;
 }
 
-bool hasFP8(cu::Device &device) {
+static inline bool hasFP8(cu::Device &device) {
   const std::string arch(device.getArch());
   return (isBlackwell(arch) || isHopper(arch) || isAda(arch)) ||
          isRDNA4(device) || isCDNA3(device);
 }
 
-bool hasFP4(cu::Device &device) {
+static inline bool hasFP4(cu::Device &device) {
   const std::string arch(device.getArch());
   return (isBlackwell(arch) || isHopper(arch) || isAda(arch));
 }
 
-bool isUnsupported(cu::Device &device) {
+static inline bool isUnsupported(cu::Device &device) {
   const std::string arch(device.getArch());
   // AMD: only architectures with matrix cores are supported: CDNA or newer,
   // RDNA3 or newer

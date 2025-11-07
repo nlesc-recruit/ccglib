@@ -48,6 +48,7 @@ include(cmake/xtensor.cmake)
 
 option(CCGLIB_BUILD_TESTING "Build the test suite" OFF)
 option(CCGLIB_BUILD_BENCHMARK "Build the benchmark suite" OFF)
+option(CCGLIB_BUILD_STATIC "Build ccglib as static library" OFF)
 option(CCGLIB_BENCHMARK_WITH_PMT
        "Enable Power Measurement Toolkit support in the benchmark suite" OFF)
 
