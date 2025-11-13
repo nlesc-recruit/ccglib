@@ -59,8 +59,11 @@ void Transpose::Impl::Run(cu::DeviceMemory &d_input,
                           cu::DeviceMemory &d_output) {
   const unsigned warp_size =
       device_.getAttribute(CU_DEVICE_ATTRIBUTE_WARP_SIZE);
+  const unsigned m_padded = helper::ceildiv(M_, M_chunk_) * M_chunk_;
+  const unsigned n_padded = helper::ceildiv(N_, N_chunk_) * N_chunk_;
   dim3 threads(warp_size, 1024 / warp_size);
-  dim3 grid(helper::ceildiv(N_, threads.x), helper::ceildiv(M_, threads.y), B_);
+  dim3 grid(helper::ceildiv(n_padded, threads.x),
+            helper::ceildiv(m_padded, threads.y), B_);
 
   std::vector<const void *> parameters = {d_output.parameter(),
                                           d_input.parameter()};
