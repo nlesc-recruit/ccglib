@@ -176,6 +176,11 @@ if __name__ == '__main__':
         m_padded = align(m_global, max(tune_params["M_PER_BLOCK"]))
         n_padded = align(n_global, max(tune_params["M_PER_BLOCK"]))
         k_padded = align(k_global, defines["K_PER_WMMA"])
+    else:
+        # no padding
+        m_padded = m_global
+        n_padded = n_global
+        k_padded = k_global
 
     A = np.zeros((batch_size, 2, m_padded, k_padded // scaling_factor), dtype=dtype_ab)
     B = np.zeros((batch_size, 2, n_padded, k_padded // scaling_factor), dtype=dtype_ab)
