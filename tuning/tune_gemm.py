@@ -224,8 +224,8 @@ if __name__ == '__main__':
         if backend == "hip":
             print("HIP backend selected, not enabling NCU metrics")
         else:
-            observers.append(get_ncu_observer())
-            metrics.update(get_ncu_metrics())
+            observers.append(ncu_metrics.get_ncu_observer())
+            metrics.update(ncu_metrics.get_ncu_metrics())
 
     with open(f"{ccglib_dir}/kernels/{kernel_file}", "r") as fp:
         kernel_source = fp.read()
