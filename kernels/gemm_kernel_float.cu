@@ -256,18 +256,20 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
     // copy next data to smem
 #if defined(__HIP_PLATFORM_AMD__)
     copy_sync<int4, sizeof(A_s[0]), num_threads>(
-        &A_s[0][0][0][0][0][0][0], &A[batch][blockM][k][0][0][0], tid);
+        &A_s[0][0][0][0][0][0][0],
+        &A[batch][blockM][k * K_SPLIT_FACTOR][0][0][0], tid);
     copy_sync<int4, sizeof(B_s[0]), num_threads>(
-        &B_s[0][0][0][0][0][0][0], &B[batch][blockN][k][0][0][0], tid);
+        &B_s[0][0][0][0][0][0][0],
+        &B[batch][blockN][k * K_SPLIT_FACTOR][0][0][0], tid);
 #else
     for (; k_buf < K_TILES && k_buf < (k + NBUFFER); k_buf++) {
       pipe.producer_acquire();
       copy_async<sizeof(A_s[0]), num_threads>(
           &A_s[k_buf % NBUFFER][0][0][0][0][0][0],
-          &A[batch][blockM][k_buf][0][0], pipe, tid);
+          &A[batch][blockM][k_buf * K_SPLIT_FACTOR][0][0], pipe, tid);
       copy_async<sizeof(B_s[0]), num_threads>(
           &B_s[k_buf % NBUFFER][0][0][0][0][0][0],
-          &B[batch][blockN][k_buf][0][0], pipe, tid);
+          &B[batch][blockN][k_buf * K_SPLIT_FACTOR][0][0], pipe, tid);
       pipe.producer_commit();
     }
 
