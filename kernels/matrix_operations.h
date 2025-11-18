@@ -191,7 +191,11 @@ store_matrix_padded(Accumulator_t sum[COMPLEX][M_PER_WARP / M_PER_WMMA]
 #endif
         }
       }
+#if K_SPLIT_FACTOR > 1
+      __syncthreads();
+#else
       __syncwarp();
+#endif
     }
   }
 }
