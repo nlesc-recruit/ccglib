@@ -52,11 +52,13 @@ using ccglib::ValueType;
 // constants are padded to be multiples.
 #define M_IS_PADDED ((M_GLOBAL % M_PER_BLOCK) != 0)
 #define N_IS_PADDED ((N_GLOBAL % N_PER_BLOCK) != 0)
-#define K_IS_PADDED ((K_GLOBAL % K_PER_WMMA) != 0)
+#define K_IS_PADDED ((K_GLOBAL % (K_PER_WMMA * K_SPLIT_FACTOR)) != 0)
 
 #define M_GLOBAL_PADDED ((M_GLOBAL / M_PER_BLOCK + M_IS_PADDED) * M_PER_BLOCK)
 #define N_GLOBAL_PADDED ((N_GLOBAL / N_PER_BLOCK + N_IS_PADDED) * N_PER_BLOCK)
-#define K_GLOBAL_PADDED ((K_GLOBAL / K_PER_WMMA + K_IS_PADDED) * K_PER_WMMA)
+#define K_GLOBAL_PADDED                                                        \
+  ((K_GLOBAL / (K_PER_WMMA * K_SPLIT_FACTOR) + K_IS_PADDED) *                  \
+   (K_PER_WMMA * K_SPLIT_FACTOR))
 
 // The TypeSelector struct is used to determine the size and type of data
 // structures used in the GEMM kernel. It relies on template deduction based on
@@ -245,9 +247,9 @@ constexpr size_t A_s_size =
 constexpr size_t B_s_size =
     NBUFFER * COMPLEX * N_PER_BLOCK * K_PER_WMMA / DeviceTraits::PACKING_FACTOR;
 
-constexpr size_t C_s_size = COMPLEX * (M_PER_BLOCK / M_PER_WARP) *
-                            (N_PER_BLOCK / N_PER_WARP) * M_PER_WMMA *
-                            N_PER_WMMA;
+constexpr size_t C_s_size =
+    COMPLEX * K_SPLIT_FACTOR * (M_PER_BLOCK / M_PER_WARP) *
+    (N_PER_BLOCK / N_PER_WARP) * M_PER_WMMA * N_PER_WMMA;
 static_assert((A_s_size + B_s_size) * sizeof(Tin) >= C_s_size * sizeof(Tout),
               "A_s + B_s >= C_s");
 
@@ -266,6 +268,7 @@ using Accumulator_t =
 #endif
 
 #define REQUIRES_SHARED_MEMORY                                                 \
-  (M_IS_PADDED || N_IS_PADDED || C_COMPLEX_INTERLEAVED || REQUIRES_DOWNCAST)
+  (M_IS_PADDED || N_IS_PADDED || C_COMPLEX_INTERLEAVED || REQUIRES_DOWNCAST || \
+   (K_SPLIT_FACTOR > 1))
 
 #endif // TYPE_SELECTOR_H_

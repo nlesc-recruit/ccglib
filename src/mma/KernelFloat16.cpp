@@ -20,7 +20,8 @@ Kernel::Parameters Kernel::GetCompileParameters<ValueType::float16>() const {
                             .n_per_block = 64,
                             .n_per_warp = 16,
                             .n_per_wmma = 16,
-                            
+
+                            .k_split_factor = 1,
                             .k_per_wmma = 16,
 #if defined(__HIP_PLATFORM_AMD__)
     .nbuffer = 1

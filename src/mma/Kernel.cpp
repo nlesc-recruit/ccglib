@@ -11,7 +11,8 @@ Kernel::Kernel(Precision precision, const Variant &variant)
 
 dim3 Kernel::GetThreads(cu::Device &device) const {
   const unsigned warp_size = device.getAttribute(CU_DEVICE_ATTRIBUTE_WARP_SIZE);
-  return dim3(warp_size, parameters_.n_per_block / parameters_.n_per_warp,
+  return dim3(warp_size * parameters_.k_split_factor,
+              parameters_.n_per_block / parameters_.n_per_warp,
               parameters_.m_per_block / parameters_.m_per_warp);
 }
 

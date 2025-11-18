@@ -26,6 +26,7 @@ public:
     size_t n_per_warp;
     size_t n_per_wmma;
 
+    size_t k_split_factor;
     size_t k_per_wmma;
 
     size_t nbuffer;

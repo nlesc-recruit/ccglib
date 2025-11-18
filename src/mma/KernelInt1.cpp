@@ -17,6 +17,7 @@ Kernel::Parameters Kernel::GetCompileParameters<ValueType::int1>() const {
                             .n_per_warp = 32,
                             .n_per_wmma = 8,
 
+                            .k_split_factor = 1,
                             .k_per_wmma = 256,
                             .nbuffer = 4};
 }

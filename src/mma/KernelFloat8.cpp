@@ -21,6 +21,7 @@ Kernel::Parameters Kernel::GetCompileParameters<ValueType::float8e5m2>() const {
                             .n_per_warp = 32,
                             .n_per_wmma = 8,
 
+                            .k_split_factor = 1,
                             .k_per_wmma = 32,
 #if defined(__HIP_PLATFORM_AMD__)
     .nbuffer = 1
@@ -49,7 +50,7 @@ Kernel::Parameters Kernel::GetCompileParameters<ValueType::float8e4m3>() const {
                             .n_per_block = 32,
                             .n_per_warp = 32,
                             .n_per_wmma = 8,
-                            
+
                             .k_per_wmma = 32,
 #if defined(__HIP_PLATFORM_AMD__)
     .nbuffer = 1

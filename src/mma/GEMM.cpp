@@ -173,6 +173,7 @@ void GEMM::Impl::compile_kernel() {
     "-DN_PER_BLOCK=" + std::to_string(parameters.n_per_block),
     "-DN_PER_WARP=" + std::to_string(parameters.n_per_warp),
     "-DN_PER_WMMA=" + std::to_string(parameters.n_per_wmma),
+    "-DK_SPLIT_FACTOR=" + std::to_string(parameters.k_split_factor),
     "-DK_PER_WMMA=" + std::to_string(parameters.k_per_wmma),
     "-DNBUFFER=" + std::to_string(parameters.nbuffer)
   };

@@ -110,32 +110,51 @@ store_matrix_padded(Accumulator_t sum[COMPLEX][M_PER_WARP / M_PER_WMMA]
                                      [N_PER_WARP / N_PER_WMMA],
                     C_t C, T &C_s, const size_t &batch, const size_t &blockM,
                     const size_t &warpM, const size_t &blockN,
-                    const size_t &warpN, const size_t &M_TILES,
-                    const size_t &N_TILES) {
+                    const size_t &warpN, const size_t &warpK,
+                    const size_t &M_TILES, const size_t &N_TILES) {
 
   for (size_t m = 0; m < M_TILES; m++) {
     for (size_t n = 0; n < N_TILES; n++) {
-      wmma::store_matrix_sync(&C_s[REAL][warpM][warpN][0][0], sum[REAL][m][n],
-                              N_PER_WMMA, wmma::mem_row_major);
-      wmma::store_matrix_sync(&C_s[IMAG][warpM][warpN][0][0], sum[IMAG][m][n],
-                              N_PER_WMMA, wmma::mem_row_major);
+      wmma::store_matrix_sync(&C_s[warpK][REAL][warpM][warpN][0][0],
+                              sum[REAL][m][n], N_PER_WMMA, wmma::mem_row_major);
+      wmma::store_matrix_sync(&C_s[warpK][IMAG][warpM][warpN][0][0],
+                              sum[IMAG][m][n], N_PER_WMMA, wmma::mem_row_major);
 
+      // sum reduction over K
+#if (K_SPLIT_FACTOR > 1)
+      // We only need to synchronize between warps of different warpK, other
+      // warpM/warpN are still independent. For now a full syncthreads is
+      // easier, need to look into cooperative groups to do it properly.
+      __syncthreads();
+      for (size_t t = threadIdx.x; t < M_PER_WMMA * N_PER_WMMA;
+           t += blockDim.x) {
+        const size_t i = t / N_PER_WMMA;
+        const size_t j = t % N_PER_WMMA;
+        for (size_t k = 1; k < K_SPLIT_FACTOR; k++) {
+          C_s[0][REAL][warpM][warpN][i][j] += C_s[k][REAL][warpM][warpN][i][j];
+          C_s[0][IMAG][warpM][warpN][i][j] += C_s[k][IMAG][warpM][warpN][i][j];
+        }
+      }
+      __syncthreads();
+#else
       __syncwarp();
+#endif
+
       size_t m_index = global_idx_m(blockM, warpM, m);
       size_t n_index = global_idx_n(blockN, warpN, n);
       for (size_t t = threadIdx.x; t < M_PER_WMMA * N_PER_WMMA;
-           t += WARP_SIZE) {
+           t += blockDim.x) {
         size_t i = t / N_PER_WMMA;
         size_t j = t % N_PER_WMMA;
         // store the submatrix, padded values are set to zero
         if (m_index + i < M_GLOBAL && n_index + j < N_GLOBAL) {
 #if defined(HAVE_ALPHA)
-          const Tshared sum_real = C_s[REAL][warpM][warpN][i][j];
-          const Tshared sum_imag = C_s[IMAG][warpM][warpN][i][j];
-          C_s[REAL][warpM][warpN][i][j] =
+          const Tshared sum_real = C_s[0][REAL][warpM][warpN][i][j];
+          const Tshared sum_imag = C_s[0][IMAG][warpM][warpN][i][j];
+          C_s[0][REAL][warpM][warpN][i][j] =
               static_cast<Tshared>(ALPHA_REAL) * sum_real -
               static_cast<Tshared>(ALPHA_IMAG) * sum_imag;
-          C_s[IMAG][warpM][warpN][i][j] =
+          C_s[0][IMAG][warpM][warpN][i][j] =
               static_cast<Tshared>(ALPHA_IMAG) * sum_real +
               static_cast<Tshared>(ALPHA_REAL) * sum_imag;
 #endif
@@ -160,15 +179,15 @@ store_matrix_padded(Accumulator_t sum[COMPLEX][M_PER_WARP / M_PER_WMMA]
 
 #if defined(HAVE_BETA)
           const Tout c_real_copy = c_real;
-          c_real = C_s[REAL][warpM][warpN][i][j] +
+          c_real = C_s[0][REAL][warpM][warpN][i][j] +
                    static_cast<Tout>(BETA_REAL) * c_real -
                    static_cast<Tout>(BETA_IMAG) * c_imag;
-          c_imag = C_s[IMAG][warpM][warpN][i][j] +
+          c_imag = C_s[0][IMAG][warpM][warpN][i][j] +
                    static_cast<Tout>(BETA_IMAG) * c_real_copy +
                    static_cast<Tout>(BETA_REAL) * c_imag;
 #else
-          c_real = C_s[REAL][warpM][warpN][i][j];
-          c_imag = C_s[IMAG][warpM][warpN][i][j];
+          c_real = C_s[0][REAL][warpM][warpN][i][j];
+          c_imag = C_s[0][IMAG][warpM][warpN][i][j];
 #endif
         }
       }
