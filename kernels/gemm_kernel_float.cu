@@ -215,30 +215,22 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
   // computing current submatrix
   // To save shared memory, the C matrix reuses the same shared memory in
   // case of padding.
-  constexpr size_t A_s_size =
-      NBUFFER * COMPLEX * M_PER_BLOCK * K_PER_WMMA * sizeof(Tin);
-  constexpr size_t B_s_size =
-      NBUFFER * COMPLEX * N_PER_BLOCK * K_PER_WMMA * sizeof(Tin);
-  constexpr size_t C_s_size = NBUFFER * COMPLEX * (M_PER_BLOCK / M_PER_WARP) *
-                              (N_PER_BLOCK / N_PER_WARP) * M_PER_WMMA *
-                              N_PER_WMMA * sizeof(Tshared);
+  __shared__ union {
+    Tin ab[A_s_size + B_s_size];
 #if REQUIRES_SHARED_MEMORY
-  constexpr size_t smem_buffer_size =
-      (A_s_size + B_s_size) > C_s_size ? (A_s_size + B_s_size) : C_s_size;
-#else
-  constexpr size_t smem_buffer_size = A_s_size + B_s_size;
+    Tshared c[C_s_size];
 #endif
-  __shared__ Tin shmem[smem_buffer_size / sizeof(Tin)];
-  typedef Tin(*A_s_t)[COMPLEX][M_PER_BLOCK / M_PER_WARP][M_TILES][M_PER_WMMA]
-                     [K_PER_WMMA];
-  typedef Tin(*B_s_t)[COMPLEX][N_PER_BLOCK / N_PER_WARP][N_TILES][N_PER_WMMA]
-                     [K_PER_WMMA];
-  A_s_t A_s = reinterpret_cast<A_s_t>(&shmem[0]);
-  B_s_t B_s = reinterpret_cast<B_s_t>(&shmem[A_s_size / sizeof(Tin)]);
+  } shmem;
+  using A_s_t = Tin[NBUFFER][COMPLEX][M_PER_BLOCK / M_PER_WARP][M_TILES]
+                   [M_PER_WMMA][K_PER_WMMA];
+  using B_s_t = Tin[NBUFFER][COMPLEX][N_PER_BLOCK / N_PER_WARP][N_TILES]
+                   [N_PER_WMMA][K_PER_WMMA];
+  A_s_t &A_s = *reinterpret_cast<A_s_t *>(shmem.ab);
+  B_s_t &B_s = *reinterpret_cast<B_s_t *>(&shmem.ab[A_s_size]);
 #if REQUIRES_SHARED_MEMORY
-  typedef Tshared(*C_s_t)[M_PER_BLOCK / M_PER_WARP][N_PER_BLOCK / N_PER_WARP]
-                         [M_PER_WMMA][N_PER_WMMA];
-  C_s_t C_s = reinterpret_cast<C_s_t>(&shmem[0]);
+  using C_s_t = Tshared[COMPLEX][M_PER_BLOCK / M_PER_WARP]
+                       [N_PER_BLOCK / N_PER_WARP][M_PER_WMMA][N_PER_WMMA];
+  C_s_t &C_s = *reinterpret_cast<C_s_t *>(shmem.c);
 #endif
 
 #if !defined(__HIP_PLATFORM_AMD__)
