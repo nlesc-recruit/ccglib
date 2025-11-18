@@ -242,13 +242,13 @@ using C_t = Tout[BATCH_SIZE][N_GLOBAL][M_GLOBAL][COMPLEX];
 #endif
 #endif
 
-constexpr size_t A_s_size =
-    NBUFFER * COMPLEX * M_PER_BLOCK * K_PER_WMMA / DeviceTraits::PACKING_FACTOR;
-constexpr size_t B_s_size =
-    NBUFFER * COMPLEX * N_PER_BLOCK * K_PER_WMMA / DeviceTraits::PACKING_FACTOR;
+constexpr size_t A_s_size = NBUFFER * K_SPLIT_FACTOR * COMPLEX * M_PER_BLOCK *
+                            K_PER_WMMA / DeviceTraits::PACKING_FACTOR;
+constexpr size_t B_s_size = NBUFFER * K_SPLIT_FACTOR * COMPLEX * N_PER_BLOCK *
+                            K_PER_WMMA / DeviceTraits::PACKING_FACTOR;
 
 constexpr size_t C_s_size =
-    COMPLEX * K_SPLIT_FACTOR * (M_PER_BLOCK / M_PER_WARP) *
+    K_SPLIT_FACTOR * COMPLEX * (M_PER_BLOCK / M_PER_WARP) *
     (N_PER_BLOCK / N_PER_WARP) * M_PER_WMMA * N_PER_WMMA;
 static_assert((A_s_size + B_s_size) * sizeof(Tin) >= C_s_size * sizeof(Tout),
               "A_s + B_s >= C_s");

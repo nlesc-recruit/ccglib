@@ -223,8 +223,10 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
   // computing current submatrix
   // To save shared memory, the C matrix reuses the same shared memory in
   // case of padding.
-  constexpr size_t A_s_size = NBUFFER * COMPLEX * M_PER_BLOCK * K_PER_WMMA;
-  constexpr size_t B_s_size = NBUFFER * COMPLEX * N_PER_BLOCK * K_PER_WMMA;
+  constexpr size_t A_s_size =
+      NBUFFER * K_SPLIT_FACTOR * COMPLEX * M_PER_BLOCK * K_PER_WMMA;
+  constexpr size_t B_s_size =
+      NBUFFER * K_SPLIT_FACTOR * COMPLEX * N_PER_BLOCK * K_PER_WMMA;
   __shared__ Tin shmem[(A_s_size + B_s_size)];
   typedef Tin(*A_s_t)[K_SPLIT_FACTOR][COMPLEX][M_PER_BLOCK / M_PER_WARP]
                      [M_TILES][M_PER_WMMA][K_PER_WMMA];
