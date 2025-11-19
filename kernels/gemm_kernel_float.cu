@@ -223,21 +223,22 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
   // computing current submatrix
   // To save shared memory, the C matrix reuses the same shared memory in
   // case of padding.
-  constexpr size_t A_s_size =
-      NBUFFER * K_SPLIT_FACTOR * COMPLEX * M_PER_BLOCK * K_PER_WMMA;
-  constexpr size_t B_s_size =
-      NBUFFER * K_SPLIT_FACTOR * COMPLEX * N_PER_BLOCK * K_PER_WMMA;
-  __shared__ Tin shmem[(A_s_size + B_s_size)];
-  typedef Tin(*A_s_t)[K_SPLIT_FACTOR][COMPLEX][M_PER_BLOCK / M_PER_WARP]
-                     [M_TILES][M_PER_WMMA][K_PER_WMMA];
-  typedef Tin(*B_s_t)[K_SPLIT_FACTOR][COMPLEX][N_PER_BLOCK / N_PER_WARP]
-                     [N_TILES][N_PER_WMMA][K_PER_WMMA];
-  A_s_t A_s = reinterpret_cast<A_s_t>(&shmem[0]);
-  B_s_t B_s = reinterpret_cast<B_s_t>(&shmem[A_s_size]);
-  typedef Tshared(*C_s_t)[COMPLEX][M_PER_BLOCK / M_PER_WARP]
-                         [N_PER_BLOCK / N_PER_WARP][M_PER_WMMA][N_PER_WMMA];
+  __shared__ union {
+    Tin ab[A_s_size + B_s_size];
 #if REQUIRES_SHARED_MEMORY
-  C_s_t C_s = reinterpret_cast<C_s_t>(&shmem[0]);
+    Tshared c[C_s_size];
+#endif
+  } shmem;
+  using A_s_t = Tin[NBUFFER][COMPLEX][M_PER_BLOCK / M_PER_WARP][M_TILES]
+                   [K_SPLIT_FACTOR][M_PER_WMMA][K_PER_WMMA];
+  using B_s_t = Tin[NBUFFER][COMPLEX][N_PER_BLOCK / N_PER_WARP][N_TILES]
+                   [K_SPLIT_FACTOR][N_PER_WMMA][K_PER_WMMA];
+  A_s_t &A_s = *reinterpret_cast<A_s_t *>(shmem.ab);
+  B_s_t &B_s = *reinterpret_cast<B_s_t *>(&shmem.ab[A_s_size]);
+#if REQUIRES_SHARED_MEMORY
+  using C_s_t = Tshared[K_SPLIT_FACTOR][COMPLEX][M_PER_BLOCK / M_PER_WARP]
+                       [N_PER_BLOCK / N_PER_WARP][M_PER_WMMA][N_PER_WMMA];
+  C_s_t &C_s = *reinterpret_cast<C_s_t *>(shmem.c);
 #endif
 
 #if !defined(__HIP_PLATFORM_AMD__)
