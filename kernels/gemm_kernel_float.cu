@@ -223,14 +223,10 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
            [K_PER_WMMA];
     };
 #if REQUIRES_SHARED_MEMORY
-    Tshared c[C_s_size];
+    Tshared c[COMPLEX][M_PER_BLOCK / M_PER_WARP][N_PER_BLOCK / N_PER_WARP]
+             [M_PER_WMMA][N_PER_WMMA];
 #endif
   } shmem;
-#if REQUIRES_SHARED_MEMORY
-  using C_s_t = Tshared[COMPLEX][M_PER_BLOCK / M_PER_WARP]
-                       [N_PER_BLOCK / N_PER_WARP][M_PER_WMMA][N_PER_WMMA];
-  C_s_t &C_s = *reinterpret_cast<C_s_t *>(shmem.c);
-#endif
 
 #if !defined(__HIP_PLATFORM_AMD__)
   cuda::pipeline<cuda::thread_scope_thread> pipe = cuda::make_pipeline();
@@ -351,8 +347,8 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
 
 // store the result to global memory
 #if REQUIRES_SHARED_MEMORY
-  store_matrix_padded(sum, C, C_s, batch, blockM, warpM, blockN, warpN, M_TILES,
-                      N_TILES);
+  store_matrix_padded(sum, C, shmem.c, batch, blockM, warpM, blockN, warpN,
+                      M_TILES, N_TILES);
 #else
   store_matrix(sum, C, batch, blockM, warpM, blockN, warpN);
 #endif
