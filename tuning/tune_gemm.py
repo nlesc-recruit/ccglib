@@ -25,19 +25,48 @@ def parse_args():
     default_ccglib_dir = os.path.abspath(f"{os.path.dirname(__file__)}/../")
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--name", required=True, help="Device name, used in output filename")
+    parser.add_argument(
+        "--name", required=True, help="Device name, used in output filename"
+    )
     parser.add_argument("-m", type=int, required=True, help="Size of M axis")
     parser.add_argument("-n", type=int, required=True, help="Size of N axis")
     parser.add_argument("-k", type=int, required=True, help="Size of K axis")
-    parser.add_argument("-b", type=int, default=1, help="Size of batch axis (default: %(default)s)")
-    parser.add_argument("--type_in", choices=["int1", "bfloat16", "float8e4m3", "float8e5m2", "float16", "float32"], required=True, help="Input data type")
-    parser.add_argument("--type_out", choices=["int32", "bfloat16", "float16", "float32"], required=True, help="Output data type")
-    parser.add_argument("--kernel", choices=["basic", "opt"], default="opt",
-                        help="Tune the basic or opt kernel (default: %(default)s)")
-    parser.add_argument("--backend", required=True, choices=["cupy", "hip"], help="Kernel Tuner backend")
-    parser.add_argument("--observer", dest="observer_type", required=False, choices=["nvml", "pmt"],
-                        help="Kernel Tuner power observer (default: None)")
-    parser.add_argument("--ccglib", default=default_ccglib_dir, help="Path to ccglib directory (default: %(default)s)")
+    parser.add_argument(
+        "-b", type=int, default=1, help="Size of batch axis (default: %(default)s)"
+    )
+    parser.add_argument(
+        "--type_in",
+        choices=["int1", "bfloat16", "float8e4m3", "float8e5m2", "float16", "float32"],
+        required=True,
+        help="Input data type",
+    )
+    parser.add_argument(
+        "--type_out",
+        choices=["int32", "bfloat16", "float16", "float32"],
+        required=True,
+        help="Output data type",
+    )
+    parser.add_argument(
+        "--kernel",
+        choices=["basic", "opt"],
+        default="opt",
+        help="Tune the basic or opt kernel (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--backend", required=True, choices=["cupy", "hip"], help="Kernel Tuner backend"
+    )
+    parser.add_argument(
+        "--observer",
+        dest="observer_type",
+        required=False,
+        choices=["nvml", "pmt"],
+        help="Kernel Tuner power observer (default: None)",
+    )
+    parser.add_argument(
+        "--ccglib",
+        default=default_ccglib_dir,
+        help="Path to ccglib directory (default: %(default)s)",
+    )
     parser.add_argument(
         "--ncu", action="store_true", help="Enable NCU metrics (CUDA only)"
     )
@@ -51,7 +80,7 @@ def parse_args():
     return parser.parse_args()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     args = parse_args()
 
     name = args.name
@@ -68,7 +97,15 @@ if __name__ == '__main__':
     observer_type = args.observer_type
 
     # As long as no verification of the output is done, only the size of the type matters
-    type_to_numpy = {"int1": np.uint32, "int32": np.int32, "bfloat16": np.float16, "float8e4m3": np.int8, "float8e5m2": np.int8, "float16": np.float16, "float32": np.float32}
+    type_to_numpy = {
+        "int1": np.uint32,
+        "int32": np.int32,
+        "bfloat16": np.float16,
+        "float8e4m3": np.int8,
+        "float8e5m2": np.int8,
+        "float16": np.float16,
+        "float32": np.float32,
+    }
     # Item size in bits matches numpy type, except for int1 because of packing
     type_to_nbit = {k: 8 * np.dtype(v).itemsize for k, v in type_to_numpy.items()}
     type_to_nbit["int1"] = 1
@@ -79,6 +116,7 @@ if __name__ == '__main__':
     # on AMD GPUs, the warp size can be 32 or 64 and the shared memory size is different from nvidia
     if backend == "hip":
         from hip import hip
+
         device_properties = hip.hipDeviceProp_t()
         hip.hipGetDeviceProperties(device_properties, 0)
         warp_size = device_properties.warpSize
@@ -108,9 +146,9 @@ if __name__ == '__main__':
     # Extract ValueType from ccglib, as we need to provide the index into this enum for TYPE_IN and TYPE_OUT
     try:
         with open(f"{ccglib_dir}/include/ccglib/common/value_type.h") as f:
-            header = f.read().replace('\n', ' ')
+            header = f.read().replace("\n", " ")
         match = re.search("enum ValueType {(.*?)};", header)
-        value_type = match.group(1).replace(' ', '').split(',')
+        value_type = match.group(1).replace(" ", "").split(",")
     except Exception as e:
         print("Failed to extract ValueType from ccglib:")
         raise
@@ -192,14 +230,19 @@ if __name__ == '__main__':
     grid_div = {
         "grid_div_x": lambda p: p["N_PER_BLOCK"],
         "grid_div_y": lambda p: p["M_PER_BLOCK"],
-        "grid_div_z": lambda p: 1
+        "grid_div_z": lambda p: 1,
     }
 
     metrics = {
         # Useful TFLOPS: excluding padding
-        "TFLOPS": lambda p: 8e-9 * m_global * n_global * k_global * batch_size / p["time"],
+        "TFLOPS": lambda p: 8e-9
+        * m_global
+        * n_global
+        * k_global
+        * batch_size
+        / p["time"],
         "N_PER_WARP": lambda p: p["N_PER_BLOCK"] // p["block_size_y"],
-        "M_PER_WARP": lambda p: p["M_PER_BLOCK"] // p["block_size_z"]
+        "M_PER_WARP": lambda p: p["M_PER_BLOCK"] // p["block_size_z"],
     }
 
     observers = []
@@ -211,12 +254,26 @@ if __name__ == '__main__':
         pmtobserver = PMTObserver({sensor_name: 0}, use_continuous_observer=True)
         observers.append(pmtobserver)
         metrics["Watt"] = lambda p: 1e3 * p[f"{sensor_name}_energy"] / p["time"]
-        metrics["TFLOPS/J"] = lambda p: 8e-12 * m_global * n_global * k_global * batch_size / p[f"{sensor_name}_energy"]
+        metrics["TFLOPS/J"] = (
+            lambda p: 8e-12
+            * m_global
+            * n_global
+            * k_global
+            * batch_size
+            / p[f"{sensor_name}_energy"]
+        )
     elif observer_type == "nvml":
         nvmlobserver = NVMLObserver(["nvml_energy", "temperature"])
         observers.append(nvmlobserver)
         metrics["Watt"] = lambda p: 1e3 * p["nvml_energy"] / p["time"]
-        metrics["TFLOPS/J"] = lambda p: 8e-12 * m_global * n_global * k_global * batch_size / p["nvml_energy"]
+        metrics["TFLOPS/J"] = (
+            lambda p: 8e-12
+            * m_global
+            * n_global
+            * k_global
+            * batch_size
+            / p["nvml_energy"]
+        )
 
     if args.ncu:
         if not ncu_metrics:
@@ -230,7 +287,12 @@ if __name__ == '__main__':
     with open(f"{ccglib_dir}/kernels/{kernel_file}", "r") as fp:
         kernel_source = fp.read()
 
-    compiler_options = [f"-I{ccglib_dir}/kernels", f"-I{ccglib_dir}/include", f"-I{ccglib_dir}/include/ccglib/common", "-std=c++17"]
+    compiler_options = [
+        f"-I{ccglib_dir}/kernels",
+        f"-I{ccglib_dir}/include",
+        f"-I{ccglib_dir}/include/ccglib/common",
+        "-std=c++17",
+    ]
 
     def restrict(*args):
         param_names = list(tune_params.keys())
@@ -264,7 +326,12 @@ if __name__ == '__main__':
         m_is_padded = m_global % p["M_PER_BLOCK"] != 0
         n_is_padded = n_global % p["N_PER_BLOCK"] != 0
         # if-statement here replicates REQUIRES_SHARED_MEMORY in ccglib
-        if (m_is_padded or n_is_padded or "C_COMPLEX_INTERLEAVED" in defines or nbit_out < nbit_in):
+        if (
+            m_is_padded
+            or n_is_padded
+            or "C_COMPLEX_INTERLEAVED" in defines
+            or nbit_out < nbit_in
+        ):
             smem_buffer_size = max(c_size, ab_size)
         else:
             smem_buffer_size = ab_size
@@ -279,16 +346,23 @@ if __name__ == '__main__':
         )
         return valid
 
-    filename_cache = (
-        f"{name}_{kernel_name}_{type_in}_to_{type_out}_{batch_size}x{m_global}x{n_global}x{k_global}.json"
-    )
+    filename_cache = f"{name}_{kernel_name}_{type_in}_to_{type_out}_{batch_size}x{m_global}x{n_global}x{k_global}.json"
     if args.overwrite and os.path.exists(filename_cache):
-            os.remove(filename_cache)
+        os.remove(filename_cache)
 
-    kt.tune_kernel(kernel_name, kernel_source, problem_size, arguments, tune_params,
-                   restrictions=restrict,
-                   compiler_options=compiler_options,
-                   cache=filename_cache,
-                   metrics=metrics, observers=observers,
-                   defines=defines, lang=backend, verbose=True,
-                   **grid_div)
+    kt.tune_kernel(
+        kernel_name,
+        kernel_source,
+        problem_size,
+        arguments,
+        tune_params,
+        restrictions=restrict,
+        compiler_options=compiler_options,
+        cache=filename_cache,
+        metrics=metrics,
+        observers=observers,
+        defines=defines,
+        lang=backend,
+        verbose=True,
+        **grid_div,
+    )
