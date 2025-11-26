@@ -183,7 +183,7 @@ if __name__ == "__main__":
         defines["N_PER_WMMA"] = 16
         defines["K_PER_WMMA"] = 8
     else:
-        raise ValueError(f"Invalid nbit: {nbit}")
+        raise ValueError(f"Invalid type_in: {type_in}")
 
     # block size x is always warp_size, so the other block sizes can be at
     # most 1024 / warp_size
