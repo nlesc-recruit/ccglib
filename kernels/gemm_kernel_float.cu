@@ -244,10 +244,10 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
 
     // copy next data to smem
 #if defined(__HIP_PLATFORM_AMD__)
-    copy_sync<int4, sizeof(A_s[0]), num_threads>(
-        &A_s[0][0][0], &A[batch][blockM][k][0][0][0], tid);
-    copy_sync<int4, sizeof(B_s[0]), num_threads>(
-        &B_s[0][0][0], &B[batch][blockN][k][0][0][0], tid);
+    copy_sync<int4, sizeof(shmem.a[0]), num_threads>(
+        &shmem.a[0][0][0], &A[batch][blockM][k][0][0][0], tid);
+    copy_sync<int4, sizeof(shmem.b[0]), num_threads>(
+        &shmem.b[0][0][0], &B[batch][blockN][k][0][0][0], tid);
 #else
     for (; k_buf < K_TILES && k_buf < (k + NBUFFER); k_buf++) {
       pipe.producer_acquire();
