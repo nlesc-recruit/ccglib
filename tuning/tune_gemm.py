@@ -76,6 +76,13 @@ def parse_args():
         action="store_true",
         help="Overwrite any existing .json files",
     )
+    parser.add_argument(
+        "--m_per_block", nargs="+", type=int, help="List of M_PER_BLOCK values to tune"
+    )
+
+    parser.add_argument(
+        "--n_per_block", nargs="+", type=int, help="List of N_PER_BLOCK values to tune"
+    )
 
     return parser.parse_args()
 
@@ -191,9 +198,21 @@ if __name__ == "__main__":
         "block_size_x": [warp_size],  # must be warp size
         "block_size_y": [2**i for i in range(0, 6) if warp_size * 2**i <= 1024],
         "block_size_z": [2**i for i in range(0, 6) if warp_size * 2**i <= 1024],
-        "M_PER_BLOCK": [2**i for i in range(3, 9) if 2**i >= defines["M_PER_WMMA"]],
-        "N_PER_BLOCK": [2**i for i in range(3, 9) if 2**i >= defines["N_PER_WMMA"]],
     }
+
+    if args.m_per_block:
+        tune_params["M_PER_BLOCK"] = args.m_per_block
+    else:
+        tune_params["M_PER_BLOCK"] = [
+            2**i for i in range(3, 9) if 2**i >= defines["M_PER_WMMA"]
+        ]
+
+    if args.n_per_block:
+        tune_params["N_PER_BLOCK"] = args.n_per_block
+    else:
+        tune_params["N_PER_BLOCK"] = [
+            2**i for i in range(3, 9) if 2**i >= defines["N_PER_WMMA"]
+        ]
 
     # multiple buffers is only supported on nvidia
     # assume that when HIP is used, we are running on an AMD GPU
