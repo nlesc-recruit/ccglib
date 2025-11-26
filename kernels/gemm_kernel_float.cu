@@ -215,20 +215,18 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
   // computing current submatrix
   // To save shared memory, the C matrix reuses the same shared memory in
   // case of padding.
-  constexpr size_t A_s_size = NBUFFER * COMPLEX * M_PER_BLOCK * K_PER_WMMA;
-  constexpr size_t B_s_size = NBUFFER * COMPLEX * N_PER_BLOCK * K_PER_WMMA;
-  __shared__ Tin shmem[A_s_size + B_s_size];
-  typedef Tin(*A_s_t)[COMPLEX][M_PER_BLOCK / M_PER_WARP][M_TILES][M_PER_WMMA]
-                     [K_PER_WMMA];
-  typedef Tin(*B_s_t)[COMPLEX][N_PER_BLOCK / N_PER_WARP][N_TILES][N_PER_WMMA]
-                     [K_PER_WMMA];
-  A_s_t A_s = reinterpret_cast<A_s_t>(&shmem[0]);
-  B_s_t B_s = reinterpret_cast<B_s_t>(&shmem[A_s_size]);
-  typedef Tshared(*C_s_t)[M_PER_BLOCK / M_PER_WARP][N_PER_BLOCK / N_PER_WARP]
-                         [M_PER_WMMA][N_PER_WMMA];
+  __shared__ union {
+    struct {
+      Tin a[NBUFFER][COMPLEX][M_PER_BLOCK / M_PER_WARP][M_TILES][M_PER_WMMA]
+           [K_PER_WMMA];
+      Tin b[NBUFFER][COMPLEX][N_PER_BLOCK / N_PER_WARP][N_TILES][N_PER_WMMA]
+           [K_PER_WMMA];
+    };
 #if REQUIRES_SHARED_MEMORY
-  C_s_t C_s = reinterpret_cast<C_s_t>(&shmem[0]);
+    Tshared c[COMPLEX][M_PER_BLOCK / M_PER_WARP][N_PER_BLOCK / N_PER_WARP]
+             [M_PER_WMMA][N_PER_WMMA];
 #endif
+  } shmem;
 
 #if !defined(__HIP_PLATFORM_AMD__)
   cuda::pipeline<cuda::thread_scope_thread> pipe = cuda::make_pipeline();
@@ -246,19 +244,19 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
 
     // copy next data to smem
 #if defined(__HIP_PLATFORM_AMD__)
-    copy_sync<int4, sizeof(A_s[0]), num_threads>(
-        &A_s[0][0][0], &A[batch][blockM][k][0][0][0], tid);
-    copy_sync<int4, sizeof(B_s[0]), num_threads>(
-        &B_s[0][0][0], &B[batch][blockN][k][0][0][0], tid);
+    copy_sync<int4, sizeof(shmem.a[0]), num_threads>(
+        &shmem.a[0][0][0], &A[batch][blockM][k][0][0][0], tid);
+    copy_sync<int4, sizeof(shmem.b[0]), num_threads>(
+        &shmem.b[0][0][0], &B[batch][blockN][k][0][0][0], tid);
 #else
     for (; k_buf < K_TILES && k_buf < (k + NBUFFER); k_buf++) {
       pipe.producer_acquire();
-      copy_async<sizeof(A_s[0]), num_threads>(
-          &A_s[k_buf % NBUFFER][0][0][0][0][0], &A[batch][blockM][k_buf][0][0],
-          pipe, tid);
-      copy_async<sizeof(B_s[0]), num_threads>(
-          &B_s[k_buf % NBUFFER][0][0][0][0][0], &B[batch][blockN][k_buf][0][0],
-          pipe, tid);
+      copy_async<sizeof(shmem.a[0]), num_threads>(
+          &shmem.a[k_buf % NBUFFER][0][0][0][0][0],
+          &A[batch][blockM][k_buf][0][0], pipe, tid);
+      copy_async<sizeof(shmem.b[0]), num_threads>(
+          &shmem.b[k_buf % NBUFFER][0][0][0][0][0],
+          &B[batch][blockN][k_buf][0][0], pipe, tid);
       pipe.producer_commit();
     }
 
@@ -277,8 +275,8 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
     // precision mode.
     for (size_t c = 0; c < COMPLEX; c++) {
       for (size_t m = 0; m < M_TILES; m++) {
-        wmma::load_matrix_sync(a[c][m], &A_s[k % NBUFFER][c][warpM][m][0][0],
-                               K_PER_WMMA);
+        wmma::load_matrix_sync(
+            a[c][m], &shmem.a[k % NBUFFER][c][warpM][m][0][0], K_PER_WMMA);
       }
     }
 
@@ -287,8 +285,8 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
     // precision mode.
     for (size_t c = 0; c < COMPLEX; c++) {
       for (size_t n = 0; n < N_TILES; n++) {
-        wmma::load_matrix_sync(b[c][n], &B_s[k % NBUFFER][c][warpN][n][0][0],
-                               K_PER_WMMA);
+        wmma::load_matrix_sync(
+            b[c][n], &shmem.b[k % NBUFFER][c][warpN][n][0][0], K_PER_WMMA);
       }
     }
 
@@ -349,8 +347,8 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
 
 // store the result to global memory
 #if REQUIRES_SHARED_MEMORY
-  store_matrix_padded(sum, C, C_s, batch, blockM, warpM, blockN, warpN, M_TILES,
-                      N_TILES);
+  store_matrix_padded(sum, C, shmem.c, batch, blockM, warpM, blockN, warpN,
+                      M_TILES, N_TILES);
 #else
   store_matrix(sum, C, batch, blockM, warpM, blockN, warpN);
 #endif
