@@ -1,4 +1,4 @@
-name: benchmark-cuda
+name: tune-cuda
 
 on:
   pull_request:
@@ -19,8 +19,8 @@ jobs:
             module load spack/20250403
             module load cuda/12
             module load python
-            python -m virtualenv env
+            python -m venv env
             source env/bin/activate
             pip install kernel_tuner
             pip install cupy-cuda12x
-            python3 tuning/tune_gemm.py --name test -m 1024 -n 1024 -k 64 --type_in float16 --type_out float32 --backend cupy --m_per_block 16 --n_per_block 16
+            python tuning/tune_gemm.py --name test -m 1024 -n 1024 -k 64 --type_in float16 --type_out float32 --backend cupy --m_per_block 16 --n_per_block 16
