@@ -216,17 +216,16 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
   // To save shared memory, the C matrix reuses the same shared memory in
   // case of padding.
   __shared__ union {
-    Tin ab[A_s_size + B_s_size];
+    struct {
+      Tin a[NBUFFER][COMPLEX][M_PER_BLOCK / M_PER_WARP][M_TILES][M_PER_WMMA]
+           [K_PER_WMMA];
+      Tin b[NBUFFER][COMPLEX][N_PER_BLOCK / N_PER_WARP][N_TILES][N_PER_WMMA]
+           [K_PER_WMMA];
+    };
 #if REQUIRES_SHARED_MEMORY
     Tshared c[C_s_size];
 #endif
   } shmem;
-  using A_s_t = Tin[NBUFFER][COMPLEX][M_PER_BLOCK / M_PER_WARP][M_TILES]
-                   [M_PER_WMMA][K_PER_WMMA];
-  using B_s_t = Tin[NBUFFER][COMPLEX][N_PER_BLOCK / N_PER_WARP][N_TILES]
-                   [N_PER_WMMA][K_PER_WMMA];
-  A_s_t &A_s = *reinterpret_cast<A_s_t *>(shmem.ab);
-  B_s_t &B_s = *reinterpret_cast<B_s_t *>(&shmem.ab[A_s_size]);
 #if REQUIRES_SHARED_MEMORY
   using C_s_t = Tshared[COMPLEX][M_PER_BLOCK / M_PER_WARP]
                        [N_PER_BLOCK / N_PER_WARP][M_PER_WMMA][N_PER_WMMA];
@@ -256,12 +255,12 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
 #else
     for (; k_buf < K_TILES && k_buf < (k + NBUFFER); k_buf++) {
       pipe.producer_acquire();
-      copy_async<sizeof(A_s[0]), num_threads>(
-          &A_s[k_buf % NBUFFER][0][0][0][0][0], &A[batch][blockM][k_buf][0][0],
-          pipe, tid);
-      copy_async<sizeof(B_s[0]), num_threads>(
-          &B_s[k_buf % NBUFFER][0][0][0][0][0], &B[batch][blockN][k_buf][0][0],
-          pipe, tid);
+      copy_async<sizeof(shmem.a[0]), num_threads>(
+          &shmem.a[k_buf % NBUFFER][0][0][0][0][0],
+          &A[batch][blockM][k_buf][0][0], pipe, tid);
+      copy_async<sizeof(shmem.b[0]), num_threads>(
+          &shmem.b[k_buf % NBUFFER][0][0][0][0][0],
+          &B[batch][blockN][k_buf][0][0], pipe, tid);
       pipe.producer_commit();
     }
 
@@ -280,8 +279,8 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
     // precision mode.
     for (size_t c = 0; c < COMPLEX; c++) {
       for (size_t m = 0; m < M_TILES; m++) {
-        wmma::load_matrix_sync(a[c][m], &A_s[k % NBUFFER][c][warpM][m][0][0],
-                               K_PER_WMMA);
+        wmma::load_matrix_sync(
+            a[c][m], &shmem.a[k % NBUFFER][c][warpM][m][0][0], K_PER_WMMA);
       }
     }
 
@@ -290,8 +289,8 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
     // precision mode.
     for (size_t c = 0; c < COMPLEX; c++) {
       for (size_t n = 0; n < N_TILES; n++) {
-        wmma::load_matrix_sync(b[c][n], &B_s[k % NBUFFER][c][warpN][n][0][0],
-                               K_PER_WMMA);
+        wmma::load_matrix_sync(
+            b[c][n], &shmem.b[k % NBUFFER][c][warpN][n][0][0], K_PER_WMMA);
       }
     }
 
