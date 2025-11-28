@@ -53,6 +53,12 @@ void Kernel::SetParameters(Precision precision) {
 std::string Kernel::GetSource() const {
   // precision determines in which file the kernel resides
   switch (precision_.input_type) {
+  case ValueType::float4e2m1:
+    return Kernel::GetSource<ValueType::float4e2m1>();
+  case ValueType::float6e2m3:
+    return Kernel::GetSource<ValueType::float6e2m3>();
+  case ValueType::float6e3m2:
+    return Kernel::GetSource<ValueType::float6e3m2>();
   case ValueType::float8e4m3:
     return Kernel::GetSource<ValueType::float8e4m3>();
   case ValueType::float8e5m2:
