@@ -10,6 +10,7 @@
 #include <ccglib/common/helper.h>
 #include <ccglib/common/precision.h>
 #include <ccglib/fp16.h>
+#include <ccglib/fp6.h>
 #include <ccglib/fp8.h>
 #include <ccglib/gemm/mma.h>
 #include <ccglib/gemm/reference.h>
@@ -43,6 +44,12 @@ static inline std::string type_to_string(const ccglib::ValueType type) {
     return "int1";
   case ccglib::int32:
     return "int32";
+  case ccglib::float4e2m1:
+    return "float4e2m1";
+  case ccglib::float6e2m3:
+    return "float6e2m3";
+  case ccglib::float6e3m2:
+    return "float6e3m2";
   case ccglib::float8e4m3:
     return "float8e4m3";
   case ccglib::float8e5m2:
@@ -143,7 +150,37 @@ private:
 
   template <typename T> void init_input_matrices(T *a, T *b) {
     // fill a and b with random values (fixed seed), initalize c to zero
-    if constexpr (std::is_same_v<T, fp8_e4m3>) {
+    if constexpr (std::is_same_v<T, fp4_e2m1>) {
+      unsigned int seed = 0;
+      for (int idx = 0; idx < bytes_a_ / sizeof(T); idx++) {
+        a[idx] = static_cast<fp4_e2m1>(static_cast<float>(rand_r(&seed)) /
+                                       static_cast<float>(RAND_MAX));
+      }
+      for (int idx = 0; idx < bytes_b_ / sizeof(T); idx++) {
+        b[idx] = static_cast<fp4_e2m1>(static_cast<float>(rand_r(&seed)) /
+                                       static_cast<float>(RAND_MAX));
+      }
+    } else if constexpr (std::is_same_v<T, fp6_e2m3>) {
+      unsigned int seed = 0;
+      for (int idx = 0; idx < bytes_a_ / sizeof(T); idx++) {
+        a[idx] = static_cast<fp6_e2m3>(static_cast<float>(rand_r(&seed)) /
+                                       static_cast<float>(RAND_MAX));
+      }
+      for (int idx = 0; idx < bytes_b_ / sizeof(T); idx++) {
+        b[idx] = static_cast<fp6_e2m3>(static_cast<float>(rand_r(&seed)) /
+                                       static_cast<float>(RAND_MAX));
+      }
+    } else if constexpr (std::is_same_v<T, fp6_e3m2>) {
+      unsigned int seed = 0;
+      for (int idx = 0; idx < bytes_a_ / sizeof(T); idx++) {
+        a[idx] = static_cast<fp6_e3m2>(static_cast<float>(rand_r(&seed)) /
+                                       static_cast<float>(RAND_MAX));
+      }
+      for (int idx = 0; idx < bytes_b_ / sizeof(T); idx++) {
+        b[idx] = static_cast<fp6_e3m2>(static_cast<float>(rand_r(&seed)) /
+                                       static_cast<float>(RAND_MAX));
+      }
+    } else if constexpr (std::is_same_v<T, fp8_e4m3>) {
       unsigned int seed = 0;
       for (int idx = 0; idx < bytes_a_ / sizeof(T); idx++) {
         a[idx] = static_cast<fp8_e4m3>(static_cast<float>(rand_r(&seed)) /
@@ -358,6 +395,12 @@ using TestTypesComplexGemm = std::tuple<
     ComplexGemmTestFixture<bf16, float, ccglib::ValueType::bfloat16,
                            ccglib::ValueType::float32>,
 #endif
+    ComplexGemmTestFixture<fp4_e2m1, float, ccglib::ValueType::float4e2m1,
+                           ccglib::ValueType::float32>,
+    ComplexGemmTestFixture<fp6_e2m3, float, ccglib::ValueType::float6e2m3,
+                           ccglib::ValueType::float32>,
+    ComplexGemmTestFixture<fp6_e3m2, float, ccglib::ValueType::float6e3m2,
+                           ccglib::ValueType::float32>,
     ComplexGemmTestFixture<fp8_e4m3, float, ccglib::ValueType::float8e4m3,
                            ccglib::ValueType::float32>,
     ComplexGemmTestFixture<fp8_e5m2, float, ccglib::ValueType::float8e5m2,

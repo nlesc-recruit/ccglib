@@ -118,11 +118,26 @@ void GEMM::Impl::check_support() {
     }
   }
 
-  if (input_type == ValueType::float8e4m3 ||
-      input_type == ValueType::float8e5m2) {
+  switch (input_type) {
+  case ValueType::float4e2m1:
+    if (!hasFP4(device_)) {
+      throw std::runtime_error("Float4 input is not supported on this device");
+    }
+    break;
+  case ValueType::float6e2m3:
+  case ValueType::float6e3m2:
+    if (!hasFP6(device_)) {
+      throw std::runtime_error("Float6 input is not supported on this device");
+    }
+    break;
+  case ValueType::float8e4m3:
+  case ValueType::float8e5m2:
     if (!hasFP8(device_)) {
       throw std::runtime_error("Float8 input is not supported on this device");
     }
+    break;
+  default:
+    break;
   }
 
   if (isUnsupported(device_)) {

@@ -17,6 +17,15 @@ dim3 Kernel::GetThreads(cu::Device &device) const {
 
 void Kernel::SetParameters(Precision precision) {
   switch (precision.input_type) {
+  case ValueType::float4e2m1:
+    parameters_ = Kernel::GetCompileParameters<ValueType::float4e2m1>();
+    break;
+  case ValueType::float6e2m3:
+    parameters_ = Kernel::GetCompileParameters<ValueType::float6e2m3>();
+    break;
+  case ValueType::float6e3m2:
+    parameters_ = Kernel::GetCompileParameters<ValueType::float6e3m2>();
+    break;
   case ValueType::float8e4m3:
     parameters_ = Kernel::GetCompileParameters<ValueType::float8e4m3>();
     break;

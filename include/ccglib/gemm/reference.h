@@ -5,12 +5,26 @@
 
 #include <ccglib/bf16.h>
 #include <ccglib/fp16.h>
+#include <ccglib/fp4.h>
+#include <ccglib/fp6.h>
 #include <ccglib/fp8.h>
 #include <ccglib/gemm/mem_order.h>
 
 namespace ccglib::reference {
 class GEMM {
 public:
+  virtual void
+  Run(const fp4_e2m1 *a, const fp4_e2m1 *b, float *c, size_t M, size_t N,
+      size_t K, ccglib::mma::MemOrder output_mem_order = ccglib::mma::row_major,
+      std::complex<float> alpha = {1, 0}, std::complex<float> beta = {0, 0});
+  virtual void
+  Run(const fp6_e2m3 *a, const fp6_e2m3 *b, float *c, size_t M, size_t N,
+      size_t K, ccglib::mma::MemOrder output_mem_order = ccglib::mma::row_major,
+      std::complex<float> alpha = {1, 0}, std::complex<float> beta = {0, 0});
+  virtual void
+  Run(const fp6_e3m2 *a, const fp6_e3m2 *b, float *c, size_t M, size_t N,
+      size_t K, ccglib::mma::MemOrder output_mem_order = ccglib::mma::row_major,
+      std::complex<float> alpha = {1, 0}, std::complex<float> beta = {0, 0});
   virtual void
   Run(const fp8_e4m3 *a, const fp8_e4m3 *b, float *c, size_t M, size_t N,
       size_t K, ccglib::mma::MemOrder output_mem_order = ccglib::mma::row_major,

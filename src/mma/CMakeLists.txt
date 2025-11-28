@@ -4,6 +4,8 @@ add_library(
   ${PROJECT_NAME} OBJECT
   GEMM.cpp
   Kernel.cpp
+  KernelFloat4.cpp
+  KernelFloat6.cpp
   KernelFloat8.cpp
   KernelFloat16.cpp
   KernelBfloat16.cpp

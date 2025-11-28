@@ -160,6 +160,8 @@ public:
   }
 };
 
+using TransposeTestFixtureFloat6e2m3 =
+    TransposeTestFixture<fp8_e4m3, ccglib::ValueType::float6e2m3>;
 using TransposeTestFixtureFloat8e4m3 =
     TransposeTestFixture<fp8_e4m3, ccglib::ValueType::float8e4m3>;
 using TransposeTestFixtureFloat16 =
@@ -168,6 +170,18 @@ using TransposeTestFixtureBfloat16 =
     TransposeTestFixture<bf16, ccglib::ValueType::bfloat16>;
 using TransposeTestFixtureInt1 =
     TransposeTestFixture<unsigned int, ccglib::ValueType::int1>;
+
+TEST_CASE_METHOD(TransposeTestFixtureFloat6e2m3, "Transpose Test - float6e2m3",
+                 "[transpose-test-float6e2m3]") {
+  SECTION("complex-planar") {
+    TransposeTestFixtureFloat6e2m3::transpose(
+        ccglib::ComplexAxisLocation::complex_planar);
+  }
+  SECTION("complex-interleaved") {
+    TransposeTestFixtureFloat6e2m3::transpose(
+        ccglib::ComplexAxisLocation::complex_interleaved);
+  }
+}
 
 TEST_CASE_METHOD(TransposeTestFixtureFloat8e4m3, "Transpose Test - float8e4m3",
                  "[transpose-test-float8e4m3]") {
