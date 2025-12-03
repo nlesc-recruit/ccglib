@@ -85,6 +85,9 @@ void Transpose::Impl::compile_kernel() {
     "-arch=" + arch,
 #endif
     "-I" + cuda_include_path,
+#if CUDA_VERSION >= 13000
+    "-I" + cuda_include_path + "/cccl",
+#endif
     "-DBATCH_SIZE=" + std::to_string(B_) + "UL",
     "-DM_GLOBAL=" + std::to_string(M_) + "UL",
     "-DN_GLOBAL=" + std::to_string(N_) + "UL",
