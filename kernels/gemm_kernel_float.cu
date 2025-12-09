@@ -151,7 +151,7 @@ extern "C" __global__ void wmma_complex_gemm_basic(C_t C, const A_t A,
           unsigned tmp = static_cast<unsigned>(b[IMAG][n].x[element]);
           // Negate the sign for the the four FP8 values contained in tmp
           // by flipping the most signficant bit (the sign bit) of each byte.
-          tmp ^= 0x80808080u;
+          tmp ^= GET_NEGATION_MASK(Tin);
           b[IMAG][n].x[element] = tmp;
         } else {
           b[IMAG][n].x[element] = -b[IMAG][n].x[element];
@@ -318,8 +318,9 @@ extern "C" __global__ void wmma_complex_gemm_opt(C_t C, const A_opt_t A,
       for (size_t element = 0; element < b[IMAG][n].num_elements; element++) {
         if constexpr (sizeof(Tin) == 1) {
           unsigned tmp = static_cast<unsigned>(b[IMAG][n].x[element]);
-          // Negate the sign of each FP8 value.
-          tmp ^= 0x80808080u;
+          // Negate the sign for the the four FP8 values contained in tmp
+          // by flipping the most signficant bit (the sign bit) of each byte.
+          tmp ^= GET_NEGATION_MASK(Tin);
           b[IMAG][n].x[element] = tmp;
         } else {
           b[IMAG][n].x[element] = -b[IMAG][n].x[element];

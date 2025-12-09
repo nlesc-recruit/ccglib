@@ -9,6 +9,7 @@
 
 #include <ccglib/common/precision.h>
 #include <ccglib/fp16.h>
+#include <ccglib/fp6.h>
 #include <ccglib/fp8.h>
 #include <ccglib/transpose/transpose.h>
 
@@ -178,12 +179,24 @@ public:
   }
 };
 
+using TransposeTestFixtureFloat6e2m3 =
+    TransposeTestFixture<fp6_e3m2, ccglib::ValueType::float6e2m3>;
 using TransposeTestFixtureFloat8e4m3 =
     TransposeTestFixture<fp8_e4m3, ccglib::ValueType::float8e4m3>;
 using TransposeTestFixtureFloat16 =
     TransposeTestFixture<half, ccglib::ValueType::float16>;
 using TransposeTestFixtureInt1 =
     TransposeTestFixture<unsigned int, ccglib::ValueType::int1>;
+
+TEST_CASE_METHOD(TransposeTestFixtureFloat6e2m3, "Transpose Test - float6e2m3",
+                 "[transpose-test-float6e2m3]") {
+  SECTION("complex-planar") {
+    transpose(ccglib::ComplexAxisLocation::complex_planar);
+  }
+  SECTION("complex-interleaved") {
+    transpose(ccglib::ComplexAxisLocation::complex_interleaved);
+  }
+}
 
 TEST_CASE_METHOD(TransposeTestFixtureFloat8e4m3, "Transpose Test - float8e4m3",
                  "[transpose-test-float8e4m3]") {

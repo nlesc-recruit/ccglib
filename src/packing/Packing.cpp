@@ -74,27 +74,36 @@ void Packing::Impl::Run(cu::DeviceMemory &d_input, cu::DeviceMemory &d_output) {
 }
 
 void Packing::Impl::compile_kernel() {
-  const std::string cuda_include_path = nvrtc::findIncludePath();
+  const std::vector<std::string> cuda_include_paths = nvrtc::findIncludePaths();
 
   const std::string arch = device_.getArch();
   const unsigned warp_size =
       device_.getAttribute(CU_DEVICE_ATTRIBUTE_WARP_SIZE);
+
+  // For Blackwell and newer, use compute_ prefix to ensure proper PTX generation
+  std::string arch_flag = arch;
+  if (arch.find("sm_") == 0) {
+    arch_flag = "compute_" + arch.substr(3);
+  }
 
   std::vector<std::string> options = {
     "-std=c++17",
 #if defined(__HIP__)
     "--offload-arch=" + arch,
 #else
-    "-arch=" + arch,
+    "-arch=" + arch_flag,
 #endif
 #if defined(__HIP_PLATFORM_AMD__) && HIP_VERSION_MAJOR < 7
     // HIP does not enable warp sync functions by default (yet) in ROCm 6.x
     "-DHIP_ENABLE_WARP_SYNC_BUILTINS",
 #endif
-    "-I" + cuda_include_path,
     "-DN_GLOBAL=" + std::to_string(N_) + "UL",
     "-DWARP_SIZE=" + std::to_string(warp_size)
   };
+
+  for (const auto &include_path : cuda_include_paths) {
+    options.push_back("-I" + include_path);
+  }
 
   if (input_complex_axis_location_ == ComplexAxisLocation::complex_planar) {
     options.push_back("-DINPUT_COMPLEX_PLANAR");

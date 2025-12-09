@@ -226,6 +226,24 @@ void run_binary(const unsigned *a, const unsigned *b, int *c, size_t M,
 
 namespace ccglib::reference {
 
+void GEMM::Run(const fp4_e2m1 *a, const fp4_e2m1 *b, float *c, size_t M,
+               size_t N, size_t K, ccglib::mma::MemOrder output_mem_order,
+               std::complex<float> alpha, std::complex<float> beta) {
+  ::Run<fp4_e2m1, float>(a, b, c, M, N, K, output_mem_order, alpha, beta);
+}
+
+void GEMM::Run(const fp6_e2m3 *a, const fp6_e2m3 *b, float *c, size_t M,
+               size_t N, size_t K, ccglib::mma::MemOrder output_mem_order,
+               std::complex<float> alpha, std::complex<float> beta) {
+  ::Run<fp6_e2m3, float>(a, b, c, M, N, K, output_mem_order, alpha, beta);
+}
+
+void GEMM::Run(const fp6_e3m2 *a, const fp6_e3m2 *b, float *c, size_t M,
+               size_t N, size_t K, ccglib::mma::MemOrder output_mem_order,
+               std::complex<float> alpha, std::complex<float> beta) {
+  ::Run<fp6_e3m2, float>(a, b, c, M, N, K, output_mem_order, alpha, beta);
+}
+
 void GEMM::Run(const fp8_e4m3 *a, const fp8_e4m3 *b, float *c, size_t M,
                size_t N, size_t K, ccglib::mma::MemOrder output_mem_order,
                std::complex<float> alpha, std::complex<float> beta) {

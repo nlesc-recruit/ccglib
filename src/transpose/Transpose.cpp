@@ -73,18 +73,23 @@ void Transpose::Impl::Run(cu::DeviceMemory &d_input,
 }
 
 void Transpose::Impl::compile_kernel() {
-  const std::string cuda_include_path = nvrtc::findIncludePath();
+  const std::vector<std::string> cuda_include_paths = nvrtc::findIncludePaths();
 
   const std::string arch = device_.getArch();
+
+  // For Blackwell and newer, use compute_ prefix to ensure proper PTX generation
+  std::string arch_flag = arch;
+  if (arch.find("sm_") == 0) {
+    arch_flag = "compute_" + arch.substr(3);
+  }
 
   std::vector<std::string> options = {
     "-std=c++17",
 #if defined(__HIP__)
     "--offload-arch=" + arch,
 #else
-    "-arch=" + arch,
+    "-arch=" + arch_flag,
 #endif
-    "-I" + cuda_include_path,
     "-DBATCH_SIZE=" + std::to_string(B_) + "UL",
     "-DM_GLOBAL=" + std::to_string(M_) + "UL",
     "-DN_GLOBAL=" + std::to_string(N_) + "UL",
@@ -92,6 +97,10 @@ void Transpose::Impl::compile_kernel() {
     "-DM_CHUNK=" + std::to_string(M_chunk_),
     "-DN_CHUNK=" + std::to_string(N_chunk_)
   };
+
+  for (const auto &include_path : cuda_include_paths) {
+    options.push_back("-I" + include_path);
+  }
 
   if (input_complex_axis_location_ == ComplexAxisLocation::complex_planar) {
     options.push_back("-DINPUT_COMPLEX_PLANAR");

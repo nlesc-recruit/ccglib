@@ -8,12 +8,26 @@
 #include <catch2/catch_test_macros.hpp>
 #include <ccglib/bf16.h>
 #include <ccglib/fp16.h>
+#include <ccglib/fp4.h>
+#include <ccglib/fp6.h>
 #include <ccglib/fp8.h>
 
 namespace ccglib::test {
 
 template <typename T> constexpr float getEpsilon() {
-  if constexpr (std::is_same_v<T, fp8_e4m3>) {
+  if constexpr (std::is_same_v<T, fp4_e2m1>) {
+    // fp4_e2m1 uses a 1-bit mantissa
+    // the precision for normal numbers is therefore 2^-1
+    return 0.0001f;
+  } else if constexpr (std::is_same_v<T, fp6_e2m3>) {
+    // fp6_e2m3 uses a 3-bit mantissa
+    // the precision for normal numbers is therefore 2^-3
+    return 0.125f;
+  } else if constexpr (std::is_same_v<T, fp6_e3m2>) {
+    // fp6_e3m2 uses a 2-bit mantissa
+    // the precision for normal numbers is therefore 2^-2
+    return 0.25f;
+  } else if constexpr (std::is_same_v<T, fp8_e4m3>) {
     // fp8_e4m3 uses a 3-bit mantissa
     // the precision for normal numbers is therefore 2^-3
     return 0.125f;

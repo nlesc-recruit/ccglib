@@ -13,9 +13,13 @@ using namespace nvcuda;
 
 #include "ccglib/bf16.h"
 #include "ccglib/fp16.h"
+#include "ccglib/fp4.h"
+#include "ccglib/fp6.h"
 #include "ccglib/fp8.h"
 
 #include "value_type.h"
+#include "type_traits.h"
+
 using ccglib::ValueType;
 
 #ifndef COMPLEX
@@ -84,8 +88,56 @@ template <> struct TypeSelector<ValueType::int1, ValueType::int32> {
   static constexpr bool IS_DOWNCAST_OP = false;
 };
 
+template <> struct TypeSelector<ValueType::float4e2m1, ValueType::float32> {
+#if (__CUDA_ARCH__ < 900)
+  using Tin = void;
+  using Ttc = void;
+#else
+  using Tin = fp4_e2m1;
+  using Ttc = fp4_e2m1;
+#endif
+  using Tshared = float;
+  using Tout = float;
+
+  static constexpr unsigned PACKING_FACTOR = 1;
+  static constexpr size_t OVERRIDE_K_PER_WMMA = 0;
+  static constexpr bool IS_DOWNCAST_OP = false;
+};
+
+template <> struct TypeSelector<ValueType::float6e2m3, ValueType::float32> {
+#if (__CUDA_ARCH__ < 900)
+  using Tin = void;
+  using Ttc = void;
+#else
+  using Tin = fp6_e2m3;
+  using Ttc = fp6_e2m3;
+#endif
+  using Tshared = float;
+  using Tout = float;
+
+  static constexpr unsigned PACKING_FACTOR = 1;
+  static constexpr size_t OVERRIDE_K_PER_WMMA = 0;
+  static constexpr bool IS_DOWNCAST_OP = false;
+};
+
+template <> struct TypeSelector<ValueType::float6e3m2, ValueType::float32> {
+#if (__CUDA_ARCH__ < 900)
+  using Tin = void;
+  using Ttc = void;
+#else
+  using Tin = fp6_e3m2;
+  using Ttc = fp6_e3m2;
+#endif
+  using Tshared = float;
+  using Tout = float;
+
+  static constexpr unsigned PACKING_FACTOR = 1;
+  static constexpr size_t OVERRIDE_K_PER_WMMA = 0;
+  static constexpr bool IS_DOWNCAST_OP = false;
+};
+
 template <> struct TypeSelector<ValueType::float8e4m3, ValueType::float32> {
-#if defined(__HIP_PLATFORM_AMD__) || (__CUDA_ARCH__ < 890)
+#if (__CUDA_ARCH__ < 890)
   using Tin = void;
   using Ttc = void;
 #else
@@ -101,7 +153,7 @@ template <> struct TypeSelector<ValueType::float8e4m3, ValueType::float32> {
 };
 
 template <> struct TypeSelector<ValueType::float8e5m2, ValueType::float32> {
-#if defined(__HIP_PLATFORM_AMD__) || (__CUDA_ARCH__ < 890)
+#if (__CUDA_ARCH__ < 890)
   using Tin = void;
   using Ttc = void;
 #else
@@ -256,6 +308,10 @@ static constexpr size_t ACCUMULATOR_K_PER_WMMA =
 using Accumulator_t =
     typename wmma::fragment<wmma::accumulator, M_PER_WMMA, N_PER_WMMA,
                             ACCUMULATOR_K_PER_WMMA, Tshared>;
+
+#define GET_NEGATION_MASK(T) \
+    (is_same_v<T, fp4_e2m1> ? 0x88888888u : \
+    (is_same_v<T, fp6_e2m3> || is_same_v<T, fp6_e3m2> ? 0x20820820u : 0x80808080u))
 
 #if NBIT_OUT < NBIT_IN
 #define REQUIRES_DOWNCAST 1

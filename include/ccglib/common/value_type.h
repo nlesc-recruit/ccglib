@@ -15,6 +15,9 @@ enum ValueType {
   int1,
   int32,
   bfloat16,
+  float4e2m1,
+  float6e2m3,
+  float6e3m2,
   float8e4m3,
   float8e5m2,
   float16,
@@ -25,6 +28,9 @@ constexpr size_t __host__ __device__ CalculateBitWidth(ValueType type) {
   switch (type) {
   case ValueType::int1:
     return 1;
+  case ValueType::float4e2m1:
+  case ValueType::float6e2m3:
+  case ValueType::float6e3m2:
   case ValueType::float8e4m3:
   case ValueType::float8e5m2:
     return 8;

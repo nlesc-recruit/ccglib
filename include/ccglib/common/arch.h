@@ -59,15 +59,20 @@ static inline bool isBlackwell(const std::string &arch) {
   return false;
 }
 
-static inline bool hasFP8(cu::Device &device) {
+bool hasFP4(cu::Device &device) {
+  const std::string arch(device.getArch());
+  return (isBlackwell(arch) || isCDNA4(device));
+}
+
+bool hasFP6(cu::Device &device) {
+  const std::string arch(device.getArch());
+  return (isBlackwell(arch) || isCDNA4(device));
+}
+
+bool hasFP8(cu::Device &device) {
   const std::string arch(device.getArch());
   return (isBlackwell(arch) || isHopper(arch) || isAda(arch)) ||
          isRDNA4(device) || isCDNA3(device);
-}
-
-static inline bool hasFP4(cu::Device &device) {
-  const std::string arch(device.getArch());
-  return (isBlackwell(arch) || isHopper(arch) || isAda(arch));
 }
 
 static inline bool isUnsupported(cu::Device &device) {

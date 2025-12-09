@@ -118,11 +118,26 @@ void GEMM::Impl::check_support() {
     }
   }
 
-  if (input_type == ValueType::float8e4m3 ||
-      input_type == ValueType::float8e5m2) {
+  switch (input_type) {
+  case ValueType::float4e2m1:
+    if (!hasFP4(device_)) {
+      throw std::runtime_error("Float4 input is not supported on this device");
+    }
+    break;
+  case ValueType::float6e2m3:
+  case ValueType::float6e3m2:
+    if (!hasFP6(device_)) {
+      throw std::runtime_error("Float6 input is not supported on this device");
+    }
+    break;
+  case ValueType::float8e4m3:
+  case ValueType::float8e5m2:
     if (!hasFP8(device_)) {
       throw std::runtime_error("Float8 input is not supported on this device");
     }
+    break;
+  default:
+    break;
   }
 
   if (isUnsupported(device_)) {
@@ -131,13 +146,17 @@ void GEMM::Impl::check_support() {
 }
 
 void GEMM::Impl::compile_kernel() {
-  const std::string cuda_include_path = nvrtc::findIncludePath();
-
-  const std::string arch = device_.getArch();
+  const std::vector<std::string> cuda_include_paths = nvrtc::findIncludePaths();
+  std::string arch = device_.getArch();
   const unsigned warp_size =
       device_.getAttribute(CU_DEVICE_ATTRIBUTE_WARP_SIZE);
 
   const Kernel::Parameters parameters = kernel_.GetParameters();
+
+  // For Blackwell sm_120, use sm_120a to ensure FP4/FP6 support
+  if (arch == "sm_120") {
+    arch += 'a';
+  }
 
   std::vector<std::string> options = {
     "-std=c++17",
@@ -146,7 +165,6 @@ void GEMM::Impl::compile_kernel() {
 #else
     "-arch=" + arch,
 #endif
-    "-I" + cuda_include_path,
     "-Dblock_size_x=" + std::to_string(threads_.x),
     "-Dblock_size_y=" + std::to_string(threads_.y),
     "-Dblock_size_z=" + std::to_string(threads_.z),
@@ -176,6 +194,10 @@ void GEMM::Impl::compile_kernel() {
     "-DK_PER_WMMA=" + std::to_string(parameters.k_per_wmma),
     "-DNBUFFER=" + std::to_string(parameters.nbuffer)
   };
+
+  for (const auto &include_path : cuda_include_paths) {
+    options.push_back("-I" + include_path);
+  }
 
   if (c_complex_axis_location_ == ComplexAxisLocation::complex_planar) {
     options.push_back("-DC_COMPLEX_PLANAR");
