@@ -18,7 +18,7 @@ template <typename T> constexpr float getEpsilon() {
   if constexpr (std::is_same_v<T, fp4_e2m1>) {
     // fp4_e2m1 uses a 1-bit mantissa
     // the precision for normal numbers is therefore 2^-1
-    return 0.5f;
+    return 0.0001f;
   } else if constexpr (std::is_same_v<T, fp6_e2m3>) {
     // fp6_e2m3 uses a 3-bit mantissa
     // the precision for normal numbers is therefore 2^-3
