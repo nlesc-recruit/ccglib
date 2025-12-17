@@ -1,0 +1,26 @@
+name: tune-cuda
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  benchmark-a4000:
+    name: NVIDIA A4000
+    runs-on: [slurm]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astron-rd/slurm-action@v1.1
+        with:
+          partition: defq
+          gres: gpu:A4000
+          time: "00:10:00"
+          commands: |
+            module load spack/20250403
+            module load cuda/12
+            module load python
+            python -m venv env
+            source env/bin/activate
+            pip install kernel_tuner
+            pip install cupy-cuda12x
+            python tuning/tune_gemm.py --name test -m 1024 -n 1024 -k 64 --type_in float16 --type_out float32 --backend cupy --m_per_block 16 --n_per_block 16
