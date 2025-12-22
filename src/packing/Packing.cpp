@@ -92,6 +92,9 @@ void Packing::Impl::compile_kernel() {
     "-DHIP_ENABLE_WARP_SYNC_BUILTINS",
 #endif
     "-I" + cuda_include_path,
+#if CUDA_VERSION >= 13000
+    "-I" + cuda_include_path + "/cccl",
+#endif
     "-DN_GLOBAL=" + std::to_string(N_) + "UL",
     "-DWARP_SIZE=" + std::to_string(warp_size)
   };

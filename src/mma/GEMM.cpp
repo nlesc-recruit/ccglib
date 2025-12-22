@@ -147,6 +147,9 @@ void GEMM::Impl::compile_kernel() {
     "-arch=" + arch,
 #endif
     "-I" + cuda_include_path,
+#if CUDA_VERSION >= 13000
+    "-I" + cuda_include_path + "/cccl",
+#endif
     "-Dblock_size_x=" + std::to_string(threads_.x),
     "-Dblock_size_y=" + std::to_string(threads_.y),
     "-Dblock_size_z=" + std::to_string(threads_.z),
