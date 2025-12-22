@@ -73,8 +73,6 @@ void Transpose::Impl::Run(cu::DeviceMemory &d_input,
 }
 
 void Transpose::Impl::compile_kernel() {
-  const std::string cuda_include_path = nvrtc::findIncludePath();
-
   const std::string arch = device_.getArch();
 
   std::vector<std::string> options = {
@@ -84,10 +82,6 @@ void Transpose::Impl::compile_kernel() {
 #else
     "-arch=" + arch,
 #endif
-    "-I" + cuda_include_path,
-#if CUDA_VERSION >= 13000
-    "-I" + cuda_include_path + "/cccl",
-#endif
     "-DBATCH_SIZE=" + std::to_string(B_) + "UL",
     "-DM_GLOBAL=" + std::to_string(M_) + "UL",
     "-DN_GLOBAL=" + std::to_string(N_) + "UL",
@@ -95,6 +89,12 @@ void Transpose::Impl::compile_kernel() {
     "-DM_CHUNK=" + std::to_string(M_chunk_),
     "-DN_CHUNK=" + std::to_string(N_chunk_)
   };
+
+  const std::vector<std::string> cuda_include_paths = nvrtc::findIncludePaths();
+
+  for (const auto &path : cuda_include_paths) {
+    options.push_back("-I" + path);
+  }
 
   if (input_complex_axis_location_ == ComplexAxisLocation::complex_planar) {
     options.push_back("-DINPUT_COMPLEX_PLANAR");
