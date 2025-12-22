@@ -131,8 +131,6 @@ void GEMM::Impl::check_support() {
 }
 
 void GEMM::Impl::compile_kernel() {
-  const std::string cuda_include_path = nvrtc::findIncludePath();
-
   const std::string arch = device_.getArch();
   const unsigned warp_size =
       device_.getAttribute(CU_DEVICE_ATTRIBUTE_WARP_SIZE);
@@ -145,10 +143,6 @@ void GEMM::Impl::compile_kernel() {
     "--offload-arch=" + arch,
 #else
     "-arch=" + arch,
-#endif
-    "-I" + cuda_include_path,
-#if CUDA_VERSION >= 13000
-    "-I" + cuda_include_path + "/cccl",
 #endif
     "-Dblock_size_x=" + std::to_string(threads_.x),
     "-Dblock_size_y=" + std::to_string(threads_.y),
@@ -179,6 +173,12 @@ void GEMM::Impl::compile_kernel() {
     "-DK_PER_WMMA=" + std::to_string(parameters.k_per_wmma),
     "-DNBUFFER=" + std::to_string(parameters.nbuffer)
   };
+
+  const std::vector<std::string> cuda_include_paths = nvrtc::findIncludePaths();
+
+  for (const auto &path : cuda_include_paths) {
+    options.push_back("-I" + path);
+  }
 
   if (c_complex_axis_location_ == ComplexAxisLocation::complex_planar) {
     options.push_back("-DC_COMPLEX_PLANAR");
