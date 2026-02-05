@@ -5,6 +5,8 @@ project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [0.2.0] - 2026-02-05
+
 ### Added
 
 - Add support for FP8 e4m3 data type ([#24](https://github.com/nlesc-recruit/ccglib/pull/24))
