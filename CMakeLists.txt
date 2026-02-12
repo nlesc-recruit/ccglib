@@ -25,7 +25,7 @@ else()
   message(FATAL_ERROR "Invalid value for CCGLIB_BACKEND: ${CCGLIB_BACKEND}")
 endif()
 
-find_package(OpenMP REQUIRED)
+include(cmake/openmp.cmake)
 
 set(CUDAWRAPPERS_BACKEND ${CCGLIB_BACKEND})
 if(${CCGLIB_BACKEND_HIP})
