@@ -30,4 +30,11 @@ target_embed_source(ccglib ../kernels/gemm_kernel_int1.cu)
 target_embed_source(ccglib ../kernels/transpose_kernel.cu)
 target_embed_source(ccglib ../kernels/packing_kernel.cu)
 
-target_include_directories(ccglib INTERFACE ${CCGLIB_INCLUDE_DIR})
+target_include_directories(
+  ccglib PUBLIC $<BUILD_INTERFACE:${CCGLIB_INCLUDE_DIR}>
+                $<INSTALL_INTERFACE:include>)
+
+install(TARGETS ccglib LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+install(DIRECTORY "${CCGLIB_INCLUDE_DIR}/ccglib"
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
