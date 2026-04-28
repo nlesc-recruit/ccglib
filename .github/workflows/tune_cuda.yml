@@ -16,11 +16,11 @@ jobs:
           gres: gpu:A4000
           time: "00:10:00"
           commands: |
-            module load spack/20250403
-            module load cuda/12
+            module load spack/20251001-rocky8
+            module load cuda/13
             module load python
             python -m venv env
             source env/bin/activate
             pip install kernel_tuner
-            pip install cupy-cuda12x
+            pip install cupy-cuda13x
             python tuning/tune_gemm.py --name test -m 1024 -n 1024 -k 64 --type_in float16 --type_out float32 --backend cupy --m_per_block 16 --n_per_block 16
