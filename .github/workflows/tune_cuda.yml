@@ -21,6 +21,6 @@ jobs:
             module load python
             python -m venv env
             source env/bin/activate
-            pip install kernel_tuner==1.3.1
+            pip install kernel_tuner
             pip install cupy-cuda12x
             python tuning/tune_gemm.py --name test -m 1024 -n 1024 -k 64 --type_in float16 --type_out float32 --backend cupy --m_per_block 16 --n_per_block 16
