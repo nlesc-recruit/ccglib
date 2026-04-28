@@ -30,6 +30,8 @@ target_embed_source(ccglib ../kernels/gemm_kernel_int1.cu)
 target_embed_source(ccglib ../kernels/transpose_kernel.cu)
 target_embed_source(ccglib ../kernels/packing_kernel.cu)
 
+include(GNUInstallDirs)
+
 target_include_directories(
   ccglib PUBLIC $<BUILD_INTERFACE:${CCGLIB_INCLUDE_DIR}>
                 $<INSTALL_INTERFACE:include>)
