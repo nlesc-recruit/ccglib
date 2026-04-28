@@ -313,12 +313,9 @@ if __name__ == "__main__":
         "-std=c++17",
     ]
 
-    def restrict(*args):
+    def restrict(*args, **kwargs):
         param_names = list(tune_params.keys())
-        assert len(args) == len(param_names)
-        p = {}
-        for i in range(len(param_names)):
-            p[param_names[i]] = args[i]
+        p = {param_names[i]: args[i] for i in range(len(param_names))}
 
         n_per_warp = int(p["N_PER_BLOCK"] // p["block_size_y"])
         m_per_warp = int(p["M_PER_BLOCK"] // p["block_size_z"])
