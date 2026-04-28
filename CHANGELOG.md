@@ -3,11 +3,12 @@
 All notable changes to this project will be documented in this file. This
 project adheres to [Semantic Versioning](http://semver.org/).
 
-## [0.2.1] - 2026-04-28
+## \[0.2.1\] - 2026-04-28
+
 - Let CMake install libraries and header files ([#57](https://github.com/nlesc-recruit/ccglib/pull/57)
 - Update CI tune_cuda workflow for latest Kernel Tuner ([#57](https://github.com/nlesc-recruit/ccglib/pull/57)
 
-## [0.2.0] - 2026-02-05
+## \[0.2.0\] - 2026-02-05
 
 ### Added
 
@@ -25,12 +26,12 @@ project adheres to [Semantic Versioning](http://semver.org/).
 
 - Move direction and complex axis location arguments from packing.Run to constructor ([#25](https://github.com/nlesc-recruit/ccglib/pull/25))
 - Release preparation ([#34](https://github.com/nlesc-recruit/ccglib/pull/34))
-- Implement syncwarp for HIP<7 ([#29](https://github.com/nlesc-recruit/ccglib/pull/29))
+- Implement syncwarp for HIP\<7 ([#29](https://github.com/nlesc-recruit/ccglib/pull/29))
 - Make type_selector compatible with sm70 (Tesla V100) ([#21](https://github.com/nlesc-recruit/ccglib/pull/21))
 - Cleanup type selector ([#11](https://github.com/nlesc-recruit/ccglib/pull/11))
 - Fix compilation of benchmark in HIP mode when host compiler != hipcc ([#18](https://github.com/nlesc-recruit/ccglib/pull/18))
 - Fix benchmark ([#12](https://github.com/nlesc-recruit/ccglib/pull/12))
 
-## [0.1.0] - 2025-09-30
+## \[0.1.0\] - 2025-09-30
 
 First release.
