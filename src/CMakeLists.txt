@@ -34,7 +34,7 @@ include(GNUInstallDirs)
 
 target_include_directories(
   ccglib PUBLIC $<BUILD_INTERFACE:${CCGLIB_INCLUDE_DIR}>
-                $<INSTALL_INTERFACE:include>)
+                $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
 install(TARGETS ccglib LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
