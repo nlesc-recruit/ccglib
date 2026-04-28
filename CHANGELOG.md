@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file. This
 project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+- Let CMake install libraries and header files ([#57](https://github.com/nlesc-recruit/ccglib/pull/57)
+- Update CI tune_cuda workflow for latest Kernel Tuner ([#57](https://github.com/nlesc-recruit/ccglib/pull/57)
 
 ## [0.2.0] - 2026-02-05
 
