@@ -17,6 +17,5 @@ jobs:
           time: "00:10:00"
           commands: |
             CXX=hipcc PATH=$PATH:/opt/rocm/bin cmake -S . -B build -DCCGLIB_BUILD_TESTING=1 -DCCGLIB_BACKEND=HIP
-            make -C build -j
-            cd build
-            ctest --output-on-failure
+            cmake --build build -j
+            ctest --test-dir=build --output-on-failure

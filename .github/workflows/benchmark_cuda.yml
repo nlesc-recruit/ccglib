@@ -16,10 +16,9 @@ jobs:
           gres: gpu:A4000
           time: "00:10:00"
           commands: |
-            module load spack/20250403
-            module load cuda
+            module load spack cuda
             cmake -S . -B build -DCCGLIB_BUILD_BENCHMARK=1
-            make -C build -j
+            cmake --build build -j
             ./build/benchmark/benchmark_gemm -m 1024 -n 1024 -k 64 --precision_in float16
             ./build/benchmark/benchmark_packing -n 1024
             ./build/benchmark/benchmark_transpose -m 1024 -n 1024 --precision float16

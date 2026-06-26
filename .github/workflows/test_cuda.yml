@@ -16,9 +16,7 @@ jobs:
           gres: gpu:AD4000
           time: "00:10:00"
           commands: |
-            module load spack/20250403
-            module load cuda
+            module load spack cuda
             cmake -S . -B build -DCCGLIB_BUILD_TESTING=1
-            make -C build -j
-            cd build
-            ctest --output-on-failure
+            cmake --build build -j
+            ctest --test-dir build --output-on-failure
