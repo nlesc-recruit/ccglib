@@ -17,8 +17,8 @@ jobs:
           constraints: zen2
           time: "00:10:00"
           commands: |
-            module load spack cuda/13 python py-platformdirs py-virtualenv
-            python3 -m virtualenv env
+            module load spack cuda/13 python py-virtualenv
+            python3 -m venv env
             source env/bin/activate
             pip install kernel_tuner
             pip install cupy-cuda13x
