@@ -22,4 +22,4 @@ jobs:
             source env/bin/activate
             pip install kernel_tuner
             pip install cupy-cuda13x
-            python tuning/tune_gemm.py --name test -m 1024 -n 1024 -k 64 --type_in float16 --type_out float32 --backend cupy --m_per_block 16 --n_per_block 16
+            LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CUDA_ROOT/lib64 python tuning/tune_gemm.py --name test -m 1024 -n 1024 -k 64 --type_in float16 --type_out float32 --backend cupy --m_per_block 16 --n_per_block 16
