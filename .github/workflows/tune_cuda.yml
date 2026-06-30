@@ -13,7 +13,8 @@ jobs:
       - uses: astron-rd/slurm-action@v1.3
         with:
           partition: defq
-          gres: "gpu:A4000 -C zen2"
+          gres: gpu:A4000
+          constraints: zen2
           time: "00:10:00"
           commands: |
             module load spack cuda/13 python
