@@ -4,7 +4,10 @@ if(CCGLIB_BENCHMARK_WITH_PMT)
   else()
     set(PMT_BUILD_NVML ON)
   endif()
-  FetchContent_Declare(pmt GIT_REPOSITORY https://git.astron.nl/RD/pmt)
+  FetchContent_Declare(
+    pmt
+    GIT_REPOSITORY https://git.astron.nl/RD/pmt
+    GIT_TAG main)
   FetchContent_MakeAvailable(pmt)
   add_compile_definitions("HAVE_PMT")
 endif()
