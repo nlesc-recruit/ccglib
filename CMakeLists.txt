@@ -28,6 +28,7 @@ endif()
 find_package(OpenMP REQUIRED)
 
 set(CUDAWRAPPERS_BACKEND ${CCGLIB_BACKEND})
+set(CUDAWRAPPERS_COMPONENTS all)
 if(${CCGLIB_BACKEND_HIP})
   enable_language(HIP)
   set(LINK_gpu_runtime hip::host)
