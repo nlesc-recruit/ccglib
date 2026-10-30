@@ -41,7 +41,7 @@ TEST_CASE("Pipeline float16 - float32") {
 
   cu::init();
   cu::Device device(0);
-  cu::Context context(CU_CTX_BLOCKING_SYNC, device);
+  cu::Context context(CU_CTX_SCHED_BLOCKING_SYNC, device);
   cu::Stream stream;
 
   cu::HostMemory h_a(num_a * sizeof(Tin));
@@ -127,7 +127,7 @@ TEST_CASE("Pipeline int1 - int32") {
 
   cu::init();
   cu::Device device(0);
-  cu::Context context(CU_CTX_BLOCKING_SYNC, device);
+  cu::Context context(CU_CTX_SCHED_BLOCKING_SYNC, device);
   cu::Stream stream;
 
   cu::HostMemory h_a_packed(bytes_a_packed);

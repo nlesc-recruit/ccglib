@@ -30,7 +30,7 @@ TEST_CASE("Packing") {
 
   cu::init();
   cu::Device device(0);
-  cu::Context context(CU_CTX_BLOCKING_SYNC, device);
+  cu::Context context(CU_CTX_SCHED_BLOCKING_SYNC, device);
   cu::Stream stream;
   cu::HostMemory h_in(bytes_in);
   cu::HostMemory h_out(bytes_out);
@@ -74,7 +74,7 @@ TEST_CASE("Unpacking") {
 
   cu::init();
   cu::Device device(0);
-  cu::Context context(CU_CTX_BLOCKING_SYNC, device);
+  cu::Context context(CU_CTX_SCHED_BLOCKING_SYNC, device);
   cu::Stream stream;
   cu::HostMemory h_in(bytes_in);
   cu::HostMemory h_out(bytes_out);
@@ -119,7 +119,7 @@ TEST_CASE("Pack - unpack") {
 
   cu::init();
   cu::Device device(0);
-  cu::Context context(CU_CTX_BLOCKING_SYNC, device);
+  cu::Context context(CU_CTX_SCHED_BLOCKING_SYNC, device);
   cu::Stream stream;
   cu::HostMemory h_in(bytes_unpacked);
   cu::HostMemory h_out(bytes_unpacked);
@@ -163,7 +163,7 @@ TEST_CASE("Packing - complex-interleaved") {
 
   cu::init();
   cu::Device device(0);
-  cu::Context context(CU_CTX_BLOCKING_SYNC, device);
+  cu::Context context(CU_CTX_SCHED_BLOCKING_SYNC, device);
   cu::Stream stream;
   cu::HostMemory h_in(bytes_in);
   cu::HostMemory h_out(bytes_out);

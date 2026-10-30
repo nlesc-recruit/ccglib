@@ -609,7 +609,7 @@ TEST_CASE("Unsupported matrix layout") {
 
   cu::init();
   cu::Device device(0);
-  cu::Context context(CU_CTX_BLOCKING_SYNC, device);
+  cu::Context context(CU_CTX_SCHED_BLOCKING_SYNC, device);
   cu::Stream stream;
 
   ccglib::mma::MemOrder layout_a = ccglib::mma::col_major;
@@ -649,7 +649,7 @@ TEST_CASE("Alpha/beta scaling") {
 
   cu::init();
   cu::Device device(0);
-  cu::Context context(CU_CTX_BLOCKING_SYNC, device);
+  cu::Context context(CU_CTX_SCHED_BLOCKING_SYNC, device);
   cu::Stream stream;
 
   SECTION("float16") {
