@@ -219,7 +219,7 @@ int main(int argc, const char *argv[]) {
   // GPU init
   cu::init();
   cu::Device device(device_id);
-  cu::Context context(CU_CTX_BLOCKING_SYNC, device);
+  cu::Context context(CU_CTX_SCHED_BLOCKING_SYNC, device);
   cu::Stream stream;
 
   const size_t nr_input_bits = gemm_precision.GetInputBits();
