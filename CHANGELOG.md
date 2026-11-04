@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. This
 project adheres to [Semantic Versioning](http://semver.org/).
 
+## \[Unreleased\]
+
+### Added
+
+- Add support for FP4 (e2m1) and FP6 (e2m3, e3m2) input types on sm_120a and
+  sm_121a GPUs through warp-level mma.sync instructions with kind::f8f6f4
+
 ## \[0.2.1\] - 2026-04-28
 
 - Let CMake install libraries and header files ([#57](https://github.com/nlesc-recruit/ccglib/pull/57)

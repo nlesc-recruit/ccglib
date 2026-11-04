@@ -59,6 +59,15 @@ static inline bool isBlackwell(const std::string &arch) {
   return false;
 }
 
+// Consumer/workstation Blackwell (RTX 50, RTX PRO, DGX Spark) are the only
+// architectures with warp-level tensor core instructions for FP4 and FP6
+// (mma.sync with kind::f8f6f4). Data-center Blackwell (sm_100/sm_103) uses
+// tcgen05 instead and cannot execute those instructions.
+static inline bool isBlackwellConsumer(const std::string &arch) {
+  return (arch.find("sm_120") != std::string::npos ||
+          arch.find("sm_121") != std::string::npos);
+}
+
 static inline bool hasFP8(cu::Device &device) {
   const std::string arch(device.getArch());
   return (isBlackwell(arch) || isHopper(arch) || isAda(arch)) ||
@@ -67,7 +76,12 @@ static inline bool hasFP8(cu::Device &device) {
 
 static inline bool hasFP4(cu::Device &device) {
   const std::string arch(device.getArch());
-  return (isBlackwell(arch) || isHopper(arch) || isAda(arch));
+  return isBlackwellConsumer(arch);
+}
+
+static inline bool hasFP6(cu::Device &device) {
+  const std::string arch(device.getArch());
+  return isBlackwellConsumer(arch);
 }
 
 static inline bool isUnsupported(cu::Device &device) {

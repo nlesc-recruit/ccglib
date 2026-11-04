@@ -125,17 +125,40 @@ void GEMM::Impl::check_support() {
     }
   }
 
+  if (input_type == ValueType::float4e2m1) {
+    if (!hasFP4(device_)) {
+      throw std::runtime_error("Float4 input is not supported on this device");
+    }
+  }
+
+  if (input_type == ValueType::float6e2m3 ||
+      input_type == ValueType::float6e3m2) {
+    if (!hasFP6(device_)) {
+      throw std::runtime_error("Float6 input is not supported on this device");
+    }
+  }
+
   if (isUnsupported(device_)) {
     throw std::runtime_error("This architecture is not supported");
   }
 }
 
 void GEMM::Impl::compile_kernel() {
-  const std::string arch = device_.getArch();
+  std::string arch = device_.getArch();
   const unsigned warp_size =
       device_.getAttribute(CU_DEVICE_ATTRIBUTE_WARP_SIZE);
 
   const Kernel::Parameters parameters = kernel_.GetParameters();
+
+  // The warp-level FP4 and FP6 tensor core instructions are architecture
+  // specific features of consumer/workstation Blackwell. They require the
+  // architecture-specific target (sm_120a or sm_121a); with the plain target
+  // the instructions are rejected by ptxas.
+  if (arch == "sm_120") {
+    arch += 'a';
+  } else if (arch == "sm_121") {
+    arch += 'a';
+  }
 
   std::vector<std::string> options = {
     "-std=c++17",
@@ -178,6 +201,13 @@ void GEMM::Impl::compile_kernel() {
 
   for (const auto &path : cuda_include_paths) {
     options.push_back("-I" + path);
+  }
+
+  const ValuePrecision input_type = kernel_.GetPrecision().input_type;
+  if (input_type == ValueType::float4e2m1 ||
+      input_type == ValueType::float6e2m3 ||
+      input_type == ValueType::float6e3m2) {
+    options.push_back("-DNEGATE_PADDED_SIGN");
   }
 
   if (c_complex_axis_location_ == ComplexAxisLocation::complex_planar) {
