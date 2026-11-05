@@ -20,3 +20,18 @@ jobs:
             cmake -S . -B build -DCCGLIB_BUILD_TESTING=1
             cmake --build build -j
             ctest --test-dir build --output-on-failure
+  test-b4000:
+    name: NVIDIA RTX PRO 4000 Blackwell
+    runs-on: [slurm]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astron-rd/slurm-action@v1.3
+        with:
+          partition: rbq
+          gres: gpu:B4000
+          time: "00:10:00"
+          commands: |
+            module load spack cuda
+            cmake -S . -B build -DCCGLIB_BUILD_TESTING=1
+            cmake --build build -j
+            ctest --test-dir build --output-on-failure

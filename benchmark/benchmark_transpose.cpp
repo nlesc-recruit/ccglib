@@ -26,7 +26,9 @@ cxxopts::Options create_commandline_parser(const char *argv[]) {
       cxxopts::value<float>()->default_value(std::to_string(4)))(
       "csv", "Format output to CSV",
       cxxopts::value<bool>()->default_value(std::to_string(false)))(
-      "precision", "GEMM precision (float32, float16 or int1)",
+      "precision",
+      "GEMM precision (float32, float16, float4e2m1, float6e2m3, float6e3m2, "
+      "float8e4m3, float8e5m2, or int1)",
       cxxopts::value<std::string>())(
       "variant", "GEMM kernel variant (basic or opt)",
       cxxopts::value<std::string>()->default_value("opt"))(
@@ -96,6 +98,9 @@ int main(int argc, const char *argv[]) {
   std::map<std::string, ccglib::ValueType> map_gemm_precision{
       {"float32", ccglib::ValueType::float32},
       {"float16", ccglib::ValueType::float16},
+      {"float4e2m1", ccglib::ValueType::float4e2m1},
+      {"float6e2m3", ccglib::ValueType::float6e2m3},
+      {"float6e3m2", ccglib::ValueType::float6e3m2},
       {"float8e4m3", ccglib::ValueType::float8e4m3},
       {"float8e5m2", ccglib::ValueType::float8e5m2},
       {"int32", ccglib::ValueType::int32},
