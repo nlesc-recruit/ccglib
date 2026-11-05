@@ -21,7 +21,7 @@ jobs:
             cmake --build build -j
             ctest --test-dir build --output-on-failure
   test-b4000:
-    name: NVIDIA RTX PRO 4000 Blackwell
+    name: NVIDIA B4000
     runs-on: [slurm]
     steps:
       - uses: actions/checkout@v4

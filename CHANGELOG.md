@@ -10,8 +10,7 @@ project adheres to [Semantic Versioning](http://semver.org/).
 - Add support for FP4 (e2m1) and FP6 (e2m3, e3m2) input types on sm_120a and
   sm_121a GPUs through warp-level mma.sync instructions with kind::f8f6f4
 - Benchmark command line accepts float4e2m1, float6e2m3 and float6e3m2
-- Run the CUDA test workflow on an RTX PRO 4000 Blackwell (sm_120) in
-  addition to the AD4000
+- Run the CUDA test workflow on a B4000 (sm_120) in addition to the AD4000
 
 ## \[0.2.1\] - 2026-04-28
 
