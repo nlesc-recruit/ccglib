@@ -5,22 +5,54 @@
 //
 // The warp-level tensor core instructions with kind::f8f6f4 (sm_120a and
 // sm_121a) read FP4 values from an 8-bit container holding the 4-bit code in
-// bits 5:2. This differs from the vendor type (__nv_fp4_e2m1 and
-// __hip_fp4_e2m1), which stores the code in bits 3:0. This type wraps the
-// code in the padded container so that buffers of fp4_e2m1 can be passed to
-// the kernels unchanged, like all other input types. The layout of the
-// container was verified on an NVIDIA RTX PRO 6000 Blackwell (sm_120).
+// bits 5:2. This differs from the vendor type (__nv_fp4_e2m1), which stores
+// the code in bits 3:0. This type wraps the code in the padded container so
+// that buffers of fp4_e2m1 can be passed to the kernels unchanged, like all
+// other input types. The layout of the container was verified on an NVIDIA
+// RTX PRO 6000 Blackwell (sm_120).
 
 #if defined(__HIP__)
 #if HIP_VERSION_MAJOR < 7
 // FP4 support was added in HIP 7.0, see tag history at
 // https://github.com/ROCm/clr/blob/rocm-7.0.0/hipamd/include/hip/amd_detail/amd_hip_fp4.h
-#define CCGLIB_HIP_NO_FP4
+
+#ifndef CCGLIB_MOCK_FP4_TYPE
+#define CCGLIB_MOCK_FP4_TYPE
+
+// Mock of the vendor type __hip_fp4_e2m1 for toolchains without FP4 support.
+// Like the FP8 mocks, it carries no values.
+struct __hip_fp4_e2m1 {
+  char x;
+  __host__ __device__ __hip_fp4_e2m1() : x(0) {}
+  __host__ __device__ explicit __hip_fp4_e2m1(float) {}
+  __host__ __device__ explicit operator float() const { return 0.0f; }
+};
+
+#endif // CCGLIB_MOCK_FP4_TYPE
 #else
 #include <hip/hip_fp4.h>
 #endif
 #else
+#if !defined(CUDART_VERSION) || CUDART_VERSION < 12080
+// The FP4 intrinsics were added in CUDA 12.8, see
+// https://docs.nvidia.com/cuda/cuda-release-notes/
+
+#ifndef CCGLIB_MOCK_FP4_TYPE
+#define CCGLIB_MOCK_FP4_TYPE
+
+// Mock of the vendor type __nv_fp4_e2m1 for toolchains without FP4 support.
+// Like the FP8 mocks, it carries no values.
+struct __nv_fp4_e2m1 {
+  char x;
+  __host__ __device__ __nv_fp4_e2m1() : x(0) {}
+  __host__ __device__ explicit __nv_fp4_e2m1(float) {}
+  __host__ __device__ explicit operator float() const { return 0.0f; }
+};
+
+#endif // CCGLIB_MOCK_FP4_TYPE
+#else
 #include <cuda_fp4.h>
+#endif
 #endif
 
 struct fp4_e2m1 {
@@ -39,7 +71,7 @@ struct fp4_e2m1 {
 
   // Encode a float into the byte-padded container, rounding to nearest.
   __host__ __device__ static unsigned char encode(float value) {
-#if defined(CCGLIB_HIP_NO_FP4)
+#if defined(CCGLIB_MOCK_FP4_TYPE)
     static_cast<void>(value);
     return 0;
 #elif defined(__HIP__)
@@ -53,7 +85,7 @@ struct fp4_e2m1 {
 
   // Decode the byte-padded container back to a float.
   __host__ __device__ static float decode(unsigned char container) {
-#if defined(CCGLIB_HIP_NO_FP4)
+#if defined(CCGLIB_MOCK_FP4_TYPE)
     static_cast<void>(container);
     return 0.0f;
 #elif defined(__HIP__)
