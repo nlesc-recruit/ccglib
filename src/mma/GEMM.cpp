@@ -150,13 +150,11 @@ void GEMM::Impl::compile_kernel() {
 
   const Kernel::Parameters parameters = kernel_.GetParameters();
 
-  // The warp-level FP4 and FP6 tensor core instructions are architecture
-  // specific features of consumer/workstation Blackwell. They require the
-  // architecture-specific target (sm_120a or sm_121a); with the plain target
-  // the instructions are rejected by ptxas.
-  if (arch == "sm_120") {
-    arch += 'a';
-  } else if (arch == "sm_121") {
+  // Consumer/workstation Blackwell architecture-specific targets (sm_120a,
+  // sm_121a) expose the complete instruction set of the family, including
+  // the warp-level FP4 and FP6 instructions. Other targets are compiled
+  // with their plain name.
+  if (isBlackwellConsumer(arch)) {
     arch += 'a';
   }
 
