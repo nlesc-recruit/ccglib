@@ -13,6 +13,8 @@ using namespace nvcuda;
 
 #include "ccglib/bf16.h"
 #include "ccglib/fp16.h"
+#include "ccglib/fp4.h"
+#include "ccglib/fp6.h"
 #include "ccglib/fp8.h"
 
 #include "value_type.h"
@@ -91,6 +93,65 @@ template <> struct TypeSelector<ValueType::float8e4m3, ValueType::float32> {
 #else
   using Tin = fp8_e4m3;
   using Ttc = fp8_e4m3;
+#endif
+  using Tshared = float;
+  using Tout = float;
+
+  static constexpr unsigned PACKING_FACTOR = 1;
+  static constexpr size_t OVERRIDE_K_PER_WMMA = 0;
+  static constexpr bool IS_DOWNCAST_OP = false;
+};
+
+// FP4 and FP6 are supported through warp-level mma.sync instructions with
+// kind::f8f6f4, available on consumer/workstation Blackwell (sm_120a and
+// sm_121a) only. The architecture-specific feature macros are defined by
+// nvcc/NVRTC when compiling with -arch=sm_120a or -arch=sm_121a. Values are
+// stored byte-padded, one value per byte, like FP8.
+#if defined(__CUDA_ARCH_FEAT_SM120_ALL) || defined(__CUDA_ARCH_FEAT_SM121_ALL)
+#define CCGLIB_HAS_F8F6F4_MMA 1
+#else
+#define CCGLIB_HAS_F8F6F4_MMA 0
+#endif
+
+template <> struct TypeSelector<ValueType::float4e2m1, ValueType::float32> {
+#if CCGLIB_HAS_F8F6F4_MMA
+  using Tin = fp4_e2m1;
+  using Ttc = fp4_e2m1;
+#else
+  using Tin = void;
+  using Ttc = void;
+#endif
+  using Tshared = float;
+  using Tout = float;
+
+  static constexpr unsigned PACKING_FACTOR = 1;
+  static constexpr size_t OVERRIDE_K_PER_WMMA = 0;
+  static constexpr bool IS_DOWNCAST_OP = false;
+};
+
+template <> struct TypeSelector<ValueType::float6e2m3, ValueType::float32> {
+#if CCGLIB_HAS_F8F6F4_MMA
+  using Tin = fp6_e2m3;
+  using Ttc = fp6_e2m3;
+#else
+  using Tin = void;
+  using Ttc = void;
+#endif
+  using Tshared = float;
+  using Tout = float;
+
+  static constexpr unsigned PACKING_FACTOR = 1;
+  static constexpr size_t OVERRIDE_K_PER_WMMA = 0;
+  static constexpr bool IS_DOWNCAST_OP = false;
+};
+
+template <> struct TypeSelector<ValueType::float6e3m2, ValueType::float32> {
+#if CCGLIB_HAS_F8F6F4_MMA
+  using Tin = fp6_e3m2;
+  using Ttc = fp6_e3m2;
+#else
+  using Tin = void;
+  using Ttc = void;
 #endif
   using Tshared = float;
   using Tout = float;
@@ -261,6 +322,20 @@ using Accumulator_t =
 #define REQUIRES_DOWNCAST 1
 #else
 #define REQUIRES_DOWNCAST 0
+#endif
+
+// Mask for negating the four values in a fragment register by flipping the
+// sign bit of each value. For FP8, the sign is the most significant bit of
+// each byte. For the byte-padded FP4 container, the E2M1 code occupies bits
+// 5:2, so its sign bit is bit 5 of each byte. For FP6, the sign bit is bit 5
+// of the code in bits 5:0 of each byte. All three padded formats therefore
+// share the mask 0x20202020. The host code defines NEGATE_PADDED_SIGN for
+// FP4 and FP6 input types; the enum values themselves are not usable in
+// preprocessor conditionals.
+#ifdef NEGATE_PADDED_SIGN
+#define GET_NEGATION_MASK(T) (0x20202020u)
+#else
+#define GET_NEGATION_MASK(T) (0x80808080u)
 #endif
 
 #define REQUIRES_SHARED_MEMORY                                                 \

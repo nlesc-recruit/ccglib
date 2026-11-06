@@ -15,6 +15,9 @@ enum ValueType {
   int1,
   int32,
   bfloat16,
+  float4e2m1,
+  float6e2m3,
+  float6e3m2,
   float8e4m3,
   float8e5m2,
   float16,
@@ -25,9 +28,14 @@ constexpr size_t __host__ __device__ CalculateBitWidth(ValueType type) {
   switch (type) {
   case ValueType::int1:
     return 1;
+  case ValueType::float4e2m1:
+  case ValueType::float6e2m3:
+  case ValueType::float6e3m2:
+    // FP4 and FP6 values are stored in a byte-padded container, one value per
+    // byte, matching the fragment layout of the tensor core instructions.
+    return 8;
   case ValueType::float8e4m3:
   case ValueType::float8e5m2:
-    return 8;
     return 8;
   case ValueType::bfloat16:
   case ValueType::float16:

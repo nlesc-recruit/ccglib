@@ -8,6 +8,8 @@
 #include <ccglib/common/arch.h>
 #include <ccglib/common/precision.h>
 #include <ccglib/fp16.h>
+#include <ccglib/fp4.h>
+#include <ccglib/fp6.h>
 #include <ccglib/fp8.h>
 #include <ccglib/transpose/transpose.h>
 
@@ -49,7 +51,15 @@ private:
 
   void init_input_matrix(T *a) {
     // fill a (fixed seed)
-    if constexpr (std::is_same_v<T, __half>) {
+    if constexpr (std::is_same_v<T, fp4_e2m1> || std::is_same_v<T, fp6_e2m3> ||
+                  std::is_same_v<T, fp6_e3m2> || std::is_same_v<T, fp8_e4m3> ||
+                  std::is_same_v<T, fp8_e5m2>) {
+      unsigned int seed = 0;
+      for (int idx = 0; idx < kBytesA / sizeof(T); idx++) {
+        a[idx] = static_cast<T>(static_cast<float>(rand_r(&seed)) /
+                                static_cast<float>(RAND_MAX));
+      }
+    } else if constexpr (std::is_same_v<T, __half>) {
       unsigned int seed = 0;
       const float scale = 1.0f;
       for (int idx = 0; idx < kBytesA / sizeof(T); idx++) {
@@ -70,6 +80,18 @@ private:
     if constexpr (std::is_same_v<T, fp8_e4m3> || std::is_same_v<T, fp8_e5m2>) {
       if (!hasFP8(*device_)) {
         SKIP("Float8 is not supported on this GPU");
+        return;
+      }
+    }
+    if constexpr (std::is_same_v<T, fp4_e2m1>) {
+      if (!hasFP4(*device_)) {
+        SKIP("Float4 is not supported on this GPU");
+        return;
+      }
+    }
+    if constexpr (std::is_same_v<T, fp6_e2m3> || std::is_same_v<T, fp6_e3m2>) {
+      if (!hasFP6(*device_)) {
+        SKIP("Float6 is not supported on this GPU");
         return;
       }
     }
@@ -160,6 +182,12 @@ public:
   }
 };
 
+using TransposeTestFixtureFloat4e2m1 =
+    TransposeTestFixture<fp4_e2m1, ccglib::ValueType::float4e2m1>;
+using TransposeTestFixtureFloat6e2m3 =
+    TransposeTestFixture<fp6_e2m3, ccglib::ValueType::float6e2m3>;
+using TransposeTestFixtureFloat6e3m2 =
+    TransposeTestFixture<fp6_e3m2, ccglib::ValueType::float6e3m2>;
 using TransposeTestFixtureFloat8e4m3 =
     TransposeTestFixture<fp8_e4m3, ccglib::ValueType::float8e4m3>;
 using TransposeTestFixtureFloat16 =
@@ -168,6 +196,42 @@ using TransposeTestFixtureBfloat16 =
     TransposeTestFixture<bf16, ccglib::ValueType::bfloat16>;
 using TransposeTestFixtureInt1 =
     TransposeTestFixture<unsigned int, ccglib::ValueType::int1>;
+
+TEST_CASE_METHOD(TransposeTestFixtureFloat4e2m1, "Transpose Test - float4e2m1",
+                 "[transpose-test-float4e2m1]") {
+  SECTION("complex-planar") {
+    TransposeTestFixtureFloat4e2m1::transpose(
+        ccglib::ComplexAxisLocation::complex_planar);
+  }
+  SECTION("complex-interleaved") {
+    TransposeTestFixtureFloat4e2m1::transpose(
+        ccglib::ComplexAxisLocation::complex_interleaved);
+  }
+}
+
+TEST_CASE_METHOD(TransposeTestFixtureFloat6e2m3, "Transpose Test - float6e2m3",
+                 "[transpose-test-float6e2m3]") {
+  SECTION("complex-planar") {
+    TransposeTestFixtureFloat6e2m3::transpose(
+        ccglib::ComplexAxisLocation::complex_planar);
+  }
+  SECTION("complex-interleaved") {
+    TransposeTestFixtureFloat6e2m3::transpose(
+        ccglib::ComplexAxisLocation::complex_interleaved);
+  }
+}
+
+TEST_CASE_METHOD(TransposeTestFixtureFloat6e3m2, "Transpose Test - float6e3m2",
+                 "[transpose-test-float6e3m2]") {
+  SECTION("complex-planar") {
+    TransposeTestFixtureFloat6e3m2::transpose(
+        ccglib::ComplexAxisLocation::complex_planar);
+  }
+  SECTION("complex-interleaved") {
+    TransposeTestFixtureFloat6e3m2::transpose(
+        ccglib::ComplexAxisLocation::complex_interleaved);
+  }
+}
 
 TEST_CASE_METHOD(TransposeTestFixtureFloat8e4m3, "Transpose Test - float8e4m3",
                  "[transpose-test-float8e4m3]") {

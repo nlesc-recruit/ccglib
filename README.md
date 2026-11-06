@@ -58,6 +58,8 @@ ccglib supports a range of input/output data types, depending on the available h
 
 Input type             | Output type                | NVIDIA              | AMD | Notes
 ----------             | -----------                | ------              | -   | -
+float4e2m1             | float32                    | sm_120a/sm_121a     | ❌ | Values must be stored byte-padded with the 4-bit code in bits 5:2
+float6e2m3/float6e3m2  | float32                    | sm_120a/sm_121a     | ❌ | Values must be stored byte-padded with the 6-bit code in bits 5:0
 float8e4m3/float8e5m2  | float32                    | Ada or newer        | CDNA3 and RDNA4 only | On AMD, only RDNA4 implements float8 in hardware
 bfloat16               | bfloat16/float32           | float32 output only | ✅ | -
 float16                | float32/float16            | ✅                  | ✅ | -
