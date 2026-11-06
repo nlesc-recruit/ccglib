@@ -61,11 +61,13 @@ static inline bool isBlackwell(const std::string &arch) {
 
 // Consumer/workstation Blackwell (RTX 50, RTX PRO, DGX Spark) are the only
 // architectures with warp-level tensor core instructions for FP4 and FP6
-// (mma.sync with kind::f8f6f4). Data-center Blackwell (sm_100/sm_103) uses
-// tcgen05 instead and cannot execute those instructions.
+// (mma.sync with kind::f8f6f4): sm_120, sm_121, and any future sm_12x
+// minor revision. Data-center Blackwell (sm_10x, and Jetson Thor at
+// sm_110 since CUDA 13) uses tcgen05 instead and cannot execute those
+// instructions. The string match is independent of the CUDA version used
+// to build.
 static inline bool isBlackwellConsumer(const std::string &arch) {
-  return (arch.find("sm_120") != std::string::npos ||
-          arch.find("sm_121") != std::string::npos);
+  return (arch.find("sm_12") != std::string::npos);
 }
 
 static inline bool hasFP8(cu::Device &device) {
