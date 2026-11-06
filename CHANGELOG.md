@@ -12,6 +12,12 @@ project adheres to [Semantic Versioning](http://semver.org/).
 - Benchmark command line accepts float4e2m1, float6e2m3 and float6e3m2
 - Run the CUDA test workflow on a B4000 (sm_120) in addition to the AD4000
 
+### Changed
+
+- The numeric values of the `ValueType` enumerators changed because the enum
+  is in alphabetical order. Code must use the enumerator names; hardcoded
+  integers would now mean something else.
+
 ## \[0.2.1\] - 2026-04-28
 
 - Let CMake install libraries and header files ([#57](https://github.com/nlesc-recruit/ccglib/pull/57)

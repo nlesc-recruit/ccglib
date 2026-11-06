@@ -15,14 +15,13 @@ enum ValueType {
   int1,
   int32,
   bfloat16,
+  float4e2m1,
+  float6e2m3,
+  float6e3m2,
   float8e4m3,
   float8e5m2,
   float16,
-  float32,
-  // Appended to keep the numeric values of the existing enumerators stable
-  float4e2m1,
-  float6e2m3,
-  float6e3m2
+  float32
 };
 
 constexpr size_t __host__ __device__ CalculateBitWidth(ValueType type) {
