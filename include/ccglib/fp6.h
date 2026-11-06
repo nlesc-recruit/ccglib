@@ -41,7 +41,10 @@ using fp6_e2m3 = __hip_fp6_e2m3;
 using fp6_e3m2 = __hip_fp6_e3m2;
 
 #else
-#if !defined(CUDART_VERSION) || CUDART_VERSION < 12080
+// cuda_runtime_api.h defines CUDART_VERSION and the __host__/__device__
+// annotations and exists on all CUDA versions.
+#include <cuda_runtime_api.h>
+#if CUDART_VERSION < 12080
 // The FP6 intrinsics were added in CUDA 12.8, see
 // https://docs.nvidia.com/cuda/cuda-release-notes/
 
